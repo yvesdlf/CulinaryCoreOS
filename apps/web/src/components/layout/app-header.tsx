@@ -1,0 +1,122 @@
+import { Fragment, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { Search, Sun, Moon } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import { CommandPalette } from "./command-palette";
+import { Link } from "react-router-dom";
+
+const routeLabels: Record<string, string> = {
+  "": "Dashboard",
+  products: "Products",
+  recipes: "Recipes",
+  "sub-recipes": "Sub Recipes",
+  new: "New",
+};
+
+function useBreadcrumbs() {
+  const location = useLocation();
+  const segments = location.pathname.split("/").filter(Boolean);
+
+  if (segments.length === 0) {
+    return [{ label: "Dashboard", href: "/", isCurrentPage: true }];
+  }
+
+  const crumbs = segments.map((segment, index) => {
+    const href = "/" + segments.slice(0, index + 1).join("/");
+    const label = routeLabels[segment] ?? decodeURIComponent(segment);
+    const isCurrentPage = index === segments.length - 1;
+    return { label, href, isCurrentPage };
+  });
+
+  return crumbs;
+}
+
+export function AppHeader() {
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains("dark")
+  );
+  const breadcrumbs = useBreadcrumbs();
+
+  function toggleTheme() {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+  }
+
+  return (
+    <>
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+
+        <Breadcrumb className="flex-1">
+          <BreadcrumbList>
+            {breadcrumbs.map((crumb, index) => (
+              // Separator renders its own <li>, so it must be a sibling of the
+              // item rather than nested inside it.
+              <Fragment key={crumb.href}>
+                {index > 0 && <BreadcrumbSeparator />}
+                <BreadcrumbItem>
+                  {crumb.isCurrentPage ? (
+                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink render={<Link to={crumb.href} />}>
+                      {crumb.label}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </Fragment>
+            ))}
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden gap-2 text-muted-foreground md:flex"
+            onClick={() => setCommandOpen(true)}
+          >
+            <Search className="size-3.5" />
+            <span className="text-xs">Search...</span>
+            <kbd className="pointer-events-none ml-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
+              <span className="text-xs">&#8984;</span>K
+            </kbd>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="md:hidden"
+            onClick={() => setCommandOpen(true)}
+          >
+            <Search className="size-4" />
+            <span className="sr-only">Search</span>
+          </Button>
+
+          <Button variant="ghost" size="icon-sm" onClick={toggleTheme}>
+            {isDark ? (
+              <Sun className="size-4" />
+            ) : (
+              <Moon className="size-4" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+        </div>
+      </header>
+
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+    </>
+  );
+}

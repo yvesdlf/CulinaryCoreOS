@@ -1,0 +1,16 @@
+{
+  "name": "culinarycoreos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CulinaryCoreOS (CCOS) — hospitality operating platform. Working name, see docs/DECISIONS.md.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
