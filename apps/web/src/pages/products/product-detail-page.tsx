@@ -27,6 +27,7 @@ import {
   updateProductAndCascade,
   describeCascade,
 } from "@/stores/cascade-actions";
+import { createProduct } from "@/stores/persistence";
 import { PRODUCT_CATEGORIES, PRODUCT_STATUSES, UNITS } from "@/lib/constants";
 
 // ── Empty product template ───────────────────────────────────────────────────
@@ -208,7 +209,7 @@ export function ProductDetailPage() {
 
   // ── Save handler ───────────────────────────────────────────────────────
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!form.name.trim()) {
       toast.error("Product name is required");
       return;
@@ -222,8 +223,15 @@ export function ProductDetailPage() {
     const data = { ...form, allergens };
 
     if (isNew) {
-      store.create(data);
-      toast.success("Product created");
+      try {
+        await createProduct(data);
+        toast.success("Product created");
+      } catch (err) {
+        toast.error("Could not create product", {
+          description: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
     } else {
       // Cascading update: a price change here re-costs every sub-recipe and
       // recipe built on this product.

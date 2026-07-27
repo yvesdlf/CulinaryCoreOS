@@ -22,6 +22,7 @@ import {
   updateSubRecipeAndCascade,
   describeCascade,
 } from "@/stores/cascade-actions";
+import { createSubRecipe as persistSubRecipe } from "@/stores/persistence";
 import {
   RECIPE_STATUSES,
   UNITS,
@@ -50,7 +51,6 @@ export function SubRecipeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const getById = useSubRecipeStore((s) => s.getById);
-  const createSubRecipe = useSubRecipeStore((s) => s.create);
   const updateSubRecipe = useSubRecipeStore((s) => s.update);
 
   const existing = id ? getById(id) : undefined;
@@ -85,14 +85,14 @@ export function SubRecipeDetailPage() {
 
   const isNew = !id;
 
-  function handleSave() {
+  async function handleSave() {
     if (!name.trim()) {
       toast.error("Sub recipe name is required");
       return;
     }
 
-    const lineCosts = lines.map((l) => ({ lineCost: parseFloat(l.lineCost) }));
-    const totalCost = calculateRecipeTotalCost(lineCosts);
+    // Stored strings go straight in — the engine parses exact decimals.
+    const totalCost = calculateRecipeTotalCost(lines);
     const totalWithMargin = calculateCostWithMargin(
       totalCost,
       securityMarginPercent,
@@ -117,8 +117,15 @@ export function SubRecipeDetailPage() {
     };
 
     if (isNew) {
-      createSubRecipe(subRecipeData);
-      toast.success("Sub recipe created");
+      try {
+        await persistSubRecipe(subRecipeData);
+        toast.success("Sub recipe created");
+      } catch (err) {
+        toast.error("Could not create sub recipe", {
+          description: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
     } else {
       // Cascading update: recipes using this sub recipe re-cost on save.
       const affected = updateSubRecipeAndCascade(id!, subRecipeData);

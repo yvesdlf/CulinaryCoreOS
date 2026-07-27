@@ -37,6 +37,13 @@
       ingredient autocomplete were both resolving `nettPricePerUnit`, which
       carries it too — inflating every trimmed product by 1/(1-ref%). Beef at
       20% trim was costing 25% high. Now uses `grossPricePerUnit`.
+- [x] Supabase persistence. `0002_align_with_app_model.sql` closes three gaps
+      found while wiring it: allergens had no column at all and were being
+      dropped, per-unit costs were numeric(14,4) against a 5dp cost engine, and
+      currency still defaulted to AED. `supabase/seed.sql` is generated from the
+      mock catalogue with deterministic uuid v5 ids. Stores hydrate at startup
+      and write through on change; with no credentials configured the whole
+      layer no-ops and the app runs on mock data exactly as before.
 - [x] Cascading recalculation (`apps/web/src/engine/cascade.ts`): a product cost
       change re-costs every dependent sub-recipe and recipe, to unlimited depth
       and safe against reference cycles. Verified end-to-end — 10x on flour
@@ -61,9 +68,16 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
 - [ ] Generate macOS project via Tauri — requires user's machine + Rust
 
 ## Backlog (from SRS, not yet started)
-- [ ] Wire the app to Supabase (replace the in-memory Zustand mock stores);
-      `supabase/migrations/0001_init.sql` already covers products/sub-recipes/
-      recipes/costing
+- [ ] Row Level Security. `0001_init.sql` still ships with RLS disabled, so the
+      anon key can read and write every row. This must be closed before any
+      hosted deployment — it needs the tenants/organizations model first
+      (SRS 4.15).
+- [ ] Reads are hydrate-once at startup. No realtime subscription and no
+      refetch, so a second user's edits are not seen until reload.
+- [ ] Writes are optimistic and not transactional: the entity and its cascade
+      are separate requests, so a mid-cascade failure can leave the database
+      inconsistent with the UI until the next reload. Wrap the cascade in an
+      RPC/transaction.
 - [ ] Persist nutrition/allergens on save — the sub-recipe editor currently
       carries the previous values through rather than deriving them
 - [ ] Cascade `refPercent` too, if product yield should override recipe lines.

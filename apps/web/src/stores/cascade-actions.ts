@@ -1,40 +1,14 @@
 // ---------------------------------------------------------------------------
 // Cross-store actions: save an entity, then re-cost everything downstream
 // ---------------------------------------------------------------------------
-// This module is the only place that touches more than one store, which is
-// what keeps the stores themselves free of circular imports (product-store
-// importing sub-recipe-store while sub-recipe-store imports it back would
-// leave one of them undefined at module-init time).
-//
-// Editors should call these instead of the bare `update` actions whenever a
-// change can affect cost.
+// A thin facade over `persistence`, which owns both the in-memory update and
+// the write-through to Supabase. Editors import from here so they never have to
+// care whether a database is configured.
 // ---------------------------------------------------------------------------
 
 import type { Product, SubRecipe } from "@ccos/shared";
-import { cascadeFrom, type Dependents } from "@/engine/cascade";
-import { useProductStore } from "@/stores/product-store";
-import { useSubRecipeStore } from "@/stores/sub-recipe-store";
-import { useRecipeStore } from "@/stores/recipe-store";
-
-/** Re-cost every dependent of `entityId` and write the results back. */
-function applyCascade(entityId: string): Dependents {
-  const { subRecipes, recipes, affected } = cascadeFrom(entityId, {
-    products: useProductStore.getState().products,
-    subRecipes: useSubRecipeStore.getState().subRecipes,
-    recipes: useRecipeStore.getState().recipes,
-  });
-
-  // Only write when something actually changed, so untouched entities keep
-  // their identity and React can skip re-rendering them.
-  if (affected.subRecipeIds.length > 0) {
-    useSubRecipeStore.setState({ subRecipes });
-  }
-  if (affected.recipeIds.length > 0) {
-    useRecipeStore.setState({ recipes });
-  }
-
-  return affected;
-}
+import type { Dependents } from "@/engine/cascade";
+import { saveProduct, saveSubRecipe } from "@/stores/persistence";
 
 /**
  * Update a product, then push its new cost through every sub-recipe and recipe
@@ -44,8 +18,7 @@ export function updateProductAndCascade(
   id: string,
   changes: Partial<Product>,
 ): Dependents {
-  useProductStore.getState().update(id, changes);
-  return applyCascade(id);
+  return saveProduct(id, changes);
 }
 
 /**
@@ -56,8 +29,7 @@ export function updateSubRecipeAndCascade(
   id: string,
   changes: Partial<SubRecipe>,
 ): Dependents {
-  useSubRecipeStore.getState().update(id, changes);
-  return applyCascade(id);
+  return saveSubRecipe(id, changes);
 }
 
 /** Human-readable summary of what a cascade touched, for a toast. */
