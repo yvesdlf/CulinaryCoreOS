@@ -22,6 +22,12 @@
 - [x] Sub-recipe editor: batch costing panel, editable security margin
 - [x] Verified in-browser: `pnpm --filter web build` clean, cost cascade correct
       (220 g @ 20 % ref -> 275 g gross -> AED 41.25 -> 26.5 % food cost)
+- [x] Cascading recalculation (`apps/web/src/engine/cascade.ts`): a product cost
+      change re-costs every dependent sub-recipe and recipe, to unlimited depth
+      and safe against reference cycles. Verified end-to-end — 10x on flour
+      moved Pizza Dough 3.76 -> 26.43 and, transitively, Margherita Pizza
+      9.3 % -> 13.0 % food cost, while unrelated recipes kept both their
+      numbers and their object identity.
 
 Note: `apps/web/package.json` needs `"type": "module"` — Vite 5 cannot load the
 ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
@@ -43,11 +49,16 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
 - [ ] Wire the app to Supabase (replace the in-memory Zustand mock stores);
       `supabase/migrations/0001_init.sql` already covers products/sub-recipes/
       recipes/costing
-- [ ] Cascading recalculation: editing a product must re-cost every sub-recipe
-      and recipe that references it (currently each editor recalculates only
-      its own lines)
+- [ ] Move money off `number` and onto decimal.js. `docs/DECISIONS.md` already
+      calls for DECIMAL, and the dependency is installed but unused. Float
+      representation is visible today: a 0.165 line cost renders as "0.16".
+      Totals sum unrounded so they stay correct, but per-line display is off
+      by a fils.
 - [ ] Persist nutrition/allergens on save — the sub-recipe editor currently
       carries the previous values through rather than deriving them
+- [ ] Cascade `refPercent` too, if product yield should override recipe lines.
+      Deliberately not done: ref % is editable per line in the ingredient grid,
+      so overwriting it would discard a chef's intentional trim override.
 - [ ] Allergen management (EU 14 + US 9 union)
 - [ ] Menu engineering matrix
 - [ ] Supplier & procurement module

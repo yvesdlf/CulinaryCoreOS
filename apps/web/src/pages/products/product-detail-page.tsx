@@ -23,6 +23,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useProductStore } from "@/stores/product-store";
+import {
+  updateProductAndCascade,
+  describeCascade,
+} from "@/stores/cascade-actions";
 import { PRODUCT_CATEGORIES, PRODUCT_STATUSES, UNITS } from "@/lib/constants";
 
 // ── Empty product template ───────────────────────────────────────────────────
@@ -221,8 +225,13 @@ export function ProductDetailPage() {
       store.create(data);
       toast.success("Product created");
     } else {
-      store.update(id!, data);
-      toast.success("Product updated");
+      // Cascading update: a price change here re-costs every sub-recipe and
+      // recipe built on this product.
+      const affected = updateProductAndCascade(id!, data);
+      const cascadeNote = describeCascade(affected);
+      toast.success("Product updated", {
+        description: cascadeNote ?? undefined,
+      });
     }
     navigate("/products");
   }, [form, allergensText, isNew, id, store, navigate]);

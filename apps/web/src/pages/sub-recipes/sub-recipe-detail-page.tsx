@@ -19,6 +19,10 @@ import { BatchCostPanel } from "@/components/sub-recipes/batch-cost-panel";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import {
+  updateSubRecipeAndCascade,
+  describeCascade,
+} from "@/stores/cascade-actions";
+import {
   RECIPE_STATUSES,
   UNITS,
   DEFAULT_SECURITY_MARGIN,
@@ -116,8 +120,12 @@ export function SubRecipeDetailPage() {
       createSubRecipe(subRecipeData);
       toast.success("Sub recipe created");
     } else {
-      updateSubRecipe(id!, subRecipeData);
-      toast.success("Sub recipe updated");
+      // Cascading update: recipes using this sub recipe re-cost on save.
+      const affected = updateSubRecipeAndCascade(id!, subRecipeData);
+      const cascadeNote = describeCascade(affected);
+      toast.success("Sub recipe updated", {
+        description: cascadeNote ?? undefined,
+      });
     }
 
     navigate("/sub-recipes");
