@@ -65,8 +65,17 @@ export const UNITS = [
 /** Default security margin applied to sub-recipe / recipe costs (%) */
 export const DEFAULT_SECURITY_MARGIN = 5;
 
-/** UAE standard VAT rate (%) */
-export const DEFAULT_VAT_RATE = 5;
+/**
+ * Indonesian PPN (Pajak Pertambahan Nilai), the local equivalent of VAT.
+ *
+ * This is the denominator for every food-cost %, since selling prices are
+ * entered tax-inclusive and stripped back before costing. Confirmed at 11%;
+ * revisit if the venue falls under the higher bracket.
+ */
+export const DEFAULT_VAT_RATE = 11;
 
-/** Default currency code */
-export const DEFAULT_CURRENCY = "AED";
+/** Default currency code — Indonesian Rupiah. */
+export const DEFAULT_CURRENCY = "IDR";
+
+/** Locale for money/number formatting: "Rp 795.000" (dot groups, comma decimal). */
+export const CURRENCY_LOCALE = "id-ID";

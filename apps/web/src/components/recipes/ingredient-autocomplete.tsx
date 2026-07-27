@@ -83,7 +83,10 @@ export function IngredientAutocomplete({
                         name: product.name,
                         unit: product.yield_.nettUnit,
                         refPercent: product.yield_.refPercent,
-                        costPerUnit: parseFloat(product.cost.nettPricePerUnit),
+                        // Gross (as-purchased) price: the line multiplies it
+                        // by grossQty, which already carries the waste
+                        // adjustment. Using nett here double-counts trim.
+                        costPerUnit: parseFloat(product.cost.grossPricePerUnit),
                       })
                     }
                   >

@@ -30,9 +30,9 @@ export function CostSummaryPanel({
   currency = DEFAULT_CURRENCY,
 }: CostSummaryPanelProps) {
   const summary = useMemo(() => {
-    const lineCosts = lines.map((l) => ({ lineCost: parseFloat(l.lineCost) }));
-    const totalCost = calculateRecipeTotalCost(lineCosts);
-    const marginAmount = totalCost * (securityMarginPercent / 100);
+    // Pass the stored strings straight through — the engine parses them as
+    // exact decimals, so nothing goes via float on the way in.
+    const totalCost = calculateRecipeTotalCost(lines);
     const totalWithMargin = calculateCostWithMargin(
       totalCost,
       securityMarginPercent,
@@ -51,7 +51,7 @@ export function CostSummaryPanel({
 
     return {
       totalCost,
-      marginAmount,
+      marginAmount: totalWithMargin.minus(totalCost),
       totalWithMargin,
       priceExclVat,
       foodCostPercent,

@@ -63,7 +63,7 @@ export function IngredientLinesTable({
 
       return {
         ...merged,
-        grossQty,
+        grossQty: grossQty.toNumber(),
         grossUnit: merged.nettUnit,
         lineCost: lineCost.toFixed(2),
       };
@@ -94,7 +94,7 @@ export function IngredientLinesTable({
       nettQty: 0,
       nettUnit: item.unit,
       refPercent: item.refPercent,
-      grossQty,
+      grossQty: grossQty.toNumber(),
       grossUnit: item.unit,
       costPerUnit: item.costPerUnit.toFixed(5),
       lineCost: lineCost.toFixed(2),

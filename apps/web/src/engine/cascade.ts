@@ -9,6 +9,7 @@
 // so it can be unit-tested and reused once the data comes from Supabase.
 // ---------------------------------------------------------------------------
 
+import type Decimal from "decimal.js";
 import type { Product, SubRecipe, Recipe, IngredientLine } from "@ccos/shared";
 import {
   calculateLineCost,
@@ -18,12 +19,13 @@ import {
   calculateContributionMargin,
   calculatePriceExclVat,
   calculateSubRecipeCostPerUnit,
+  toDecimal,
 } from "./cost-engine";
 import { DEFAULT_SECURITY_MARGIN, DEFAULT_VAT_RATE } from "@/lib/constants";
 
-/** Per-unit costs are fractions of a fils per gram, so they need real precision. */
+/** Per-unit costs are fractions of a rupiah per gram, so they need precision. */
 const UNIT_COST_DP = 5;
-/** Money totals are shown to the user in AED. */
+/** Money totals as stored on the entities. */
 const MONEY_DP = 2;
 
 export interface EntityState {
@@ -138,15 +140,20 @@ function recalculateLine(
   line: IngredientLine,
   productById: Map<string, Product>,
   subRecipeById: Map<string, SubRecipe>,
-): { line: IngredientLine; lineCost: number } {
-  let costPerUnit = parseFloat(line.costPerUnit) || 0;
+): { line: IngredientLine; lineCost: Decimal } {
+  // Source of truth for cost is the referenced entity, not the stored line.
+  let costPerUnit: string = line.costPerUnit;
 
   if (line.productId) {
     const product = productById.get(line.productId);
-    if (product) costPerUnit = parseFloat(product.cost.nettPricePerUnit) || 0;
+    // Deliberately the GROSS (as-purchased) price, not the nett one. Line cost
+    // is grossQty * costPerUnit, and grossQty already carries the waste
+    // adjustment — nettPricePerUnit carries it too, so pairing them would
+    // charge for the trim twice. Beef at 20% trim would come out 25% high.
+    if (product) costPerUnit = product.cost.grossPricePerUnit;
   } else if (line.subRecipeId) {
     const sub = subRecipeById.get(line.subRecipeId);
-    if (sub) costPerUnit = parseFloat(sub.costPerUnit) || 0;
+    if (sub) costPerUnit = sub.costPerUnit;
   }
 
   const { grossQty, lineCost } = calculateLineCost(
@@ -155,14 +162,13 @@ function recalculateLine(
     costPerUnit,
   );
 
-  // The rounded string is what the user sees; the raw number is returned
-  // alongside so totals sum at full precision and round exactly once. Summing
-  // the rounded strings instead lets a half-fils error per line accumulate.
+  // The rounded string is what the user sees; the exact Decimal is returned
+  // alongside so totals sum at full precision and round exactly once.
   return {
     line: {
       ...line,
-      grossQty,
-      costPerUnit: costPerUnit.toFixed(UNIT_COST_DP),
+      grossQty: grossQty.toNumber(),
+      costPerUnit: toDecimal(costPerUnit).toFixed(UNIT_COST_DP),
       lineCost: lineCost.toFixed(MONEY_DP),
     },
     lineCost,
@@ -204,8 +210,11 @@ export function recalculateRecipe(
   );
 
   const totalCost = calculateRecipeTotalCost(results);
-  const priceInclVat = parseFloat(recipe.pricing.priceInclVat) || 0;
-  const priceExclVat = calculatePriceExclVat(priceInclVat, DEFAULT_VAT_RATE);
+  // The stored string goes in as-is; the engine parses it as an exact decimal.
+  const priceExclVat = calculatePriceExclVat(
+    recipe.pricing.priceInclVat,
+    DEFAULT_VAT_RATE,
+  );
   const totalCostWithSecurityMargin = calculateCostWithMargin(
     totalCost,
     DEFAULT_SECURITY_MARGIN,
@@ -229,7 +238,9 @@ export function recalculateRecipe(
       totalCostWithSecurityMargin:
         totalCostWithSecurityMargin.toFixed(MONEY_DP),
       grossContributionMargin: grossContributionMargin.toFixed(MONEY_DP),
-      foodCostPercent: parseFloat(foodCostPercent.toFixed(1)),
+      // The data model stores this one as a number; round in Decimal first so
+      // the conversion happens after the arithmetic, not during it.
+      foodCostPercent: foodCostPercent.toDecimalPlaces(1).toNumber(),
     },
   };
 }

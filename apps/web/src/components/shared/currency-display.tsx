@@ -1,11 +1,15 @@
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, type Formattable } from "@/lib/format";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 interface CurrencyDisplayProps {
-  value: number | string;
+  /** Accepts a Decimal straight from the cost engine, or a stored string field. */
+  value: Formattable;
   currency?: string;
-  /** Decimal places — pass 4 for per-unit costs, which round to 0.00 at 2dp. */
+  /**
+   * Decimal places. Defaults to the currency's convention (0 for IDR); pass
+   * 2-4 for per-unit costs, which would otherwise render as "Rp 0".
+   */
   decimals?: number;
   className?: string;
 }
@@ -16,15 +20,9 @@ export function CurrencyDisplay({
   decimals,
   className,
 }: CurrencyDisplayProps) {
-  const numericValue = typeof value === "string" ? parseFloat(value) : value;
-
-  if (isNaN(numericValue)) {
-    return <span className={cn("tabular-nums", className)}>--</span>;
-  }
-
   return (
     <span className={cn("tabular-nums", className)}>
-      {formatCurrency(numericValue, currency, decimals)}
+      {formatCurrency(value, currency, decimals)}
     </span>
   );
 }

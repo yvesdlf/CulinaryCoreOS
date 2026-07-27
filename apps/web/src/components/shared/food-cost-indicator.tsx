@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils";
-import { formatPercent } from "@/lib/format";
+import { formatPercent, type Formattable } from "@/lib/format";
 
 interface FoodCostIndicatorProps {
-  value: number;
+  /** Accepts a Decimal from the cost engine or a plain number from stored data. */
+  value: Formattable;
   className?: string;
 }
 
@@ -10,8 +11,8 @@ export function FoodCostIndicator({
   value,
   className,
 }: FoodCostIndicatorProps) {
-  const level =
-    value < 25 ? "good" : value <= 32 ? "acceptable" : "high";
+  const pct = typeof value === "number" ? value : Number(value);
+  const level = pct < 25 ? "good" : pct <= 32 ? "acceptable" : "high";
 
   const styles = {
     good: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",

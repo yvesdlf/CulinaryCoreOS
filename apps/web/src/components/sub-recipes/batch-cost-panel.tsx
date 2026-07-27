@@ -28,9 +28,8 @@ export function BatchCostPanel({
   currency = DEFAULT_CURRENCY,
 }: BatchCostPanelProps) {
   const summary = useMemo(() => {
-    const lineCosts = lines.map((l) => ({ lineCost: parseFloat(l.lineCost) }));
-    const totalCost = calculateRecipeTotalCost(lineCosts);
-    const marginAmount = totalCost * (securityMarginPercent / 100);
+    // Stored strings go straight to the engine, which parses exact decimals.
+    const totalCost = calculateRecipeTotalCost(lines);
     const totalWithMargin = calculateCostWithMargin(
       totalCost,
       securityMarginPercent,
@@ -46,7 +45,7 @@ export function BatchCostPanel({
 
     return {
       totalCost,
-      marginAmount,
+      marginAmount: totalWithMargin.minus(totalCost),
       totalWithMargin,
       costPerUnit,
       costPerUnitWithMargin,

@@ -22,6 +22,21 @@
 - [x] Sub-recipe editor: batch costing panel, editable security margin
 - [x] Verified in-browser: `pnpm --filter web build` clean, cost cascade correct
       (220 g @ 20 % ref -> 275 g gross -> AED 41.25 -> 26.5 % food cost)
+- [x] Money moved off `number` onto decimal.js, per `docs/DECISIONS.md`. The
+      cost engine takes `Decimal.Value` and returns `Decimal`; conversion to
+      number happens only at the UI boundary. Fixes real errors — in float,
+      30 * 0.0055 is 0.16499999999999998 and rendered "0.16".
+- [x] Currency switched to IDR with `id-ID` formatting ("Rp 795.500", dot
+      groups / comma decimals, 0 dp by convention; per-unit ingredient costs
+      override to 2-4 dp or they would all read "Rp 0"). Tax default is now
+      Indonesian PPN at 11%, replacing UAE VAT at 5% — this changes every food
+      cost %, since price-excl-tax is the denominator. Mock catalogue converted
+      at 4.300 IDR/AED and all derived fields recomputed.
+- [x] Fixed waste double-counting: line cost is `grossQty * costPerUnit`, and
+      `grossQty` already carries the waste adjustment. The engine and the
+      ingredient autocomplete were both resolving `nettPricePerUnit`, which
+      carries it too — inflating every trimmed product by 1/(1-ref%). Beef at
+      20% trim was costing 25% high. Now uses `grossPricePerUnit`.
 - [x] Cascading recalculation (`apps/web/src/engine/cascade.ts`): a product cost
       change re-costs every dependent sub-recipe and recipe, to unlimited depth
       and safe against reference cycles. Verified end-to-end — 10x on flour
@@ -49,11 +64,6 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
 - [ ] Wire the app to Supabase (replace the in-memory Zustand mock stores);
       `supabase/migrations/0001_init.sql` already covers products/sub-recipes/
       recipes/costing
-- [ ] Move money off `number` and onto decimal.js. `docs/DECISIONS.md` already
-      calls for DECIMAL, and the dependency is installed but unused. Float
-      representation is visible today: a 0.165 line cost renders as "0.16".
-      Totals sum unrounded so they stay correct, but per-line display is off
-      by a fils.
 - [ ] Persist nutrition/allergens on save — the sub-recipe editor currently
       carries the previous values through rather than deriving them
 - [ ] Cascade `refPercent` too, if product yield should override recipe lines.

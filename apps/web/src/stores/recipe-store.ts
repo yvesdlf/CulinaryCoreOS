@@ -5,14 +5,9 @@
 import { create } from "zustand";
 import type { Recipe } from "@ccos/shared";
 import { MOCK_RECIPES } from "@/data/mock-recipes";
-import {
-  calculateRecipeTotalCost,
-  calculateCostWithMargin,
-  calculatePriceExclVat,
-  calculateFoodCostPercent,
-  calculateContributionMargin,
-} from "@/engine/cost-engine";
-import { DEFAULT_SECURITY_MARGIN, DEFAULT_VAT_RATE } from "@/lib/constants";
+import { recalculateRecipe } from "@/engine/cascade";
+import { useProductStore } from "@/stores/product-store";
+import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 
 export interface RecipeState {
   recipes: Recipe[];
@@ -64,37 +59,27 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
     }));
   },
 
+  /**
+   * Re-cost one recipe against current product and sub-recipe prices.
+   *
+   * Delegates to the cascade engine rather than repeating the pricing formulas,
+   * so there is a single definition of how a recipe is costed.
+   */
   recalculate: (id) => {
     const recipe = get().getById(id);
     if (!recipe) return;
 
-    const lines = recipe.ingredientLines.map((line) => ({
-      lineCost: parseFloat(line.lineCost),
-    }));
-
-    const totalCost = calculateRecipeTotalCost(lines);
-    const priceInclVat = parseFloat(recipe.pricing.priceInclVat);
-    const priceExclVat = calculatePriceExclVat(priceInclVat, DEFAULT_VAT_RATE);
-    const totalCostWithMargin = calculateCostWithMargin(totalCost, DEFAULT_SECURITY_MARGIN);
-    const foodCostPercent = calculateFoodCostPercent(totalCostWithMargin, priceExclVat);
-    const contributionMargin = calculateContributionMargin(priceExclVat, totalCostWithMargin);
+    const productById = new Map(
+      useProductStore.getState().products.map((p) => [p.id, p]),
+    );
+    const subRecipeById = new Map(
+      useSubRecipeStore.getState().subRecipes.map((s) => [s.id, s]),
+    );
+    const next = recalculateRecipe(recipe, productById, subRecipeById);
 
     set((state) => ({
       recipes: state.recipes.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              pricing: {
-                ...r.pricing,
-                priceExclVat: priceExclVat.toFixed(2),
-                totalCost: totalCost.toFixed(2),
-                totalCostWithSecurityMargin: totalCostWithMargin.toFixed(2),
-                grossContributionMargin: contributionMargin.toFixed(2),
-                foodCostPercent: parseFloat(foodCostPercent.toFixed(1)),
-              },
-              updatedAt: new Date().toISOString(),
-            }
-          : r,
+        r.id === id ? { ...next, updatedAt: new Date().toISOString() } : r,
       ),
     }));
   },
