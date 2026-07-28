@@ -63,8 +63,21 @@ function reportWriteFailure(operation: string, err: unknown) {
  * Leaves the mock catalogue in place if this fails, so a database outage
  * degrades to a read-only-ish demo rather than an empty screen.
  */
+let inFlight: Promise<void> | null = null;
+
 export async function hydrateFromSupabase(): Promise<void> {
   if (!isSupabaseConfigured) return;
+  // React StrictMode and HMR can both re-run the module that calls this. Two
+  // overlapping hydrations would race, and the loser would leave the status
+  // stuck on "loading" after the winner had already finished.
+  if (inFlight) return inFlight;
+  inFlight = doHydrate().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function doHydrate(): Promise<void> {
   setStatus("loading");
   try {
     const { products, subRecipes, recipes } = await repo.fetchAll();

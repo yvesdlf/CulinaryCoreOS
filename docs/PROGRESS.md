@@ -44,6 +44,16 @@
       mock catalogue with deterministic uuid v5 ids. Stores hydrate at startup
       and write through on change; with no credentials configured the whole
       layer no-ops and the app runs on mock data exactly as before.
+- [x] Supabase persistence. Migrations 0002 (allergens column, 5dp per-unit
+      money, IDR default, updated_at triggers) and 0003 (grants + RLS) on top
+      of the original schema; `supabase/seed.sql` generated from the mock
+      catalogue with deterministic uuid v5 ids. Stores hydrate at startup and
+      write through on save; with no credentials the app falls back to the
+      in-memory catalogue, so a fresh clone runs with no database.
+      Verified against local Postgres with psql: a 10x flour price wrote
+      through and the cascade persisted — Pizza Dough 16.138 -> 113.662,
+      Margherita Pizza 10,4% -> 13,6% food cost transitively, Caesar Salad
+      untouched. `supabase db reset` replays migrations + seed cleanly.
 - [x] Cascading recalculation (`apps/web/src/engine/cascade.ts`): a product cost
       change re-costs every dependent sub-recipe and recipe, to unlimited depth
       and safe against reference cycles. Verified end-to-end — 10x on flour

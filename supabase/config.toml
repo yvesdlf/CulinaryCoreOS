@@ -12,3 +12,11 @@ port = 54322
 [studio]
 enabled = true
 port = 54323
+
+# Logflare analytics and its Vector log shipper both fail their health checks on
+# this machine, and `supabase start` tears down the entire stack when any
+# container is unhealthy — including a perfectly good Postgres. Neither service
+# is used by the app, so turning analytics off removes the dependency and lets
+# the stack come up. Re-enable if log analytics is ever needed locally.
+[analytics]
+enabled = false

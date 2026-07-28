@@ -71,7 +71,11 @@ export async function deleteProduct(id: string): Promise<void> {
 
 // ── Sub-recipes ─────────────────────────────────────────────────────────────
 
-const SUB_RECIPE_SELECT = "*, sub_recipe_lines(*)";
+// `sub_recipe_lines` points at `sub_recipes` twice — `sub_recipe_id` for the
+// owning recipe and `child_sub_recipe_id` for a nested one. PostgREST refuses
+// an ambiguous embed ("more than one relationship was found"), so name the
+// column to disambiguate: we want the lines this sub-recipe owns.
+const SUB_RECIPE_SELECT = "*, sub_recipe_lines!sub_recipe_id(*)";
 
 export async function fetchSubRecipes(): Promise<SubRecipe[]> {
   const { data, error } = await requireSupabase()
@@ -156,7 +160,9 @@ export async function deleteSubRecipe(id: string): Promise<void> {
 
 // ── Recipes ─────────────────────────────────────────────────────────────────
 
-const RECIPE_SELECT = "*, recipe_lines(*)";
+// Only one of recipe_lines' foreign keys points at `recipes`, so this is not
+// ambiguous today — named explicitly to stay correct if another is ever added.
+const RECIPE_SELECT = "*, recipe_lines!recipe_id(*)";
 
 export async function fetchRecipes(): Promise<Recipe[]> {
   const { data, error } = await requireSupabase()
