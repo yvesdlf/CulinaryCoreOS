@@ -50,14 +50,67 @@ function lineVals(l: IngredientLine): string[] {
   ];
 }
 
+/** Fixed so the org, the demo user and every row reference each other stably. */
+const DEMO_ORG_ID = id("org:demo");
+const DEMO_USER_ID = "11111111-1111-4111-8111-111111111111";
+const DEMO_EMAIL = "demo@culinarycore.local";
+const DEMO_PASSWORD = "demo-password-123";
+
 const out: string[] = [
   "-- CulinaryCoreOS seed data — GENERATED, do not edit by hand.",
   "-- Regenerate with: pnpm --filter web seed:generate",
   "--",
   "-- Idempotent: truncating first means `supabase db reset` and a re-run of",
   "-- this file both land on the same state.",
+  "--",
+  "-- LOCAL DEVELOPMENT ONLY. This creates a user with a known password so the",
+  "-- seeded catalogue can be signed into. Never load it into a hosted project.",
   "",
   "truncate table recipe_lines, sub_recipe_lines, recipes, sub_recipes, products cascade;",
+  "",
+  "-- Demo organization -------------------------------------------------------",
+  "insert into organizations (id, name, slug) values",
+  `  (${q(DEMO_ORG_ID)}, 'Demo Kitchen', 'demo')`,
+  "on conflict (id) do nothing;",
+  "",
+  "-- Demo user ---------------------------------------------------------------",
+  "-- GoTrue reads these token columns as NOT NULL strings; leaving them NULL",
+  "-- makes every sign-in fail with 'converting NULL to string is unsupported'.",
+  "insert into auth.users (",
+  "  instance_id, id, aud, role, email, encrypted_password,",
+  "  email_confirmed_at, created_at, updated_at,",
+  "  raw_app_meta_data, raw_user_meta_data,",
+  "  confirmation_token, recovery_token, email_change_token_new,",
+  "  email_change_token_current, email_change, phone_change,",
+  "  phone_change_token, reauthentication_token",
+  ") values (",
+  "  '00000000-0000-0000-0000-000000000000',",
+  `  ${q(DEMO_USER_ID)}, 'authenticated', 'authenticated', ${q(DEMO_EMAIL)},`,
+  `  crypt(${q(DEMO_PASSWORD)}, gen_salt('bf')),`,
+  "  now(), now(), now(),",
+  `  '{"provider":"email","providers":["email"]}', '{}',`,
+  "  '', '', '', '', '', '', '', ''",
+  ") on conflict (id) do nothing;",
+  "",
+  "insert into auth.identities (",
+  "  provider_id, user_id, identity_data, provider,",
+  "  last_sign_in_at, created_at, updated_at",
+  ") values (",
+  `  ${q(DEMO_USER_ID)}, ${q(DEMO_USER_ID)},`,
+  `  jsonb_build_object('sub', ${q(DEMO_USER_ID)}, 'email', ${q(DEMO_EMAIL)}, 'email_verified', true),`,
+  "  'email', now(), now(), now()",
+  ") on conflict (provider, provider_id) do nothing;",
+  "",
+  "-- handle_new_user() gave the user its own organization; drop that and put",
+  "-- them in the demo org so they see the seeded catalogue.",
+  "delete from organizations",
+  ` where slug <> 'demo'`,
+  `   and id in (select organization_id from organization_members`,
+  `              where user_id = ${q(DEMO_USER_ID)});`,
+  "",
+  "insert into organization_members (organization_id, user_id, role) values",
+  `  (${q(DEMO_ORG_ID)}, ${q(DEMO_USER_ID)}, 'OWNER')`,
+  "on conflict (organization_id, user_id) do update set role = 'OWNER';",
   "",
 ];
 
@@ -71,7 +124,7 @@ const productCols = [
   "gross_price_per_unit", "nett_price_per_unit",
   "gross_qty", "gross_unit", "waste_qty", "waste_unit",
   "nett_qty", "nett_unit", "ref_percent", "yield_percent",
-  "status", ...nutritionCols, "allergens",
+  "status", ...nutritionCols, "allergens", "org_id",
 ];
 out.push(`insert into products (${productCols.join(", ")}) values`);
 out.push(
@@ -88,6 +141,7 @@ out.push(
       n(p.yield_.nettQty), q(p.yield_.nettUnit),
       n(p.yield_.refPercent), n(p.yield_.yieldPercent),
       q(p.status), ...nutritionVals(p.nutrition), arr(p.allergens),
+      q(DEMO_ORG_ID),
     ].join(", ") + ")",
   ).join(",\n") + ";",
 );
@@ -99,7 +153,7 @@ const subCols = [
   "id", "name", "category", "status",
   "batch_yield_qty", "batch_yield_unit",
   "total_cost", "cost_per_unit", "security_margin_percent",
-  ...nutritionCols, "allergens", "version",
+  ...nutritionCols, "allergens", "version", "org_id",
 ];
 out.push(`insert into sub_recipes (${subCols.join(", ")}) values`);
 out.push(
@@ -109,6 +163,7 @@ out.push(
       n(s.batchYield.qty), q(s.batchYield.unit),
       n(s.totalCost), n(s.costPerUnit), n(s.securityMarginPercent),
       ...nutritionVals(s.nutritionPer100g), arr(s.allergens), n(s.version),
+      q(DEMO_ORG_ID),
     ].join(", ") + ")",
   ).join(",\n") + ";",
 );
@@ -143,7 +198,7 @@ const recipeCols = [
   ...nutritionCols,
   "gluten_free", "dairy_free", "vegetarian", "vegan",
   "nuts_free", "soy_free", "sulfites_free",
-  "allergens", "version",
+  "allergens", "version", "org_id",
 ];
 out.push(`insert into recipes (${recipeCols.join(", ")}) values`);
 out.push(
@@ -159,7 +214,7 @@ out.push(
       ...nutritionVals(r.nutritionPerPortion),
       d.glutenFree, d.dairyFree, d.vegetarian, d.vegan,
       d.nutsFree, d.soyFree, d.sulfitesFree,
-      arr(r.allergens), n(r.version),
+      arr(r.allergens), n(r.version), q(DEMO_ORG_ID),
     ].join(", ") + ")";
   }).join(",\n") + ";",
 );

@@ -44,6 +44,20 @@
       mock catalogue with deterministic uuid v5 ids. Stores hydrate at startup
       and write through on change; with no credentials configured the whole
       layer no-ops and the app runs on mock data exactly as before.
+- [x] Multi-tenancy and real RLS (migration 0004). Organizations + membership
+      with roles; every data table carries `org_id`; policies scope reads to
+      the caller's organizations and writes to roles above VIEWER. Clients
+      never send `org_id` — a BEFORE INSERT trigger stamps it and the policy's
+      WITH CHECK re-verifies, so a tampered client cannot cross tenants.
+      Membership lookups go through SECURITY DEFINER functions to avoid policy
+      recursion, are STABLE so they run once per statement, and pin
+      `search_path` against hijacking. Sign-up creates the user's own org.
+      `anon` is revoked from every data table.
+      Verified: anon gets 42501 on read and write; a second tenant sees zero
+      rows; and as that tenant, inserting with a forged org_id is rejected
+      42501 while updating and deleting another org's product both affect no
+      rows. App-side auth (sign in/up, session persistence, route guard,
+      org context in the header) added to match.
 - [x] Supabase persistence. Migrations 0002 (allergens column, 5dp per-unit
       money, IDR default, updated_at triggers) and 0003 (grants + RLS) on top
       of the original schema; `supabase/seed.sql` generated from the mock
@@ -78,10 +92,13 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
 - [ ] Generate macOS project via Tauri — requires user's machine + Rust
 
 ## Backlog (from SRS, not yet started)
-- [ ] Row Level Security. `0001_init.sql` still ships with RLS disabled, so the
-      anon key can read and write every row. This must be closed before any
-      hosted deployment — it needs the tenants/organizations model first
-      (SRS 4.15).
+- [ ] Membership management: invites, role changes and removing a member are
+      deliberately not client-writable. `organization_members` has a read
+      policy only, so this needs a server-side flow.
+- [ ] Organization switcher. `auth_default_org_id()` takes the oldest
+      membership, so a user in more than one org always writes to the first.
+- [ ] The UI does not yet respect the VIEWER role — the database refuses the
+      write, but the editors still present Save as though it will succeed.
 - [ ] Reads are hydrate-once at startup. No realtime subscription and no
       refetch, so a second user's edits are not seen until reload.
 - [ ] Writes are optimistic and not transactional: the entity and its cascade

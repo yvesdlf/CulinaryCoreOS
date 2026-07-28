@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Search, Sun, Moon } from "lucide-react";
+import { Search, Sun, Moon, LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CommandPalette } from "./command-palette";
 import { Link } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth-store";
 
 const routeLabels: Record<string, string> = {
   "": "Dashboard",
@@ -43,6 +44,9 @@ function useBreadcrumbs() {
 
 export function AppHeader() {
   const [commandOpen, setCommandOpen] = useState(false);
+  const activeOrg = useAuthStore((s) => s.activeOrg);
+  const session = useAuthStore((s) => s.session);
+  const signOut = useAuthStore((s) => s.signOut);
   const [isDark, setIsDark] = useState(
     document.documentElement.classList.contains("dark")
   );
@@ -82,6 +86,19 @@ export function AppHeader() {
         </Breadcrumb>
 
         <div className="flex items-center gap-1">
+          {/* Which kitchen's data is on screen — RLS makes this the boundary
+              of everything visible, so it is worth showing explicitly. */}
+          {activeOrg && (
+            <div className="mr-2 hidden text-right sm:block">
+              <p className="text-xs font-medium leading-tight">
+                {activeOrg.name}
+              </p>
+              <p className="text-[10px] leading-tight text-muted-foreground">
+                {activeOrg.role.toLowerCase()}
+              </p>
+            </div>
+          )}
+
           <Button
             variant="outline"
             size="sm"
@@ -104,6 +121,18 @@ export function AppHeader() {
             <Search className="size-4" />
             <span className="sr-only">Search</span>
           </Button>
+
+          {session && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => void signOut()}
+              title="Sign out"
+            >
+              <LogOut className="size-4" />
+              <span className="sr-only">Sign out</span>
+            </Button>
+          )}
 
           <Button variant="ghost" size="icon-sm" onClick={toggleTheme}>
             {isDark ? (

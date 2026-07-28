@@ -22,7 +22,14 @@ export const isSupabaseConfigured = Boolean(url && anonKey);
  */
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(url!, anonKey!, {
-      auth: { persistSession: false },
+      auth: {
+        // RLS scopes every row to the caller's organization, so the session
+        // token is what makes data visible at all — it has to survive a
+        // reload or the user is signed out on every refresh.
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
     })
   : null;
 
