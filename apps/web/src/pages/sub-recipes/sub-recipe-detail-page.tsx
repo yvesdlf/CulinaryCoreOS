@@ -33,7 +33,11 @@ import {
   calculateCostWithMargin,
   calculateSubRecipeCostPerUnit,
 } from "@/engine/cost-engine";
-import { ZERO_NUTRITION } from "@/engine/nutrition-engine";
+import {
+  deriveSubRecipeNutrition,
+  deriveAllergens,
+} from "@/engine/nutrition-engine";
+import { useProductStore } from "@/stores/product-store";
 
 const SUB_RECIPE_CATEGORIES = [
   "Sauce",
@@ -51,6 +55,7 @@ export function SubRecipeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const getById = useSubRecipeStore((s) => s.getById);
+  const getProduct = useProductStore((s) => s.getById);
   const updateSubRecipe = useSubRecipeStore((s) => s.update);
 
   const existing = id ? getById(id) : undefined;
@@ -85,6 +90,9 @@ export function SubRecipeDetailPage() {
 
   const isNew = !id;
 
+  // Lookups the nutrition/allergen derivation needs.
+  const sources = { getProduct, getSubRecipe: getById };
+
   async function handleSave() {
     if (!name.trim()) {
       toast.error("Sub recipe name is required");
@@ -111,8 +119,10 @@ export function SubRecipeDetailPage() {
       totalCost: totalCost.toFixed(2),
       costPerUnit: costPerUnit.toFixed(5),
       securityMarginPercent,
-      nutritionPer100g: existing?.nutritionPer100g ?? { ...ZERO_NUTRITION },
-      allergens: existing?.allergens ?? [],
+      // Derived, not carried. Reusing the previous values here meant the panel
+      // showed live figures while the old ones were saved.
+      nutritionPer100g: deriveSubRecipeNutrition(lines, batchYieldQty, sources),
+      allergens: deriveAllergens(lines, sources),
       version: existing ? existing.version + 1 : 1,
     };
 
@@ -128,7 +138,11 @@ export function SubRecipeDetailPage() {
       }
     } else {
       // Cascading update: recipes using this sub recipe re-cost on save.
-      const affected = updateSubRecipeAndCascade(id!, subRecipeData);
+      const affected = updateSubRecipeAndCascade(
+        id!,
+        subRecipeData,
+        existing?.version, // reject the save if someone else wrote first
+      );
       const cascadeNote = describeCascade(affected);
       toast.success("Sub recipe updated", {
         description: cascadeNote ?? undefined,

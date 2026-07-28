@@ -24,6 +24,22 @@ function fail(op: string, error: { message: string } | null): never {
   throw new Error(`${op} failed: ${error?.message ?? "unknown error"}`);
 }
 
+/**
+ * Raised when a row changed underneath the editor.
+ *
+ * Distinguishable from a generic failure so the UI can offer to reload rather
+ * than just reporting an error.
+ */
+export class ConflictError extends Error {
+  constructor(entity: string) {
+    super(
+      `This ${entity} was changed by someone else since you opened it. ` +
+        `Reload to get the latest version before saving again.`,
+    );
+    this.name = "ConflictError";
+  }
+}
+
 // ── Products ────────────────────────────────────────────────────────────────
 
 export async function fetchProducts(): Promise<Product[]> {
@@ -136,12 +152,27 @@ export async function fetchSubRecipe(id: string): Promise<SubRecipe> {
 export async function updateSubRecipe(
   id: string,
   changes: Partial<SubRecipe>,
+  /**
+   * Version the editor loaded. Matching on it means a save only lands if
+   * nobody else has written since — otherwise two chefs silently overwrite
+   * each other, and the loser never finds out.
+   */
+  expectedVersion?: number,
 ): Promise<SubRecipe> {
-  const { error } = await requireSupabase()
+  let query = requireSupabase()
     .from("sub_recipes")
     .update(subRecipeToRow(changes))
     .eq("id", id);
+  if (expectedVersion !== undefined) {
+    query = query.eq("version", expectedVersion);
+  }
+  const { data, error } = await query.select("id");
   if (error) fail("updateSubRecipe", error);
+  // Zero rows with a version predicate means the row moved on, not that it
+  // vanished — RLS would have raised instead.
+  if (expectedVersion !== undefined && (data ?? []).length === 0) {
+    throw new ConflictError("sub recipe");
+  }
   if (changes.ingredientLines) {
     await replaceSubRecipeLines(id, {
       ingredientLines: changes.ingredientLines,
@@ -223,12 +254,21 @@ export async function insertRecipe(
 export async function updateRecipe(
   id: string,
   changes: Partial<Recipe>,
+  /** See updateSubRecipe — same lost-update protection. */
+  expectedVersion?: number,
 ): Promise<Recipe> {
-  const { error } = await requireSupabase()
+  let query = requireSupabase()
     .from("recipes")
     .update(recipeToRow(changes))
     .eq("id", id);
+  if (expectedVersion !== undefined) {
+    query = query.eq("version", expectedVersion);
+  }
+  const { data, error } = await query.select("id");
   if (error) fail("updateRecipe", error);
+  if (expectedVersion !== undefined && (data ?? []).length === 0) {
+    throw new ConflictError("recipe");
+  }
   if (changes.ingredientLines) {
     await replaceRecipeLines(id, { ingredientLines: changes.ingredientLines });
   }
@@ -259,24 +299,52 @@ export async function fetchAll(): Promise<{
   return { products, subRecipes, recipes };
 }
 
-/** Persist cascade results — only the entities the cascade actually touched. */
+/** Ingredient lines in the shape `apply_cascade` expects. */
+function linesToJson(lines: Recipe["ingredientLines"]) {
+  return lines.map((line, i) => ({
+    line_number: i + 1,
+    product_id: line.productId,
+    sub_recipe_id: line.subRecipeId,
+    nett_qty: line.nettQty,
+    nett_unit: line.nettUnit,
+    ref_percent: line.refPercent,
+    gross_qty: line.grossQty,
+    gross_unit: line.grossUnit,
+    cost_per_unit: line.costPerUnit,
+    line_cost: line.lineCost,
+  }));
+}
+
+/**
+ * Persist cascade results in one transaction.
+ *
+ * This was a fan-out of independent requests — one per affected entity, each
+ * rewriting its lines separately. A failure part-way left the database
+ * half-updated while the UI showed the finished result. The RPC makes the
+ * whole cascade atomic.
+ */
 export async function persistCascade(
   subRecipes: SubRecipe[],
   recipes: Recipe[],
 ): Promise<void> {
-  await Promise.all([
-    ...subRecipes.map((s) =>
-      updateSubRecipe(s.id, {
-        totalCost: s.totalCost,
-        costPerUnit: s.costPerUnit,
-        ingredientLines: s.ingredientLines,
-      }),
-    ),
-    ...recipes.map((r) =>
-      updateRecipe(r.id, {
-        pricing: r.pricing,
-        ingredientLines: r.ingredientLines,
-      }),
-    ),
-  ]);
+  if (subRecipes.length === 0 && recipes.length === 0) return;
+
+  const { error } = await requireSupabase().rpc("apply_cascade", {
+    p_sub_recipes: subRecipes.map((s) => ({
+      id: s.id,
+      total_cost: s.totalCost,
+      cost_per_unit: s.costPerUnit,
+      lines: linesToJson(s.ingredientLines),
+    })),
+    p_recipes: recipes.map((r) => ({
+      id: r.id,
+      price_excl_vat: r.pricing.priceExclVat,
+      total_cost: r.pricing.totalCost,
+      total_cost_with_margin: r.pricing.totalCostWithSecurityMargin,
+      gross_contribution_margin: r.pricing.grossContributionMargin,
+      food_cost_percent: r.pricing.foodCostPercent,
+      lines: linesToJson(r.ingredientLines),
+    })),
+  });
+  if (error) fail("persistCascade", error);
 }

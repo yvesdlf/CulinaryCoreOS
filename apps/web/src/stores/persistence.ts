@@ -14,9 +14,11 @@
 // in-memory mock catalogue exactly as before.
 // ---------------------------------------------------------------------------
 
-import type { Product, SubRecipe } from "@ccos/shared";
+import { toast } from "sonner";
+import type { Product, SubRecipe, Recipe } from "@ccos/shared";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import * as repo from "@/data/repository";
+import { ConflictError } from "@/data/repository";
 import { cascadeFrom, type Dependents } from "@/engine/cascade";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
@@ -55,6 +57,19 @@ function reportWriteFailure(operation: string, err: unknown) {
   // eslint-disable-next-line no-console
   console.error(`[persistence] ${operation}:`, message);
   setStatus("error", `${operation}: ${message}`);
+
+  // Writes are fire-and-forget, so a rejected save would otherwise fail in
+  // silence — the editor has already navigated away showing a success toast.
+  // A conflict in particular has to reach the user: their edit did not land.
+  if (err instanceof ConflictError) {
+    toast.error("Save conflict", {
+      description: message,
+      duration: 10000,
+      action: { label: "Reload", onClick: () => window.location.reload() },
+    });
+  } else {
+    toast.error("Change not saved", { description: message, duration: 8000 });
+  }
 }
 
 /**
@@ -156,16 +171,46 @@ export async function createSubRecipe(
   return saved;
 }
 
+export async function createRecipe(
+  data: Omit<Recipe, "id" | "createdAt" | "updatedAt">,
+): Promise<Recipe> {
+  if (!isSupabaseConfigured) {
+    return useRecipeStore.getState().create(data);
+  }
+  const saved = await repo.insertRecipe(data);
+  useRecipeStore.setState((s) => ({ recipes: [...s.recipes, saved] }));
+  return saved;
+}
+
+/**
+ * Save a recipe. Nothing is built on top of a recipe, so unlike products and
+ * sub-recipes there is no cascade to run — only this row changes.
+ */
+export function saveRecipe(
+  id: string,
+  changes: Partial<Recipe>,
+  expectedVersion?: number,
+): void {
+  useRecipeStore.getState().update(id, changes);
+
+  if (isSupabaseConfigured) {
+    void repo
+      .updateRecipe(id, changes, expectedVersion)
+      .catch((err) => reportWriteFailure("updateRecipe", err));
+  }
+}
+
 export function saveSubRecipe(
   id: string,
   changes: Partial<SubRecipe>,
+  expectedVersion?: number,
 ): Dependents {
   useSubRecipeStore.getState().update(id, changes);
   const affected = applyAndPersistCascade(id);
 
   if (isSupabaseConfigured) {
     void repo
-      .updateSubRecipe(id, changes)
+      .updateSubRecipe(id, changes, expectedVersion)
       .catch((err) => reportWriteFailure("updateSubRecipe", err));
   }
   return affected;

@@ -28,8 +28,9 @@ export function updateProductAndCascade(
 export function updateSubRecipeAndCascade(
   id: string,
   changes: Partial<SubRecipe>,
+  expectedVersion?: number,
 ): Dependents {
-  return saveSubRecipe(id, changes);
+  return saveSubRecipe(id, changes, expectedVersion);
 }
 
 /** Human-readable summary of what a cascade touched, for a toast. */

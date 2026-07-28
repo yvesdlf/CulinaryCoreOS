@@ -4,12 +4,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import {
-  calculateLineNutrition,
-  sumNutrition,
-  calculatePerPortionNutrition,
-  ZERO_NUTRITION,
+  deriveRecipeNutrition,
+  deriveSubRecipeNutrition,
 } from "@/engine/nutrition-engine";
-import type { NutritionPer100g } from "@/engine/nutrition-engine";
 import { formatNumber } from "@/lib/format";
 import { ChefHat } from "lucide-react";
 
@@ -31,39 +28,13 @@ export function NutritionPanel({
   const getProduct = useProductStore((s) => s.getById);
   const getSubRecipe = useSubRecipeStore((s) => s.getById);
 
+  // Same derivation the save handlers use, so the panel can never show one
+  // figure while a different one is persisted.
   const nutrition = useMemo(() => {
-    const lineNutritions: NutritionPer100g[] = lines.map((line) => {
-      let nutritionPer100g: NutritionPer100g = { ...ZERO_NUTRITION };
-
-      if (line.productId) {
-        const product = getProduct(line.productId);
-        if (product?.nutrition) {
-          nutritionPer100g = product.nutrition;
-        }
-      } else if (line.subRecipeId) {
-        const subRecipe = getSubRecipe(line.subRecipeId);
-        if (subRecipe?.nutritionPer100g) {
-          nutritionPer100g = subRecipe.nutritionPer100g;
-        }
-      }
-
-      return calculateLineNutrition(line.nettQty, nutritionPer100g);
-    });
-
-    const total = sumNutrition(lineNutritions);
-
-    if (per100g) {
-      // `total` is the nutrition of the whole batch. Scaling it to a 100 g
-      // basis means dividing by however many 100 g units the batch yields.
-      const hundredGramUnits = (batchQty ?? 0) / 100;
-      return hundredGramUnits > 0
-        ? calculatePerPortionNutrition(total, hundredGramUnits)
-        : { ...ZERO_NUTRITION };
-    }
-
-    return portions > 0
-      ? calculatePerPortionNutrition(total, portions)
-      : total;
+    const sources = { getProduct, getSubRecipe };
+    return per100g
+      ? deriveSubRecipeNutrition(lines, batchQty ?? 0, sources)
+      : deriveRecipeNutrition(lines, portions, sources);
   }, [lines, portions, per100g, batchQty, getProduct, getSubRecipe]);
 
   const totalMacroG = nutrition.fatG + nutrition.carbsG + nutrition.proteinG;

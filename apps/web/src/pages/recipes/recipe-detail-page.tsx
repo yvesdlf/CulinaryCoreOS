@@ -33,14 +33,22 @@ import {
   calculateContributionMargin,
 } from "@/engine/cost-engine";
 import { DEFAULT_VAT_RATE } from "@/lib/constants";
-import { ZERO_NUTRITION } from "@/engine/nutrition-engine";
+import {
+  deriveRecipeNutrition,
+  deriveAllergens,
+  deriveDietaryFlags,
+} from "@/engine/nutrition-engine";
+import { useProductStore } from "@/stores/product-store";
+import { useSubRecipeStore } from "@/stores/sub-recipe-store";
+import { createRecipe, saveRecipe } from "@/stores/persistence";
 
 export function RecipeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const getById = useRecipeStore((s) => s.getById);
-  const createRecipe = useRecipeStore((s) => s.create);
-  const updateRecipe = useRecipeStore((s) => s.update);
+  const getProduct = useProductStore((s) => s.getById);
+  const getSubRecipe = useSubRecipeStore((s) => s.getById);
+
 
   const existing = id ? getById(id) : undefined;
 
@@ -72,14 +80,13 @@ export function RecipeDetailPage() {
 
   const isNew = !id;
 
-  function handleSave() {
+  async function handleSave() {
     if (!name.trim()) {
       toast.error("Recipe name is required");
       return;
     }
 
-    const lineCosts = lines.map((l) => ({ lineCost: parseFloat(l.lineCost) }));
-    const totalCost = calculateRecipeTotalCost(lineCosts);
+    const totalCost = calculateRecipeTotalCost(lines);
     const totalCostWithMargin = calculateCostWithMargin(
       totalCost,
       DEFAULT_SECURITY_MARGIN,
@@ -94,6 +101,11 @@ export function RecipeDetailPage() {
       totalCostWithMargin,
     );
 
+    // One derivation shared with the nutrition panel.
+    const sources = { getProduct, getSubRecipe };
+    const derivedNutrition = deriveRecipeNutrition(lines, yieldQty, sources);
+    const derivedAllergens = deriveAllergens(lines, sources);
+
     const recipeData = {
       name: name.trim(),
       category,
@@ -106,28 +118,34 @@ export function RecipeDetailPage() {
         totalCost: totalCost.toFixed(2),
         totalCostWithSecurityMargin: totalCostWithMargin.toFixed(2),
         grossContributionMargin: contributionMargin.toFixed(2),
-        foodCostPercent: parseFloat(foodCostPercent.toFixed(1)),
+        foodCostPercent: foodCostPercent.toDecimalPlaces(1).toNumber(),
         currency: DEFAULT_CURRENCY,
       },
-      nutritionPerPortion: existing?.nutritionPerPortion ?? { ...ZERO_NUTRITION },
-      allergens: existing?.allergens ?? [],
-      dietaryFlags: existing?.dietaryFlags ?? {
-        glutenFree: false,
-        dairyFree: false,
-        vegetarian: false,
-        vegan: false,
-        nutsFree: false,
-        soyFree: false,
-        sulfitesFree: false,
+      // Derived, not carried. Reusing the previous values here meant the
+      // nutrition panel showed live figures while the old ones were saved.
+      nutritionPerPortion: derivedNutrition,
+      allergens: derivedAllergens,
+      dietaryFlags: {
+        ...deriveDietaryFlags(derivedAllergens),
+        // Not inferable from allergens — beef carries none. Author-controlled.
+        vegetarian: existing?.dietaryFlags.vegetarian ?? false,
+        vegan: existing?.dietaryFlags.vegan ?? false,
       },
       version: existing ? existing.version + 1 : 1,
     };
 
     if (isNew) {
-      createRecipe(recipeData);
-      toast.success("Recipe created");
+      try {
+        await createRecipe(recipeData);
+        toast.success("Recipe created");
+      } catch (err) {
+        toast.error("Could not create recipe", {
+          description: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
     } else {
-      updateRecipe(id!, recipeData);
+      saveRecipe(id!, recipeData, existing?.version);
       toast.success("Recipe updated");
     }
 

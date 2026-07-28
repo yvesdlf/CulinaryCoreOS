@@ -44,6 +44,26 @@
       mock catalogue with deterministic uuid v5 ids. Stores hydrate at startup
       and write through on change; with no credentials configured the whole
       layer no-ops and the app runs on mock data exactly as before.
+- [x] Trustworthy writes pass:
+      * Nutrition, allergens and the free-from dietary flags are now DERIVED on
+        save instead of carried forward. Both editors were writing back the
+        previous values while the panel displayed live ones — Margherita Pizza
+        stored 545 kcal against a real 1203. Panel and save now share one
+        function so they cannot drift again. Vegetarian/vegan stay
+        author-controlled: an allergen list cannot imply them.
+      * Recipe edits were never reaching Supabase at all — the editor called
+        the store directly and `persistence` had no recipe path. Fixed; verified
+        by reading the row back from Postgres.
+      * The cascade is atomic (migration 0005 `apply_cascade`). It was a
+        fan-out of independent requests, so a mid-cascade failure left the
+        database half-written while the UI showed a consistent result. Verified
+        by forcing a failure part-way: the earlier sub-recipe update and its
+        line deletion both rolled back. SECURITY INVOKER, so tenant policies
+        still apply.
+      * Lost-update protection on recipes and sub-recipes via the existing
+        `version` column, which nothing had been reading. Verified: a second
+        save carrying a stale version affects 0 rows instead of clobbering, and
+        surfaces a distinct "Save conflict" toast with a reload action.
 - [x] Multi-tenancy and real RLS (migration 0004). Organizations + membership
       with roles; every data table carries `org_id`; policies scope reads to
       the caller's organizations and writes to roles above VIEWER. Clients
@@ -105,8 +125,12 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
       are separate requests, so a mid-cascade failure can leave the database
       inconsistent with the UI until the next reload. Wrap the cascade in an
       RPC/transaction.
-- [ ] Persist nutrition/allergens on save — the sub-recipe editor currently
-      carries the previous values through rather than deriving them
+- [ ] Products have no `version` column, so they get no lost-update protection
+      (recipes and sub-recipes do). Add one if concurrent product editing
+      becomes a real scenario.
+- [ ] The cascade fan-out is atomic, but the primary entity's own UPDATE is
+      still a separate request from it. Folding that into the same RPC would
+      close the last window.
 - [ ] Cascade `refPercent` too, if product yield should override recipe lines.
       Deliberately not done: ref % is editable per line in the ingredient grid,
       so overwriting it would discard a chef's intentional trim override.
