@@ -17,6 +17,7 @@ import {
 import { IngredientLinesTable } from "@/components/recipes/ingredient-lines-table";
 import { CostSummaryPanel } from "@/components/recipes/cost-summary-panel";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
+import { AllergenPanel } from "@/components/recipes/allergen-panel";
 import { useRecipeStore } from "@/stores/recipe-store";
 import {
   RECIPE_CATEGORIES,
@@ -338,6 +339,7 @@ export function RecipeDetailPage() {
             taxPercent={taxPercent}
           />
           <NutritionPanel lines={lines} portions={yieldQty} />
+          <AllergenPanel lines={lines} />
         </div>
       </div>
     </div>

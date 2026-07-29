@@ -17,6 +17,7 @@ import {
 import { IngredientLinesTable } from "@/components/recipes/ingredient-lines-table";
 import { BatchCostPanel } from "@/components/sub-recipes/batch-cost-panel";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
+import { AllergenPanel } from "@/components/recipes/allergen-panel";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import {
   updateSubRecipeAndCascade,
@@ -317,6 +318,7 @@ export function SubRecipeDetailPage() {
             per100g
             batchQty={batchYieldQty}
           />
+          <AllergenPanel lines={lines} />
         </div>
       </div>
     </div>

@@ -22,6 +22,7 @@ import {
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FoodCostIndicator } from "@/components/shared/food-cost-indicator";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { AllergenBadges } from "@/components/shared/allergen-badges";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { RECIPE_CATEGORIES, RECIPE_STATUSES } from "@/lib/constants";
 
@@ -127,6 +128,7 @@ export function RecipesPage() {
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Allergens</TableHead>
               <TableHead className="text-right">Selling Price</TableHead>
               <TableHead className="text-right">Food Cost %</TableHead>
               <TableHead className="text-right">Ingredients</TableHead>
@@ -146,6 +148,10 @@ export function RecipesPage() {
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={recipe.status} />
+                </TableCell>
+                <TableCell>
+                  {/* Inherited from the ingredients and any nested sub-recipe. */}
+                  <AllergenBadges allergens={recipe.allergens} max={4} />
                 </TableCell>
                 <TableCell className="text-right">
                   <CurrencyDisplay
