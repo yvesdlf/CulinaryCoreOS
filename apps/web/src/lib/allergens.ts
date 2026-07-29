@@ -14,10 +14,18 @@
 //  * Unknown declarations are flagged, not dropped. An allergen we cannot map
 //    is still shown, because silently discarding one is a safety failure.
 //
-// The manual specifies monochrome SVG assets for production use and notes the
-// emoji here are illustrative, since rendering varies by platform. They stand
-// in until the asset set exists — tracked in docs/PROGRESS.md.
+// Icons are Lucide components, satisfying both the manual's call for
+// monochrome assets and Design Bible §4, which forbids mixing icon families.
+// Peanuts and tree nuts deliberately share the Nut glyph: they are legally
+// distinct allergens and the codes PNT and NUT carry that distinction, which
+// is exactly why an icon may never stand alone.
 // ---------------------------------------------------------------------------
+
+import type { LucideIcon } from "lucide-react";
+import {
+  Leaf, Wheat, Shrimp, Egg, Fish, Flower, Milk, Shell,
+  Droplet, Nut, CircleDot, Bean, Wind,
+} from "lucide-react";
 
 export interface AllergenDefinition {
   /** Stable identifier for storage and exchange. */
@@ -26,8 +34,12 @@ export interface AllergenDefinition {
   name: string;
   /** Compact display code, e.g. "GLU". */
   code: string;
-  /** Assistive visual cue only; never the sole carrier of meaning. */
-  icon: string;
+  /**
+   * Assistive visual cue only; never the sole carrier of meaning.
+   * A Lucide component, not an emoji — Design Bible §4 forbids mixing icon
+   * families, and emoji render differently on every platform.
+   */
+  icon: LucideIcon;
   /** Asset key for the monochrome SVG that will replace the emoji. */
   assetKey: string;
   /** Scope note from the registry, shown in the tooltip. */
@@ -38,19 +50,19 @@ export interface AllergenDefinition {
 
 export const EU14_ALLERGENS: AllergenDefinition[] = [
   {
-    id: "EU14_CELERY", name: "Celery", code: "CEL", icon: "🌿",
+    id: "EU14_CELERY", name: "Celery", code: "CEL", icon: Leaf,
     assetKey: "allergen-celery",
     note: "Includes celeriac and celery seed.",
     aliases: ["celery", "celeriac"],
   },
   {
     id: "EU14_GLUTEN_CEREALS", name: "Cereals containing gluten", code: "GLU",
-    icon: "🌾", assetKey: "allergen-gluten-cereals",
+    icon: Wheat, assetKey: "allergen-gluten-cereals",
     note: "Wheat, rye, barley, oats and specified hybrids.",
     aliases: ["gluten", "wheat", "rye", "barley", "oats", "cereals"],
   },
   {
-    id: "EU14_CRUSTACEANS", name: "Crustaceans", code: "CRU", icon: "🦐",
+    id: "EU14_CRUSTACEANS", name: "Crustaceans", code: "CRU", icon: Shrimp,
     assetKey: "allergen-crustaceans",
     note: "E.g. prawn, crab, lobster, crayfish.",
     // "shellfish" is ambiguous between crustaceans and molluscs. It maps here
@@ -59,55 +71,55 @@ export const EU14_ALLERGENS: AllergenDefinition[] = [
     aliases: ["crustaceans", "shellfish", "prawn", "prawns", "shrimp", "crab", "lobster"],
   },
   {
-    id: "EU14_EGGS", name: "Eggs", code: "EGG", icon: "🥚",
+    id: "EU14_EGGS", name: "Eggs", code: "EGG", icon: Egg,
     assetKey: "allergen-eggs", aliases: ["egg", "eggs"],
   },
   {
-    id: "EU14_FISH", name: "Fish", code: "FSH", icon: "🐟",
+    id: "EU14_FISH", name: "Fish", code: "FSH", icon: Fish,
     assetKey: "allergen-fish", aliases: ["fish"],
   },
   {
-    id: "EU14_LUPIN", name: "Lupin", code: "LUP", icon: "🌼",
+    id: "EU14_LUPIN", name: "Lupin", code: "LUP", icon: Flower,
     assetKey: "allergen-lupin", aliases: ["lupin"],
   },
   {
-    id: "EU14_MILK", name: "Milk", code: "MLK", icon: "🥛",
+    id: "EU14_MILK", name: "Milk", code: "MLK", icon: Milk,
     assetKey: "allergen-milk",
     note: "Includes milk products; lactose alone is not equivalent.",
     aliases: ["milk", "dairy", "lactose", "cheese", "butter", "cream"],
   },
   {
-    id: "EU14_MOLLUSCS", name: "Molluscs", code: "MOL", icon: "🦪",
+    id: "EU14_MOLLUSCS", name: "Molluscs", code: "MOL", icon: Shell,
     assetKey: "allergen-molluscs",
     note: "E.g. mussels, oysters, squid, snails.",
     aliases: ["molluscs", "mollusks", "squid", "octopus", "mussel", "oyster", "clam"],
   },
   {
-    id: "EU14_MUSTARD", name: "Mustard", code: "MUS", icon: "🟡",
+    id: "EU14_MUSTARD", name: "Mustard", code: "MUS", icon: Droplet,
     assetKey: "allergen-mustard", aliases: ["mustard"],
   },
   {
-    id: "EU14_PEANUTS", name: "Peanuts", code: "PNT", icon: "🥜",
+    id: "EU14_PEANUTS", name: "Peanuts", code: "PNT", icon: Nut,
     assetKey: "allergen-peanuts",
     note: "Peanut/groundnut. Not combined with tree nuts.",
     aliases: ["peanut", "peanuts", "groundnut"],
   },
   {
-    id: "EU14_SESAME", name: "Sesame", code: "SES", icon: "◉",
+    id: "EU14_SESAME", name: "Sesame", code: "SES", icon: CircleDot,
     assetKey: "allergen-sesame", aliases: ["sesame"],
   },
   {
-    id: "EU14_SOYBEANS", name: "Soybeans", code: "SOY", icon: "🫛",
+    id: "EU14_SOYBEANS", name: "Soybeans", code: "SOY", icon: Bean,
     assetKey: "allergen-soybeans", aliases: ["soy", "soya", "soybean", "soybeans"],
   },
   {
     id: "EU14_SULPHITES", name: "Sulphur dioxide and sulphites", code: "SUL",
-    icon: "SO₂", assetKey: "allergen-sulphites",
+    icon: Wind, assetKey: "allergen-sulphites",
     note: "Declarable above 10 mg/kg or 10 mg/l expressed as SO₂.",
     aliases: ["sulphites", "sulfites", "sulphur dioxide", "sulfur dioxide", "so2"],
   },
   {
-    id: "EU14_TREE_NUTS", name: "Tree nuts", code: "NUT", icon: "🌰",
+    id: "EU14_TREE_NUTS", name: "Tree nuts", code: "NUT", icon: Nut,
     assetKey: "allergen-tree-nuts",
     note: "Almond, hazelnut, walnut, cashew, pecan, Brazil, pistachio, macadamia. Excludes peanuts.",
     aliases: ["nuts", "tree nuts", "treenuts", "almond", "hazelnut", "walnut",

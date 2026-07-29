@@ -5,20 +5,30 @@ interface StatusBadgeProps {
   status: string;
 }
 
+/**
+ * Status as a semantic token, not a palette colour (Design Bible §3.1, §14.5).
+ *
+ * No `dark:` variants: the status tokens are re-derived per theme, so one class
+ * is correct in both. The badge always renders its label, so colour is
+ * supplementary — §4 forbids communicating status by colour alone.
+ *
+ * NEW and UPDATE share the informational token deliberately. The Bible's status
+ * set is success/warning/danger/info; inventing a fifth colour to separate two
+ * states the text already distinguishes would breach §18.2.
+ */
 const statusStyles: Record<string, string> = {
   ACTIVE:
-    "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400",
+    "border-status-success-border bg-status-success-soft text-status-success",
   ACTUAL:
-    "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400",
-  NEW: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-400",
+    "border-status-success-border bg-status-success-soft text-status-success",
+  NEW: "border-status-info-border bg-status-info-soft text-status-info",
+  UPDATE: "border-status-info-border bg-status-info-soft text-status-info",
   PENDING:
-    "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400",
-  UPDATE:
-    "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-400",
+    "border-status-warning-border bg-status-warning-soft text-status-warning",
   INACTIVE:
-    "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400",
+    "border-status-neutral-border bg-status-neutral-soft text-status-neutral",
   DISCONTINUED:
-    "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400",
+    "border-status-danger-border bg-status-danger-soft text-status-danger",
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {

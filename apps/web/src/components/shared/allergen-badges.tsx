@@ -1,4 +1,5 @@
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAllergens, allergenNames } from "@/lib/allergens";
 
@@ -58,7 +59,7 @@ export function AllergenBadges({
         const key = item.known ? item.definition.id : `unknown:${item.raw}`;
         const label = item.known ? item.definition.name : item.raw;
         const code = item.known ? item.definition.code : "?";
-        const icon = item.known ? item.definition.icon : "⚠";
+        const Icon = item.known ? item.definition.icon : TriangleAlert;
         const note = item.known ? item.definition.note : undefined;
 
         return (
@@ -71,15 +72,15 @@ export function AllergenBadges({
                     "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5",
                     "text-[11px] font-medium leading-none tabular-nums",
                     item.known
-                      ? "border-amber-300/70 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200"
+                      ? "border-status-warning-border bg-status-warning-soft text-status-warning"
                       : // Unmapped values look different on purpose: they need
                         // correcting, not trusting.
-                        "border-dashed border-muted-foreground/50 text-muted-foreground",
+                        "border-dashed border-border-strong text-text-muted",
                   )}
                 />
               }
             >
-              <span aria-hidden="true">{icon}</span>
+              <Icon aria-hidden="true" className="size-3 shrink-0" />
               <span>{code}</span>
               {variant === "full" && <span className="font-normal">{label}</span>}
             </TooltipTrigger>
@@ -127,14 +128,10 @@ export function AllergenPanelList({ allergens }: { allergens: string[] }) {
     <ul className="space-y-1.5">
       {resolved.map((item) => {
         const key = item.known ? item.definition.id : `unknown:${item.raw}`;
+        const ItemIcon = item.known ? item.definition.icon : TriangleAlert;
         return (
           <li key={key} className="flex items-start gap-2 text-sm">
-            <span
-              aria-hidden="true"
-              className="w-5 shrink-0 text-center leading-6"
-            >
-              {item.known ? item.definition.icon : "⚠"}
-            </span>
+            <ItemIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
             <span className="w-9 shrink-0 font-medium tabular-nums leading-6">
               {item.known ? item.definition.code : "?"}
             </span>

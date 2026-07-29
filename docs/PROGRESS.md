@@ -1,6 +1,25 @@
 # Progress Tracker
 
 ## Done
+- [x] Design Bible §3/§4 foundation applied. The app had been running the stock
+      shadcn neutral theme — pure white against DDL-0001's explicit "warm ivory
+      instead of pure-white", Geist instead of the specified stack, and 70 raw
+      palette classes across 5 feature files in breach of §14.5/§18.3. Now:
+      ivory #F8F7F4 ground, graphite navigation, accessible sage #5A7554
+      action, semantic status/module tokens, Inter (SF Pro first where
+      licensed). Zero raw palette classes remain and no `dark:` variants are
+      needed — the tokens re-derive per theme, so dark mode is a real theme
+      rather than an inversion (§14).
+- [x] Allergen icons moved from emoji to Lucide (§4 forbids mixing icon
+      families; the CPSM registry calls for monochrome assets). Peanuts and
+      tree nuts share the Nut glyph deliberately — they are legally distinct
+      and the PNT/NUT codes carry that, which is precisely why an icon may
+      never stand alone.
+- [x] VIEWER role reflected in the UI. The database already refused these
+      writes; the editors offered Save anyway and failed afterwards. Save and
+      the create actions now render as disabled "Read-only access" / "View
+      only" with the reason. Disabled rather than hidden, per §5 — and this is
+      an honesty affordance, not authorisation (§14.7).
 - [x] SRS reviewed (CC-SRS-001 v1.0.0)
 - [x] Source workbooks analyzed (1_-_Recipes.xlsm, 2_-_Sub_Rec.xlsm)
 - [x] Naming decision made (CulinaryCoreOS / CCOS, working name)
@@ -132,7 +151,6 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
       policy only, so this needs a server-side flow.
 - [ ] Organization switcher. `auth_default_org_id()` takes the oldest
       membership, so a user in more than one org always writes to the first.
-- [ ] The UI does not yet respect the VIEWER role — the database refuses the
       write, but the editors still present Save as though it will succeed.
 - [ ] Reads are hydrate-once at startup. No realtime subscription and no
       refetch, so a second user's edits are not seen until reload.

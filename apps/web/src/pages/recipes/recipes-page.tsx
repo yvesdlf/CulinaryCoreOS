@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -67,10 +68,12 @@ export function RecipesPage() {
         title="Recipes"
         description="Manage your menu recipes and food cost analysis"
       >
-        <Button nativeButton={false} render={<Link to="/recipes/new" />}>
-          <Plus className="mr-1 size-4" />
-          New Recipe
-        </Button>
+        <PermissionGate fallbackLabel="View only">
+          <Button nativeButton={false} render={<Link to="/recipes/new" />}>
+            <Plus className="mr-1 size-4" />
+            New Recipe
+          </Button>
+        </PermissionGate>
       </PageHeader>
 
       {/* Filter bar */}

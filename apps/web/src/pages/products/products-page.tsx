@@ -8,6 +8,7 @@ import { Plus, Search } from "lucide-react";
 import type { Product } from "@ccos/shared";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,9 +40,14 @@ function formatPacking(p: Product["packing"]): string {
   return `${p.packQty} ${p.packUnit} × ${p.unitsPerPack.toLocaleString()} ${p.unitsPerPackUnit}`;
 }
 
+/**
+ * Yield colouring via semantic tokens (Design Bible §3.1) — no palette classes
+ * and no `dark:` variants, since the tokens re-derive per theme. The figure is
+ * always written out, so colour stays supplementary (§4).
+ */
 function yieldColor(yieldPct: number): string {
-  if (yieldPct < 80) return "text-red-600 dark:text-red-400";
-  if (yieldPct < 90) return "text-amber-600 dark:text-amber-400";
+  if (yieldPct < 80) return "text-status-danger";
+  if (yieldPct < 90) return "text-status-warning";
   return "";
 }
 
@@ -101,10 +107,12 @@ export function ProductsPage() {
         title="Products"
         description="Manage your ingredient catalog and supplier pricing"
       >
-        <Button nativeButton={false} render={<Link to="/products/new" />}>
-          <Plus className="mr-1 size-4" />
-          New Product
-        </Button>
+        <PermissionGate fallbackLabel="View only">
+          <Button nativeButton={false} render={<Link to="/products/new" />}>
+            <Plus className="mr-1 size-4" />
+            New Product
+          </Button>
+        </PermissionGate>
       </PageHeader>
 
       {/* ── Filter bar ──────────────────────────────────────────────────── */}

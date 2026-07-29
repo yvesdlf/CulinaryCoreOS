@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import type { Product, NutritionPer100g, ProductStatus } from "@ccos/shared";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -261,10 +262,12 @@ export function ProductDetailPage() {
           <X className="mr-1 size-4" />
           Cancel
         </Button>
-        <Button onClick={handleSave}>
-          <Save className="mr-1 size-4" />
-          Save
-        </Button>
+        <PermissionGate>
+          <Button onClick={handleSave}>
+            <Save className="mr-1 size-4" />
+            Save
+          </Button>
+        </PermissionGate>
       </PageHeader>
 
       {/* ── Tabs ──────────────────────────────────────────────────────────── */}

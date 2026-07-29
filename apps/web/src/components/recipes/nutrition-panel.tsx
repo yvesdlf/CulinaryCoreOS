@@ -65,29 +65,29 @@ export function NutritionPanel({
         <div className="space-y-1.5">
           <div className="flex h-2.5 w-full overflow-hidden rounded-full">
             <div
-              className="bg-amber-500 transition-all"
+              className="bg-chart-5 transition-all"
               style={{ width: `${fatPct}%` }}
             />
             <div
-              className="bg-blue-500 transition-all"
+              className="bg-chart-2 transition-all"
               style={{ width: `${carbsPct}%` }}
             />
             <div
-              className="bg-emerald-500 transition-all"
+              className="bg-chart-1 transition-all"
               style={{ width: `${proteinPct}%` }}
             />
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-full bg-amber-500" />
+              <span className="inline-block size-2 rounded-full bg-chart-5" />
               Fat
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-full bg-blue-500" />
+              <span className="inline-block size-2 rounded-full bg-chart-2" />
               Carbs
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-full bg-emerald-500" />
+              <span className="inline-block size-2 rounded-full bg-chart-1" />
               Protein
             </span>
           </div>

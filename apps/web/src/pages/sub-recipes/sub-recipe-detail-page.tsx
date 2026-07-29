@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 import type { IngredientLine, RecipeStatus } from "@ccos/shared";
 import { PageHeader } from "@/components/layout/page-header";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,10 +176,12 @@ export function SubRecipeDetailPage() {
           <ArrowLeft className="mr-1 size-4" />
           Back
         </Button>
-        <Button onClick={handleSave}>
-          <Save className="mr-1 size-4" />
-          Save
-        </Button>
+        <PermissionGate>
+          <Button onClick={handleSave}>
+            <Save className="mr-1 size-4" />
+            Save
+          </Button>
+        </PermissionGate>
       </PageHeader>
 
       <div className="flex flex-col gap-6 lg:flex-row">
