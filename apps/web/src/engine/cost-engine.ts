@@ -124,6 +124,73 @@ export function calculateSubRecipeCostPerUnit(
   return toDecimal(totalCost).dividedBy(yieldQty);
 }
 
+// ── Buffers, tax and the COG chain ──────────────────────────────────────────
+// Modelled on the venue's costing workbook, verified against its own figures:
+//   inflation = cost * inflation%          (4% of cost of sales at dish level)
+//   COG       = cost + waste + inflation
+//   guest price = menuPrice * (1 + tax%)   (21% = 11% PPN + 10% service)
+//   food cost % = COG / menuPrice          (menu price EXCLUDES tax)
+//
+// Menu price is held excluding tax because that is the number a chef sets and
+// the one every margin is measured against; the guest-facing figure is derived.
+
+/** A percentage of a base amount — the waste and inflation buffers. */
+export function calculatePercentAmount(
+  base: MoneyInput,
+  percent: MoneyInput,
+): Decimal {
+  return Decimal.max(
+    0,
+    toDecimal(base).times(toDecimal(percent)).dividedBy(HUNDRED),
+  );
+}
+
+/**
+ * Cost of goods: the ingredient cost plus its waste and inflation buffers.
+ *
+ * Both buffers are taken on the raw cost rather than compounding, matching the
+ * workbook — 4% inflation there is 4% of cost of sales, not 4% of cost+waste.
+ */
+export function calculateTotalCog(
+  totalCost: MoneyInput,
+  wastePercent: MoneyInput,
+  inflationPercent: MoneyInput,
+): Decimal {
+  const cost = toDecimal(totalCost);
+  return cost
+    .plus(calculatePercentAmount(cost, wastePercent))
+    .plus(calculatePercentAmount(cost, inflationPercent));
+}
+
+/** Guest-facing price: menu price plus tax and service. */
+export function calculatePriceInclTax(
+  menuPrice: MoneyInput,
+  taxPercent: MoneyInput,
+): Decimal {
+  const factor = new Decimal(1).plus(toDecimal(taxPercent).dividedBy(HUNDRED));
+  return Decimal.max(0, toDecimal(menuPrice).times(factor));
+}
+
+/** Recover the menu price from a tax-inclusive figure. */
+export function calculateMenuPriceFromInclTax(
+  priceInclTax: MoneyInput,
+  taxPercent: MoneyInput,
+): Decimal {
+  const divisor = new Decimal(1).plus(toDecimal(taxPercent).dividedBy(HUNDRED));
+  if (divisor.lte(0)) return ZERO;
+  return toDecimal(priceInclTax).dividedBy(divisor);
+}
+
+/** Gross profit % = (menuPrice - COG) / menuPrice * 100 */
+export function calculateGrossProfitPercent(
+  menuPrice: MoneyInput,
+  totalCog: MoneyInput,
+): Decimal {
+  const price = toDecimal(menuPrice);
+  if (price.lte(0)) return ZERO;
+  return price.minus(toDecimal(totalCog)).dividedBy(price).times(HUNDRED);
+}
+
 /**
  * Recommended selling price for a target food cost %.
  *

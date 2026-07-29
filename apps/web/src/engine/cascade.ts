@@ -14,14 +14,15 @@ import type { Product, SubRecipe, Recipe, IngredientLine } from "@ccos/shared";
 import {
   calculateLineCost,
   calculateRecipeTotalCost,
-  calculateCostWithMargin,
   calculateFoodCostPercent,
   calculateContributionMargin,
-  calculatePriceExclVat,
   calculateSubRecipeCostPerUnit,
+  calculatePercentAmount,
+  calculateTotalCog,
+  calculatePriceInclTax,
+  calculateGrossProfitPercent,
   toDecimal,
 } from "./cost-engine";
-import { DEFAULT_SECURITY_MARGIN, DEFAULT_VAT_RATE } from "@/lib/constants";
 
 /** Per-unit costs are fractions of a rupiah per gram, so they need precision. */
 const UNIT_COST_DP = 5;
@@ -186,8 +187,15 @@ export function recalculateSubRecipe(
   );
 
   const totalCost = calculateRecipeTotalCost(results);
-  const costPerUnit = calculateSubRecipeCostPerUnit(
+  // Cost per unit is taken on cost plus buffers — that is what a dish using
+  // this preparation actually consumes.
+  const costWithBuffers = calculateTotalCog(
     totalCost,
+    sub.wastePercent,
+    sub.inflationPercent,
+  );
+  const costPerUnit = calculateSubRecipeCostPerUnit(
+    costWithBuffers,
     sub.batchYield.qty,
   );
 
@@ -210,34 +218,38 @@ export function recalculateRecipe(
   );
 
   const totalCost = calculateRecipeTotalCost(results);
-  // The stored string goes in as-is; the engine parses it as an exact decimal.
-  const priceExclVat = calculatePriceExclVat(
-    recipe.pricing.priceInclVat,
-    DEFAULT_VAT_RATE,
-  );
-  const totalCostWithSecurityMargin = calculateCostWithMargin(
+
+  // Buffers and tax come from the recipe itself, not a global constant, so a
+  // dish priced under a different tax regime re-costs on its own terms.
+  const wasteAmount = calculatePercentAmount(totalCost, recipe.wastePercent);
+  const inflationAmount = calculatePercentAmount(
     totalCost,
-    DEFAULT_SECURITY_MARGIN,
+    recipe.inflationPercent,
   );
-  const foodCostPercent = calculateFoodCostPercent(
-    totalCostWithSecurityMargin,
-    priceExclVat,
+  const totalCog = calculateTotalCog(
+    totalCost,
+    recipe.wastePercent,
+    recipe.inflationPercent,
   );
-  const grossContributionMargin = calculateContributionMargin(
-    priceExclVat,
-    totalCostWithSecurityMargin,
-  );
+  const menuPrice = toDecimal(recipe.pricing.menuPrice);
+  const priceInclTax = calculatePriceInclTax(menuPrice, recipe.taxPercent);
+  const foodCostPercent = calculateFoodCostPercent(totalCog, menuPrice);
+  const grossProfit = calculateContributionMargin(menuPrice, totalCog);
+  const grossProfitPercent = calculateGrossProfitPercent(menuPrice, totalCog);
 
   return {
     ...recipe,
     ingredientLines: results.map((r) => r.line),
     pricing: {
       ...recipe.pricing,
-      priceExclVat: priceExclVat.toFixed(MONEY_DP),
+      menuPrice: menuPrice.toFixed(MONEY_DP),
+      priceInclTax: priceInclTax.toFixed(MONEY_DP),
       totalCost: totalCost.toFixed(MONEY_DP),
-      totalCostWithSecurityMargin:
-        totalCostWithSecurityMargin.toFixed(MONEY_DP),
-      grossContributionMargin: grossContributionMargin.toFixed(MONEY_DP),
+      wasteAmount: wasteAmount.toFixed(MONEY_DP),
+      inflationAmount: inflationAmount.toFixed(MONEY_DP),
+      totalCog: totalCog.toFixed(MONEY_DP),
+      grossProfit: grossProfit.toFixed(MONEY_DP),
+      grossProfitPercent: grossProfitPercent.toDecimalPlaces(1).toNumber(),
       // The data model stores this one as a number; round in Decimal first so
       // the conversion happens after the arithmetic, not during it.
       foodCostPercent: foodCostPercent.toDecimalPlaces(1).toNumber(),

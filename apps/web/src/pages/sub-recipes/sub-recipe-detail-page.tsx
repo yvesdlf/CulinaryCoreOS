@@ -26,11 +26,13 @@ import { createSubRecipe as persistSubRecipe } from "@/stores/persistence";
 import {
   RECIPE_STATUSES,
   UNITS,
-  DEFAULT_SECURITY_MARGIN,
+  DEFAULT_SUB_RECIPE_WASTE_PERCENT,
+  DEFAULT_SUB_RECIPE_INFLATION_PERCENT,
+  DEFAULT_TAX_PERCENT,
 } from "@/lib/constants";
 import {
   calculateRecipeTotalCost,
-  calculateCostWithMargin,
+  calculateTotalCog,
   calculateSubRecipeCostPerUnit,
 } from "@/engine/cost-engine";
 import {
@@ -81,8 +83,14 @@ export function SubRecipeDetailPage() {
   const [batchYieldUnit, setBatchYieldUnit] = useState(
     existing?.batchYield.unit ?? "g",
   );
-  const [securityMarginPercent, setSecurityMarginPercent] = useState(
-    existing?.securityMarginPercent ?? DEFAULT_SECURITY_MARGIN,
+  const [wastePercent, setWastePercent] = useState(
+    existing?.wastePercent ?? DEFAULT_SUB_RECIPE_WASTE_PERCENT,
+  );
+  const [inflationPercent, setInflationPercent] = useState(
+    existing?.inflationPercent ?? DEFAULT_SUB_RECIPE_INFLATION_PERCENT,
+  );
+  const [taxPercent, setTaxPercent] = useState(
+    existing?.taxPercent ?? DEFAULT_TAX_PERCENT,
   );
   const [lines, setLines] = useState<IngredientLine[]>(
     existing?.ingredientLines ?? [],
@@ -101,12 +109,15 @@ export function SubRecipeDetailPage() {
 
     // Stored strings go straight in — the engine parses exact decimals.
     const totalCost = calculateRecipeTotalCost(lines);
-    const totalWithMargin = calculateCostWithMargin(
+    // Cost per unit is taken on cost plus buffers — that is what a dish using
+    // this preparation actually consumes.
+    const costWithBuffers = calculateTotalCog(
       totalCost,
-      securityMarginPercent,
+      wastePercent,
+      inflationPercent,
     );
     const costPerUnit = calculateSubRecipeCostPerUnit(
-      totalCost,
+      costWithBuffers,
       batchYieldQty,
     );
 
@@ -118,7 +129,9 @@ export function SubRecipeDetailPage() {
       batchYield: { qty: batchYieldQty, unit: batchYieldUnit },
       totalCost: totalCost.toFixed(2),
       costPerUnit: costPerUnit.toFixed(5),
-      securityMarginPercent,
+      wastePercent,
+      inflationPercent,
+      taxPercent,
       // Derived, not carried. Reusing the previous values here meant the panel
       // showed live figures while the old ones were saved.
       nutritionPer100g: deriveSubRecipeNutrition(lines, batchYieldQty, sources),
@@ -243,17 +256,41 @@ export function SubRecipeDetailPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="security-margin">Margin %</Label>
+              <Label htmlFor="waste-percent">Waste %</Label>
               <Input
-                id="security-margin"
+                id="waste-percent"
                 type="number"
                 min={0}
                 max={100}
                 step="0.5"
-                value={securityMarginPercent}
+                value={wastePercent}
+                onChange={(e) => setWastePercent(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="inflation-percent">Inflation %</Label>
+              <Input
+                id="inflation-percent"
+                type="number"
+                min={0}
+                max={100}
+                step="0.5"
+                value={inflationPercent}
                 onChange={(e) =>
-                  setSecurityMarginPercent(parseFloat(e.target.value) || 0)
+                  setInflationPercent(parseFloat(e.target.value) || 0)
                 }
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="tax-percent">Tax %</Label>
+              <Input
+                id="tax-percent"
+                type="number"
+                min={0}
+                max={100}
+                step="0.5"
+                value={taxPercent}
+                onChange={(e) => setTaxPercent(parseFloat(e.target.value) || 0)}
               />
             </div>
           </div>
@@ -271,7 +308,8 @@ export function SubRecipeDetailPage() {
             lines={lines}
             batchYieldQty={batchYieldQty}
             batchYieldUnit={batchYieldUnit}
-            securityMarginPercent={securityMarginPercent}
+            wastePercent={wastePercent}
+            inflationPercent={inflationPercent}
           />
           <NutritionPanel
             lines={lines}

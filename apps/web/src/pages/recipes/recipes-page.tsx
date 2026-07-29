@@ -149,7 +149,7 @@ export function RecipesPage() {
                 </TableCell>
                 <TableCell className="text-right">
                   <CurrencyDisplay
-                    value={recipe.pricing.priceInclVat}
+                    value={recipe.pricing.priceInclTax}
                     currency={recipe.pricing.currency}
                   />
                 </TableCell>

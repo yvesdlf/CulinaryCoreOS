@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import {
   calculateRecipeTotalCost,
-  calculateCostWithMargin,
+  calculateTotalCog,
   calculateSubRecipeCostPerUnit,
 } from "@/engine/cost-engine";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
@@ -16,7 +16,8 @@ interface BatchCostPanelProps {
   lines: IngredientLine[];
   batchYieldQty: number;
   batchYieldUnit: string;
-  securityMarginPercent: number;
+  wastePercent: number;
+  inflationPercent: number;
   currency?: string;
 }
 
@@ -24,15 +25,17 @@ export function BatchCostPanel({
   lines,
   batchYieldQty,
   batchYieldUnit,
-  securityMarginPercent,
+  wastePercent,
+  inflationPercent,
   currency = DEFAULT_CURRENCY,
 }: BatchCostPanelProps) {
   const summary = useMemo(() => {
     // Stored strings go straight to the engine, which parses exact decimals.
     const totalCost = calculateRecipeTotalCost(lines);
-    const totalWithMargin = calculateCostWithMargin(
+    const totalWithMargin = calculateTotalCog(
       totalCost,
-      securityMarginPercent,
+      wastePercent,
+      inflationPercent,
     );
     const costPerUnit = calculateSubRecipeCostPerUnit(
       totalCost,
@@ -50,7 +53,7 @@ export function BatchCostPanel({
       costPerUnit,
       costPerUnitWithMargin,
     };
-  }, [lines, batchYieldQty, securityMarginPercent]);
+  }, [lines, batchYieldQty, wastePercent, inflationPercent]);
 
   return (
     <Card size="sm">
@@ -65,7 +68,7 @@ export function BatchCostPanel({
           <CurrencyDisplay value={summary.totalCost} currency={currency} />
         </Row>
         <Row
-          label={`+ Security margin (${formatPercent(securityMarginPercent)})`}
+          label={`+ Waste & inflation (${formatPercent(wastePercent + inflationPercent)})`}
           subtle
         >
           <CurrencyDisplay value={summary.marginAmount} currency={currency} />

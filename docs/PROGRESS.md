@@ -44,6 +44,21 @@
       mock catalogue with deterministic uuid v5 ids. Stores hydrate at startup
       and write through on change; with no credentials configured the whole
       layer no-ops and the app runs on mock data exactly as before.
+- [x] Costing model aligned to the venue's own workbook (COGS V5), with tax,
+      waste and inflation editable per sub-recipe and per recipe (migration
+      0006). Previously these were hard-coded globals — a 5% "security margin"
+      and 11% VAT — which suited no real venue.
+      * Menu price is now held EXCLUDING tax; the guest price is derived. The
+        old model stored a tax-inclusive price and stripped it back, which is
+        the opposite of how a chef sets a price.
+      * COG = cost + waste + inflation, both taken on raw cost rather than
+        compounding. Food cost % = COG / menu price.
+      * Tax defaults to 21% (11% PPN + 10% service). Waste defaults to 5% on
+        sub-recipes and 0 on recipes, inflation to 4% on recipes and 0 on
+        sub-recipes — applying both at both levels would double-count. All
+        remain editable in either direction.
+      * Verified: the engine reproduces the workbook's own COG and cost % to
+        six decimal places on three sampled dishes.
 - [x] Trustworthy writes pass:
       * Nutrition, allergens and the free-from dietary flags are now DERIVED on
         save instead of carried forward. Both editors were writing back the

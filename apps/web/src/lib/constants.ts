@@ -62,17 +62,47 @@ export const UNITS = [
   "sheet",
 ] as const;
 
-/** Default security margin applied to sub-recipe / recipe costs (%) */
-export const DEFAULT_SECURITY_MARGIN = 5;
+// ── Costing defaults ────────────────────────────────────────────────────────
+// Taken from the venue's own costing workbook (COGS V5). Every one of these is
+// editable per sub-recipe and per recipe — these are only the starting values
+// for a newly created record.
 
 /**
- * Indonesian PPN (Pajak Pertambahan Nilai), the local equivalent of VAT.
+ * Tax and service charge applied on top of the menu price, as a percentage.
  *
- * This is the denominator for every food-cost %, since selling prices are
- * entered tax-inclusive and stripped back before costing. Confirmed at 11%;
- * revisit if the venue falls under the higher bracket.
+ * 21% = 11% Indonesian PPN + 10% service. The menu price is held EXCLUDING
+ * this; the guest-facing price is derived as menuPrice * (1 + tax/100).
  */
-export const DEFAULT_VAT_RATE = 11;
+export const DEFAULT_TAX_PERCENT = 21;
+
+/**
+ * Inflation buffer on cost of sales, as a percentage.
+ *
+ * The workbook applies this at dish level, so recipes default to 4% and
+ * sub-recipes to 0 — otherwise the buffer would be counted twice on anything
+ * built from a sub-recipe.
+ */
+export const DEFAULT_RECIPE_INFLATION_PERCENT = 4;
+export const DEFAULT_SUB_RECIPE_INFLATION_PERCENT = 0;
+
+/**
+ * Waste allowance, as a percentage.
+ *
+ * The workbook applies waste when costing a batch, so sub-recipes default to
+ * 5% and recipes to 0. Both remain editable: a venue that trims at plating
+ * rather than prep can move it the other way.
+ */
+export const DEFAULT_SUB_RECIPE_WASTE_PERCENT = 5;
+export const DEFAULT_RECIPE_WASTE_PERCENT = 0;
+
+/** Target food cost and the variance treated as acceptable (%). */
+export const TARGET_FOOD_COST_PERCENT = 25;
+export const FOOD_COST_VARIANCE_PERCENT = 2;
+
+/** @deprecated Superseded by the per-entity fields above. */
+export const DEFAULT_SECURITY_MARGIN = 5;
+/** @deprecated Use the per-entity `taxPercent` instead. */
+export const DEFAULT_VAT_RATE = 21;
 
 /** Default currency code — Indonesian Rupiah. */
 export const DEFAULT_CURRENCY = "IDR";

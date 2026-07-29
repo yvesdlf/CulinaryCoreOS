@@ -46,9 +46,23 @@ export interface SubRecipe {
     unit: string; // e.g. "g", "PCS", "btc"
   };
 
-  totalCost: Decimal;
-  costPerUnit: Decimal;
-  securityMarginPercent: number; // default 5, per SRS decision #8
+  totalCost: Decimal;        // sum of ingredient lines, before buffers
+  costPerUnit: Decimal;      // (cost + buffers) / batch yield
+
+  /**
+   * Costing buffers and tax, editable per sub-recipe.
+   *
+   * Defaults follow the venue's costing workbook: waste is taken when costing
+   * a batch (5%), while the inflation buffer is applied at dish level (0% here)
+   * so it is not counted twice on anything built from this sub-recipe. Tax is
+   * carried for the case where a preparation is sold directly.
+   */
+  wastePercent: number;
+  inflationPercent: number;
+  taxPercent: number;
+
+  /** @deprecated Superseded by wastePercent/inflationPercent. */
+  securityMarginPercent?: number;
 
   nutritionPer100g: NutritionPer100g;
   allergens: string[];
@@ -75,14 +89,38 @@ export interface Recipe {
   };
 
   pricing: {
-    priceInclVat: Decimal;
-    priceExclVat: Decimal;
-    totalCost: Decimal;
-    totalCostWithSecurityMargin: Decimal; // cost + 5% default margin
-    grossContributionMargin: Decimal; // price - cost
-    foodCostPercent: number;
-    currency: string; // default from tenant settings, e.g. "AED", "IDR"
+    /**
+     * The price the chef sets, EXCLUDING tax and service. Every margin is
+     * measured against this; the guest-facing figure is derived from it.
+     */
+    menuPrice: Decimal;
+    /** Derived: menuPrice * (1 + taxPercent/100). */
+    priceInclTax: Decimal;
+
+    totalCost: Decimal;      // sum of ingredient lines, before buffers
+    wasteAmount: Decimal;    // totalCost * wastePercent
+    inflationAmount: Decimal; // totalCost * inflationPercent
+    totalCog: Decimal;       // cost + waste + inflation
+
+    grossProfit: Decimal;    // menuPrice - totalCog
+    grossProfitPercent: number;
+    foodCostPercent: number; // totalCog / menuPrice * 100
+
+    currency: string;
+
+    /** @deprecated Renamed to menuPrice / priceInclTax. */
+    priceInclVat?: Decimal;
+    priceExclVat?: Decimal;
+    /** @deprecated Renamed to totalCog. */
+    totalCostWithSecurityMargin?: Decimal;
+    /** @deprecated Renamed to grossProfit. */
+    grossContributionMargin?: Decimal;
   };
+
+  /** Costing buffers and tax, editable per recipe. */
+  wastePercent: number;
+  inflationPercent: number;
+  taxPercent: number;
 
   nutritionPerPortion: NutritionPer100g;
   allergens: string[];

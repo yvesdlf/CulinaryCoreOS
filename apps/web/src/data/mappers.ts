@@ -215,6 +215,9 @@ export function subRecipeFromRow(row: any): SubRecipe {
     },
     totalCost: money(row.total_cost),
     costPerUnit: money(row.cost_per_unit),
+    wastePercent: num(row.waste_percent, 5),
+    inflationPercent: num(row.inflation_percent, 0),
+    taxPercent: num(row.tax_percent, 21),
     securityMarginPercent: num(row.security_margin_percent, 5),
     nutritionPer100g: nutritionFromRow(row),
     allergens: row.allergens ?? [],
@@ -231,8 +234,10 @@ export function subRecipeToRow(s: Partial<SubRecipe>): Record<string, unknown> {
   if (s.status !== undefined) row.status = s.status;
   if (s.totalCost !== undefined) row.total_cost = s.totalCost;
   if (s.costPerUnit !== undefined) row.cost_per_unit = s.costPerUnit;
-  if (s.securityMarginPercent !== undefined)
-    row.security_margin_percent = s.securityMarginPercent;
+  if (s.wastePercent !== undefined) row.waste_percent = s.wastePercent;
+  if (s.inflationPercent !== undefined)
+    row.inflation_percent = s.inflationPercent;
+  if (s.taxPercent !== undefined) row.tax_percent = s.taxPercent;
   if (s.allergens !== undefined) row.allergens = s.allergens;
   if (s.version !== undefined) row.version = s.version;
   if (s.batchYield) {
@@ -259,14 +264,20 @@ export function recipeFromRow(row: any): Recipe {
       yieldUnit: row.yield_unit ?? "por",
     },
     pricing: {
-      priceInclVat: money(row.price_incl_vat),
-      priceExclVat: money(row.price_excl_vat),
+      menuPrice: money(row.menu_price),
+      priceInclTax: money(row.price_incl_tax),
       totalCost: money(row.total_cost),
-      totalCostWithSecurityMargin: money(row.total_cost_with_margin),
-      grossContributionMargin: money(row.gross_contribution_margin),
+      wasteAmount: money(row.waste_amount),
+      inflationAmount: money(row.inflation_amount),
+      totalCog: money(row.total_cog),
+      grossProfit: money(row.gross_profit),
+      grossProfitPercent: num(row.gross_profit_percent),
       foodCostPercent: num(row.food_cost_percent),
       currency: row.currency ?? "IDR",
     },
+    wastePercent: num(row.waste_percent, 0),
+    inflationPercent: num(row.inflation_percent, 4),
+    taxPercent: num(row.tax_percent, 21),
     nutritionPerPortion: nutritionFromRow(row),
     allergens: row.allergens ?? [],
     dietaryFlags: {
@@ -295,12 +306,19 @@ export function recipeToRow(r: Partial<Recipe>): Record<string, unknown> {
     row.yield_qty = r.portion.yieldQty;
     row.yield_unit = r.portion.yieldUnit;
   }
+  if (r.wastePercent !== undefined) row.waste_percent = r.wastePercent;
+  if (r.inflationPercent !== undefined)
+    row.inflation_percent = r.inflationPercent;
+  if (r.taxPercent !== undefined) row.tax_percent = r.taxPercent;
   if (r.pricing) {
-    row.price_incl_vat = r.pricing.priceInclVat;
-    row.price_excl_vat = r.pricing.priceExclVat;
+    row.menu_price = r.pricing.menuPrice;
+    row.price_incl_tax = r.pricing.priceInclTax;
     row.total_cost = r.pricing.totalCost;
-    row.total_cost_with_margin = r.pricing.totalCostWithSecurityMargin;
-    row.gross_contribution_margin = r.pricing.grossContributionMargin;
+    row.waste_amount = r.pricing.wasteAmount;
+    row.inflation_amount = r.pricing.inflationAmount;
+    row.total_cog = r.pricing.totalCog;
+    row.gross_profit = r.pricing.grossProfit;
+    row.gross_profit_percent = r.pricing.grossProfitPercent;
     row.food_cost_percent = r.pricing.foodCostPercent;
     row.currency = r.pricing.currency;
   }

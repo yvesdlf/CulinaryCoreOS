@@ -6,44 +6,50 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { FoodCostIndicator } from "@/components/shared/food-cost-indicator";
 import {
   calculateRecipeTotalCost,
-  calculateCostWithMargin,
-  calculatePriceExclVat,
+  calculatePercentAmount,
+  calculateTotalCog,
+  calculatePriceInclTax,
   calculateFoodCostPercent,
   calculateContributionMargin,
   calculateRecommendedPrice,
 } from "@/engine/cost-engine";
-import { DEFAULT_VAT_RATE, DEFAULT_CURRENCY } from "@/lib/constants";
+import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { formatPercent } from "@/lib/format";
 import { Calculator } from "lucide-react";
 
 interface CostSummaryPanelProps {
   lines: IngredientLine[];
-  priceInclVat: number;
-  securityMarginPercent: number;
+  /** Price the chef sets, EXCLUDING tax and service. */
+  menuPrice: number;
+  wastePercent: number;
+  inflationPercent: number;
+  taxPercent: number;
   currency?: string;
 }
 
 export function CostSummaryPanel({
   lines,
-  priceInclVat,
-  securityMarginPercent,
+  menuPrice,
+  wastePercent,
+  inflationPercent,
+  taxPercent,
   currency = DEFAULT_CURRENCY,
 }: CostSummaryPanelProps) {
   const summary = useMemo(() => {
     // Pass the stored strings straight through — the engine parses them as
     // exact decimals, so nothing goes via float on the way in.
     const totalCost = calculateRecipeTotalCost(lines);
-    const totalWithMargin = calculateCostWithMargin(
+    const wasteAmount = calculatePercentAmount(totalCost, wastePercent);
+    const inflationAmount = calculatePercentAmount(totalCost, inflationPercent);
+    const totalWithMargin = calculateTotalCog(
       totalCost,
-      securityMarginPercent,
+      wastePercent,
+      inflationPercent,
     );
-    const priceExclVat = calculatePriceExclVat(priceInclVat, DEFAULT_VAT_RATE);
-    const foodCostPercent = calculateFoodCostPercent(
-      totalWithMargin,
-      priceExclVat,
-    );
+    const priceInclTax = calculatePriceInclTax(menuPrice, taxPercent);
+    const foodCostPercent = calculateFoodCostPercent(totalWithMargin, menuPrice);
     const contributionMargin = calculateContributionMargin(
-      priceExclVat,
+      menuPrice,
       totalWithMargin,
     );
     const recommended25 = calculateRecommendedPrice(totalWithMargin, 25);
@@ -51,15 +57,18 @@ export function CostSummaryPanel({
 
     return {
       totalCost,
+      wasteAmount,
+      inflationAmount,
       marginAmount: totalWithMargin.minus(totalCost),
       totalWithMargin,
-      priceExclVat,
+      priceExclVat: menuPrice,
+      priceInclTax,
       foodCostPercent,
       contributionMargin,
       recommended25,
       recommended30,
     };
-  }, [lines, priceInclVat, securityMarginPercent]);
+  }, [lines, menuPrice, wastePercent, inflationPercent, taxPercent]);
 
   return (
     <Card size="sm">
@@ -74,7 +83,7 @@ export function CostSummaryPanel({
           <CurrencyDisplay value={summary.totalCost} currency={currency} />
         </Row>
         <Row
-          label={`+ Security margin (${formatPercent(securityMarginPercent)})`}
+          label={`+ Waste ${formatPercent(wastePercent)} + inflation ${formatPercent(inflationPercent)}`}
           subtle
         >
           <CurrencyDisplay value={summary.marginAmount} currency={currency} />
@@ -88,7 +97,7 @@ export function CostSummaryPanel({
           />
         </Row>
         <Separator />
-        <Row label="Selling price excl. VAT">
+        <Row label="Menu price (excl. tax)">
           <CurrencyDisplay value={summary.priceExclVat} currency={currency} />
         </Row>
         <Row label="Food cost %">
