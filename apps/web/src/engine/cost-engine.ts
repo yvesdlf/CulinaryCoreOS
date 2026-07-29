@@ -192,6 +192,20 @@ export function calculateGrossProfitPercent(
 }
 
 /**
+ * Round to the nearest multiple of `step`.
+ *
+ * Used for suggested menu prices, which are quoted in round numbers rather
+ * than to the rupiah — Rp 133.919 is an arithmetic result, Rp 134.000 is a
+ * price. Deliberately NOT applied to computed figures like the guest price,
+ * where the exact number is the correct answer.
+ */
+export function roundToNearest(value: MoneyInput, step: MoneyInput): Decimal {
+  const s = toDecimal(step);
+  if (s.lte(0)) return toDecimal(value);
+  return toDecimal(value).dividedBy(s).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).times(s);
+}
+
+/**
  * Recommended selling price for a target food cost %.
  *
  * price = totalCost / (targetFoodCostPercent / 100)

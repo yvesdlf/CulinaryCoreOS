@@ -95,6 +95,15 @@ export const DEFAULT_SUB_RECIPE_INFLATION_PERCENT = 0;
 export const DEFAULT_SUB_RECIPE_WASTE_PERCENT = 5;
 export const DEFAULT_RECIPE_WASTE_PERCENT = 0;
 
+/**
+ * Suggested menu prices are rounded to this step.
+ *
+ * A menu is quoted in round numbers, so a suggested price of Rp 133.919
+ * is shown as Rp 134.000. Applies only to suggestions — computed figures
+ * such as the guest price keep their exact value.
+ */
+export const PRICE_ROUNDING_STEP = 1000;
+
 /** Target food cost and the variance treated as acceptable (%). */
 export const TARGET_FOOD_COST_PERCENT = 25;
 export const FOOD_COST_VARIANCE_PERCENT = 2;

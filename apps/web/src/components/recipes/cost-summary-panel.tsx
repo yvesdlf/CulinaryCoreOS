@@ -12,8 +12,9 @@ import {
   calculateFoodCostPercent,
   calculateContributionMargin,
   calculateRecommendedPrice,
+  roundToNearest,
 } from "@/engine/cost-engine";
-import { DEFAULT_CURRENCY } from "@/lib/constants";
+import { DEFAULT_CURRENCY, PRICE_ROUNDING_STEP } from "@/lib/constants";
 import { formatPercent } from "@/lib/format";
 import { Calculator } from "lucide-react";
 
@@ -52,8 +53,17 @@ export function CostSummaryPanel({
       menuPrice,
       totalWithMargin,
     );
-    const recommended25 = calculateRecommendedPrice(totalWithMargin, 25);
-    const recommended30 = calculateRecommendedPrice(totalWithMargin, 30);
+    // Suggested prices are rounded to the nearest 1.000 IDR — they are a
+    // starting point for setting a menu price, and menus are quoted in round
+    // numbers. Everything else on this panel stays at its computed value.
+    const recommended25 = roundToNearest(
+      calculateRecommendedPrice(totalWithMargin, 25),
+      PRICE_ROUNDING_STEP,
+    );
+    const recommended30 = roundToNearest(
+      calculateRecommendedPrice(totalWithMargin, 30),
+      PRICE_ROUNDING_STEP,
+    );
 
     return {
       totalCost,
