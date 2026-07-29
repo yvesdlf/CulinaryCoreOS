@@ -1,5 +1,13 @@
 # MASTER SOFTWARE REQUIREMENTS SPECIFICATION
 
+> **Status: original design intent, captured 2026-07-26.**
+> Written before implementation began and not revised since. The build has
+> since diverged in places — currency is IDR with Indonesian PPN rather than
+> AED with VAT, and the schema has gained multi-tenancy and row level security.
+> Treat this as the reasoning behind the design, not a description of what
+> currently exists. `docs/PROGRESS.md` is the living record of what is built.
+
+
 ## CulinaryCore -- Recipe & Hospitality Management Platform
 
 | Field | Value |
@@ -2600,6 +2608,18 @@ The system SHALL implement granular role-based permissions.
 - AC6: Permission changes take effect immediately (no session restart required)
 - AC7: Supabase Row Level Security (RLS) policies enforce permissions at the database level
 
+#### USR-FUNC-002A: Platform Core Authorization Amendment
+
+The Platform Core Specification supersedes the simplified RBAC assumptions above for all new or migrated functionality. Roles remain reusable permission bundles, but effective access SHALL require **permission + scope + resource attributes + data classification + segregation-of-duties validation**.
+
+**Additional Acceptance Criteria**:
+- AC1: A role without an explicit scope grant does not grant access to tenant operational data.
+- AC2: A user may hold multiple scoped roles, but a deny/restricted-data/SOD rule takes precedence over the union of their role permissions.
+- AC3: Scope supports legal entity, brand/business unit, region, location, department, team/station, cost centre, own-record and explicitly delegated record access.
+- AC4: Access to restricted HR, supplier-bank, payroll, contract and safety evidence is field/classification-aware, audited on read/reveal/export, and excluded from ordinary global search.
+- AC5: Policy approval rights are resolved by the shared workflow engine; reporting line and role name alone cannot authorise a decision.
+- AC6: Temporary delegation is time-bound, scoped, revocable, auditable and subject to the same self-approval/SOD rules.
+
 #### USR-FUNC-003: Multi-Tenant Organization Management
 
 The system SHALL support multiple organizations with complete data isolation.
@@ -3908,6 +3928,84 @@ This matrix traces key requirements back to their source (workbook analysis, com
 | 12 | DECIMAL for financial calculations | Floating point rounding errors are unacceptable for money | 2026-07-25 | Approved |
 | 13 | Version control for all entities | Excel's lack of version control is a critical gap | 2026-07-25 | Approved |
 | 14 | Parallel run during migration | Builds trust and catches discrepancies | 2026-07-25 | Approved |
+
+---
+
+## 10.8 Appendix H: Competitive Readiness Amendment — Operations, Finance & Workforce
+
+This amendment is mandatory for the production roadmap. It closes the operational scope identified against current back-of-house and hospitality operating platforms. It does **not** authorise CulinaryCoreOS to become a point-of-sale or payroll provider in its first release; it requires clean integration boundaries and complete operational data flow.
+
+### H.1 Workforce operations
+
+| ID | Requirement | Priority |
+|---|---|---|
+| WFM-FUNC-001 | Maintain employee profile, employment status, skills/certifications, home location, station eligibility and availability. | Must Have |
+| WFM-FUNC-002 | Create demand-aware schedules by location, station and role; warn on availability, overtime, rest-period and local labour-rule conflicts. | Should Have |
+| WFM-FUNC-003 | Support shift swap, open shift, leave request, approval and manager notification workflows. | Should Have |
+| WFM-FUNC-004 | Integrate time-clock/payroll providers; store only the minimum time and payroll data needed for labour costing and audit. | Should Have |
+| WFM-FUNC-005 | Deliver station-specific task lists, SOP acknowledgement, training records and expiry alerts for food-safety certifications. | Must Have |
+
+### H.2 Food safety, traceability & compliance
+
+| ID | Requirement | Priority |
+|---|---|---|
+| FSC-FUNC-001 | Support HACCP plans, digital checks, corrective actions, evidence photos, signatures, deadlines and audit-ready exports. | Must Have |
+| FSC-FUNC-002 | Capture lot/batch, supplier lot, expiry/use-by, receiving temperature and storage location for traceable ingredients. | Must Have |
+| FSC-FUNC-003 | Support targeted recall/withdrawal: identify affected stock, recipe/menu exposure, locations, actions and completion evidence. | Must Have |
+| FSC-FUNC-004 | Support label templates, printer integrations, QR labels, allergen/ingredient declarations and shelf-life calculation. | Should Have |
+| FSC-FUNC-005 | Support IoT temperature data through an integration boundary; raise threshold alerts and record corrective action. | Future-ready |
+
+### H.3 Purchase-to-pay and finance integration
+
+| ID | Requirement | Priority |
+|---|---|---|
+| FIN-FUNC-001 | Model requisition → approval → purchase order → goods receipt → supplier invoice → credit note → accounting export. | Must Have |
+| FIN-FUNC-002 | Perform configurable two-way/three-way matching, tolerance handling, discrepancy workflow and audit history. | Must Have |
+| FIN-FUNC-003 | Map purchases, inventory movements, waste, labour and sales-derived COGS to chart-of-accounts, tax and cost-centre dimensions. | Should Have |
+| FIN-FUNC-004 | Integrate accounting systems using versioned, idempotent exports; track posting status and reconciliation exceptions. | Must Have |
+| FIN-FUNC-005 | Treat payment execution as a separately authorised integration. Store payment status/references only unless a regulated payment provider is selected. | Must Have |
+
+### H.4 Enterprise operations and future-proofing
+
+| ID | Requirement | Priority |
+|---|---|---|
+| ENT-FUNC-001 | Support group, brand, region, location, commissary and franchise hierarchy with delegated policy and approval limits. | Must Have |
+| ENT-FUNC-002 | Support inter-location transfer, requisition, central production, transfer pricing and in-transit visibility. | Must Have |
+| ENT-FUNC-003 | Compare actual versus theoretical usage, yield, sales mix and variance by site, station, employee and period. | Must Have |
+| ENT-FUNC-004 | Provide demand/production forecasting using sales, events, seasonality, lead time, par levels and inventory. | Should Have |
+| ENT-FUNC-005 | Record carbon/packaging/waste data with source and calculation methodology; do not present unverified sustainability claims. | Future-ready |
+| ENT-FUNC-006 | Provide an integration marketplace model: OAuth/scoped credentials, webhooks, idempotency, rate limits and a public API versioning policy. | Must Have |
+
+### H.5 Release constraint
+
+Before full deployment, the implementation must demonstrate one end-to-end flow for: (a) recipe-to-theoretical-depletion, (b) requisition-to-three-way-match-to-accounting-export, (c) lot-to-recall, and (d) employee schedule/task/training completion. Each flow requires tenant-isolation, audit, offline/recovery and role-permission tests.
+
+---
+
+## 10.9 Appendix I: Platform Core, Procurement & People Workspace Amendment
+
+The Procurement Super App and Super HR App SHALL be delivered as two secure CulinaryCoreOS workspaces on one Platform Core. They SHALL NOT become independent applications or duplicate organisation, identity, approval, audit, document, notification or integration services. The governing structure is defined in `CulinaryCoreOS_PLATFORM_RESTRUCTURE_ANALYSIS.md`.
+
+| ID | Requirement | Priority |
+|---|---|---|
+| PLT-FUNC-001 | Maintain legal entity, brand, region, location, department, team, station, cost centre and profit-centre hierarchy as reusable scope data. | Must Have |
+| PLT-FUNC-002 | Enforce role + permission + scope + attribute + data classification authorisation server-side and through RLS. | Must Have |
+| PLT-FUNC-003 | Provide one reusable policy/workflow engine for request, threshold, approval, delegation, escalation, exception and audit decisions. | Must Have |
+| PLT-FUNC-004 | Enforce segregation of duties for procurement, finance, HR, recipe publication and safety workflows. | Must Have |
+| PRC-FUNC-001 | Provide source-to-pay: supplier onboarding, catalogue, requisition, sourcing, PO, receiving, invoice/credit note, match exception, contract and controlled accounting export. | Must Have |
+| PRC-FUNC-002 | Provide a separately scoped supplier portal for supplier-owned records and documents only. | Should Have |
+| PPL-FUNC-001 | Provide employee lifecycle, organisation assignment, skills/certifications, availability, roster, attendance integration, leave, training and self-service. | Must Have |
+| PPL-FUNC-002 | Restrict compensation, bank, identity, disciplinary and health/accommodation data through field-level HR permissions and audited access. | Must Have |
+| FIN-FUNC-006 | Integrate payroll and regulated payment providers; do not process raw bank/card data or implement country payroll engines without separately approved legal scope. | Must Have |
+| OPS-FUNC-001 | Provide a role-scoped command centre linking forecast, labour, production, procurement, stock, safety, budget and variance to source transactions. | Should Have |
+
+### I.1 Non-negotiable integration rules
+
+1. `auth user`, `employee` and `supplier portal user` are separate identity concepts.
+2. A line manager relationship is not automatically an approval right; the shared policy engine resolves approvals.
+3. Finance dashboards aggregate source-domain data and always drill back to the authoritative operational record.
+4. AI cannot make high-impact people, payment, safety or compliance decisions without defined human approval.
+5. Every integration requires scoped credentials, external-ID mapping, idempotency, reconciliation, sync health and a documented data owner.
 
 ---
 
