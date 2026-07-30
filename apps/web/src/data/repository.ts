@@ -40,15 +40,40 @@ export class ConflictError extends Error {
   }
 }
 
+
+/**
+ * PostgREST caps a response at 1.000 rows by default and returns that silently
+ * — no error, no flag. The Manuza catalogue has 1.106 ingredients, so a plain
+ * select dropped 106 of them: recipe lines referencing those products rendered
+ * as "Unknown Product" and costed nothing.
+ *
+ * Every list read therefore pages until a short page proves the end.
+ */
+const PAGE = 1000;
+
+async function fetchAllPages<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  op: string,
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) fail(op, error);
+    const page = data ?? [];
+    all.push(...page);
+    if (page.length < PAGE) return all;
+  }
+}
+
 // ── Products ────────────────────────────────────────────────────────────────
 
 export async function fetchProducts(): Promise<Product[]> {
-  const { data, error } = await requireSupabase()
-    .from("products")
-    .select("*")
-    .order("name");
-  if (error) fail("fetchProducts", error);
-  return (data ?? []).map(productFromRow);
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase().from("products").select("*").order("name").range(from, to),
+    "fetchProducts",
+  );
+  return rows.map(productFromRow);
 }
 
 export async function insertProduct(
@@ -94,12 +119,16 @@ export async function deleteProduct(id: string): Promise<void> {
 const SUB_RECIPE_SELECT = "*, sub_recipe_lines!sub_recipe_id(*)";
 
 export async function fetchSubRecipes(): Promise<SubRecipe[]> {
-  const { data, error } = await requireSupabase()
-    .from("sub_recipes")
-    .select(SUB_RECIPE_SELECT)
-    .order("name");
-  if (error) fail("fetchSubRecipes", error);
-  return (data ?? []).map(subRecipeFromRow);
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase()
+        .from("sub_recipes")
+        .select(SUB_RECIPE_SELECT)
+        .order("name")
+        .range(from, to),
+    "fetchSubRecipes",
+  );
+  return rows.map(subRecipeFromRow);
 }
 
 async function replaceSubRecipeLines(
@@ -196,12 +225,16 @@ export async function deleteSubRecipe(id: string): Promise<void> {
 const RECIPE_SELECT = "*, recipe_lines!recipe_id(*)";
 
 export async function fetchRecipes(): Promise<Recipe[]> {
-  const { data, error } = await requireSupabase()
-    .from("recipes")
-    .select(RECIPE_SELECT)
-    .order("name");
-  if (error) fail("fetchRecipes", error);
-  return (data ?? []).map(recipeFromRow);
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase()
+        .from("recipes")
+        .select(RECIPE_SELECT)
+        .order("name")
+        .range(from, to),
+    "fetchRecipes",
+  );
+  return rows.map(recipeFromRow);
 }
 
 export async function fetchRecipe(id: string): Promise<Recipe> {

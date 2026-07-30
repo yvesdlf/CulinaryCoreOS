@@ -1,6 +1,20 @@
 # Progress Tracker
 
 ## Done
+- [x] Real Manuza catalogue imported from COGS V5: 1.106 products (1.084 real +
+      22 review placeholders), 112 sub-recipes with 634 lines, 115 dishes with
+      649 of 665 lines resolved, and EU-14 allergens on 352 products.
+      Costs are DERIVED from lines, never copied — so Greek salad correctly
+      reads 32,6% food cost against the workbook's stated 24,7%, because the
+      spreadsheet's SUM range omits its last two ingredients.
+      Unresolvable ingredients become PENDING placeholder products carrying the
+      line's own rate rather than being dropped; dropping them would understate
+      the dish exactly the way the workbook does.
+      Found and fixed a silent data-loss bug on the way: PostgREST caps a
+      response at 1.000 rows and says nothing, so the app loaded 1.000 of 1.106
+      products and every line referencing the missing 106 would have rendered
+      "Unknown Product" at zero cost. All list reads now page to exhaustion;
+      verified 1.106 loaded with zero dangling line references.
 - [x] Keyboard and screen-reader pass (Design Bible §12). 6 keyboard checks and
       8 accessibility-tree checks, written as tests so they run every time.
       Keyboard passed outright: focus order, visible focus at every stop, no

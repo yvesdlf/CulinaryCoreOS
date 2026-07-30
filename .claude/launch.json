@@ -5,7 +5,9 @@
       "name": "culinarycore-web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "web", "dev"],
-      "port": 5173
+      "port": 5173,
+      "//": "autoPort is false because 5173 is pinned in two places: vite.config.ts sets it explicitly, and playwright.config.ts uses it for both baseURL and its webServer url. A reassigned port would silently break the visual and accessibility suites. Nothing else depends on it — there are no OAuth callbacks or webhooks, and supabase/config.toml never references it.",
+      "autoPort": false
     }
   ]
 }
