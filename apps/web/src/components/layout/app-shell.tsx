@@ -9,9 +9,11 @@ export function AppShell() {
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
-        <main className="flex-1 overflow-auto p-6">
+        {/* SidebarInset renders the <main> landmark; this is only the
+            scroll container, so it must not be another one. */}
+        <div className="flex-1 overflow-auto p-6">
           <Outlet />
-        </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

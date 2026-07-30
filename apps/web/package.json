@@ -11,7 +11,10 @@
     "seed:generate": "esbuild scripts/generate-seed.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=node_modules/.cache/generate-seed.mjs --log-level=error && node node_modules/.cache/generate-seed.mjs",
     "test:visual": "playwright test visual.spec.ts",
     "test:a11y": "playwright test accessibility.spec.ts",
-    "test:visual:update": "playwright test visual.spec.ts --update-snapshots"
+    "test:visual:update": "playwright test visual.spec.ts --update-snapshots",
+    "test:keyboard": "playwright test keyboard.spec.ts",
+    "test:sr": "playwright test screen-reader.spec.ts",
+    "test:a11y:all": "playwright test accessibility.spec.ts keyboard.spec.ts screen-reader.spec.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

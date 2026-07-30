@@ -68,6 +68,10 @@ export function AllergenBadges({
               render={
                 <span
                   role="listitem"
+                  /* The visible text is a three-letter code, so without this
+                     the badge announces "MLK". The registry forbids a code
+                     standing in for the written allergen name. */
+                  aria-label={note ? `${label} — ${note}` : label}
                   className={cn(
                     "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5",
                     "text-[11px] font-medium leading-none tabular-nums",

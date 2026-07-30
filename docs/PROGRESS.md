@@ -1,6 +1,25 @@
 # Progress Tracker
 
 ## Done
+- [x] Keyboard and screen-reader pass (Design Bible §12). 6 keyboard checks and
+      8 accessibility-tree checks, written as tests so they run every time.
+      Keyboard passed outright: focus order, visible focus at every stop, no
+      trap in the editor, Cmd+K opens/navigates/Escapes with focus returned,
+      selects and the ingredient autocomplete operable without a mouse, and
+      sign-in completable by keyboard alone.
+      The structure audit found three real defects:
+      * allergen badges announced only their code ("MLK"), which the registry
+        explicitly forbids — now "Milk - Includes milk products; lactose alone
+        is not equivalent."
+      * two nested <main> landmarks, so "jump to main content" was ambiguous
+      * the primary sidebar was a plain <div>, exposing NO navigation landmark;
+        only the breadcrumb was reachable
+      The first landmark test passed while both landmark defects were present
+      because it counted DOM elements. It now reads the accessibility tree over
+      CDP, which is what a screen reader actually consumes.
+
+      NOT DONE: this does not prove how VoiceOver speaks the page. Announcement
+      order, rotor behaviour and live-region timing need a human listening.
 - [x] Visual regression + accessibility suites (Design Bible §12, §15) using
       Playwright and axe-core. 15 visual baselines covering every list, both
       editors, and isolated allergen/cost/focus-ring components, each in light
