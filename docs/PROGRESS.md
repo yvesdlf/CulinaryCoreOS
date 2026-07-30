@@ -1,6 +1,23 @@
 # Progress Tracker
 
 ## Done
+- [x] Visual regression + accessibility suites (Design Bible §12, §15) using
+      Playwright and axe-core. 15 visual baselines covering every list, both
+      editors, and isolated allergen/cost/focus-ring components, each in light
+      and dark. 12 axe checks at WCAG 2.2 AA across both themes.
+      The scan found and fixed 4 real defects, all introduced by the token
+      work: filter and editor selects were comboboxes with no accessible name
+      (critical); the ingredient grid's quantity and ref% inputs had no label
+      and its delete buttons no name (critical); Slate 500 secondary text is
+      only 4.39:1 at 12px on ivory, and success/warning foregrounds were
+      3.7:1 on their own soft fills (serious). Tokens darkened to
+      #69707e / #367b50 / #966300 and a nav-specific muted token added, since
+      light-theme secondary text is 3.23:1 on graphite.
+      Note the visual suite was initially useless: Playwright's default
+      per-pixel threshold of 0.2 — and 0.05 — both passed a full revert of the
+      ivory ground to pure white. 0.02 was established empirically as the value
+      that actually catches it, verified by breaking the token and confirming
+      the failure.
 - [x] Design Bible §3/§4 foundation applied. The app had been running the stock
       shadcn neutral theme — pure white against DDL-0001's explicit "warm ivory
       instead of pure-white", Geist instead of the specified stack, and 70 raw

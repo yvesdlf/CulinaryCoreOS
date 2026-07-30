@@ -165,6 +165,7 @@ export function IngredientLinesTable({
                           nettQty: parseFloat(e.target.value) || 0,
                         })
                       }
+                      aria-label={`Nett quantity for ${getIngredientName(line)}`}
                       className="h-7 w-20 tabular-nums"
                     />
                   )}
@@ -187,6 +188,7 @@ export function IngredientLinesTable({
                           refPercent: parseFloat(e.target.value) || 0,
                         })
                       }
+                      aria-label={`Waste reference percent for ${getIngredientName(line)}`}
                       className="h-7 w-16 tabular-nums"
                     />
                   )}
@@ -206,8 +208,9 @@ export function IngredientLinesTable({
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => removeLine(index)}
+                      aria-label={`Remove ${getIngredientName(line)}`}
                     >
-                      <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                      <Trash2 aria-hidden="true" className="size-3.5 text-muted-foreground hover:text-destructive" />
                     </Button>
                   </TableCell>
                 )}

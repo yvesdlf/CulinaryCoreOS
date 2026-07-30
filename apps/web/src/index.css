@@ -80,6 +80,7 @@
 
     --color-sidebar: var(--surface-nav);
     --color-sidebar-foreground: var(--nav-text);
+    --color-sidebar-muted: var(--nav-text-muted);
     --color-sidebar-primary: var(--action-primary);
     --color-sidebar-primary-foreground: var(--text-inverse);
     --color-sidebar-accent: var(--nav-accent);
@@ -113,7 +114,7 @@
 
     /* Text */
     --text-primary: #222222;
-    --text-secondary: #6b7280;
+    --text-secondary: #69707e;    /* Slate 500 darkened: 4.39:1 at 12px fails §12 */
     --text-muted: #8a9099;
     --text-inverse: #ffffff;
 
@@ -126,10 +127,10 @@
     --action-secondary: #ffffff;
 
     /* Status. The darkened variants are the Bible's accessible text values. */
-    --status-success: #3d8b5a;
+    --status-success: #367b50;      /* darkened from Forest 650 for §12 */
     --status-success-soft: #eaf4ee;
     --status-success-border: #b9dcc7;
-    --status-warning: #a97000;
+    --status-warning: #966300;      /* darkened from Amber 700 for §12 */
     --status-warning-soft: #faf1de;
     --status-warning-border: #e6cf9c;
     --status-danger: #b33737;
@@ -142,6 +143,8 @@
 
     /* Navigation is dark in light mode, so it carries its own text tokens. */
     --nav-text: #f2f2f0;
+    /* Light-theme --text-secondary is 3.24:1 on graphite; nav needs its own. */
+    --nav-text-muted: #878c91;
     --nav-accent: #2c3238;
     --nav-border: #333a41;
 
@@ -187,6 +190,7 @@
     --ai-accent: #d6b369;
 
     --nav-text: #f2f2f0;
+    --nav-text-muted: #9a9a9a;
     --nav-accent: #1e1e1e;
     --nav-border: #2a2a2a;
 

@@ -39,3 +39,6 @@ DerivedData/
 # Editor
 .vscode/
 .idea/
+tests/.auth/
+test-results/
+playwright-report/

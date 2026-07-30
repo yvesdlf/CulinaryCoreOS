@@ -88,7 +88,7 @@ export function RecipesPage() {
           />
         </div>
         <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")} items={CATEGORY_ITEMS}>
-          <SelectTrigger>
+          <SelectTrigger aria-label="Filter by category">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -101,7 +101,7 @@ export function RecipesPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")} items={STATUS_ITEMS}>
-          <SelectTrigger>
+          <SelectTrigger aria-label="Filter by status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

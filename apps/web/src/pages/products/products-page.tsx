@@ -134,7 +134,7 @@ export function ProductsPage() {
           onValueChange={(val) => setCategory(val ?? "__all__")}
           items={CATEGORY_ITEMS}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[160px]" aria-label="Filter by category">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -153,7 +153,7 @@ export function ProductsPage() {
           onValueChange={(val) => setStatus(val ?? "__all__")}
           items={STATUS_ITEMS}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[140px]" aria-label="Filter by status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

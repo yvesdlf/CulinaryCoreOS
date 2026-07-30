@@ -199,7 +199,7 @@ export function RecipeDetailPage() {
             <div className="space-y-1">
               <Label>Category</Label>
               <Select value={category} onValueChange={(v) => setCategory(v ?? "")}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" aria-label="Category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -217,7 +217,7 @@ export function RecipeDetailPage() {
                 value={status}
                 onValueChange={(v) => setStatus(v as RecipeStatus)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" aria-label="Status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,7 +243,7 @@ export function RecipeDetailPage() {
                   className="w-16"
                 />
                 <Select value={yieldUnit} onValueChange={(v) => setYieldUnit(v ?? "")}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Unit">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
