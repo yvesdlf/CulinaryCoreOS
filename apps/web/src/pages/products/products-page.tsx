@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 import type { Product } from "@ccos/shared";
 
@@ -75,10 +75,17 @@ export function ProductsPage() {
   const products = useProductStore((s) => s.products);
   const navigate = useNavigate();
 
-  // Filter state
+  // Filter state. Seeded from the URL so a link can point at a subset — the
+  // dashboard's "ingredients to review" sends people to ?status=PENDING, and a
+  // filter that quietly ignored the query would make that link a lie.
+  const [params] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("__all__");
-  const [status, setStatus] = useState<string>("__all__");
+  const [category, setCategory] = useState<string>(
+    () => params.get("category") ?? "__all__",
+  );
+  const [status, setStatus] = useState<string>(
+    () => params.get("status") ?? "__all__",
+  );
 
   // Filtered list
   const filtered = useMemo(() => {
