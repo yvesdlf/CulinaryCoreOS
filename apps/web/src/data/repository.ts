@@ -355,6 +355,13 @@ function linesToJson(lines: Recipe["ingredientLines"]) {
  * rewriting its lines separately. A failure part-way left the database
  * half-updated while the UI showed the finished result. The RPC makes the
  * whole cascade atomic.
+ *
+ * The recipe payload sends the current pricing fields. It used to send
+ * priceExclVat / totalCostWithSecurityMargin / grossContributionMargin, which
+ * became optional when the model moved to menuPrice / totalCog — so they were
+ * always undefined and every cascade wrote NULL over three columns while
+ * reporting success. Optional fields make that class of mistake typecheck
+ * cleanly, which is why the values below are read from required ones.
  */
 export async function persistCascade(
   subRecipes: SubRecipe[],
@@ -367,15 +374,27 @@ export async function persistCascade(
       id: s.id,
       total_cost: s.totalCost,
       cost_per_unit: s.costPerUnit,
+      allergens: s.allergens,
       lines: linesToJson(s.ingredientLines),
     })),
     p_recipes: recipes.map((r) => ({
       id: r.id,
-      price_excl_vat: r.pricing.priceExclVat,
+      menu_price: r.pricing.menuPrice,
+      price_incl_tax: r.pricing.priceInclTax,
       total_cost: r.pricing.totalCost,
-      total_cost_with_margin: r.pricing.totalCostWithSecurityMargin,
-      gross_contribution_margin: r.pricing.grossContributionMargin,
+      waste_amount: r.pricing.wasteAmount,
+      inflation_amount: r.pricing.inflationAmount,
+      total_cog: r.pricing.totalCog,
+      gross_profit: r.pricing.grossProfit,
+      gross_profit_percent: r.pricing.grossProfitPercent,
       food_cost_percent: r.pricing.foodCostPercent,
+      // Inherited, never authored — written with the cost it travels beside.
+      allergens: r.allergens,
+      gluten_free: r.dietaryFlags.glutenFree,
+      dairy_free: r.dietaryFlags.dairyFree,
+      nuts_free: r.dietaryFlags.nutsFree,
+      soy_free: r.dietaryFlags.soyFree,
+      sulfites_free: r.dietaryFlags.sulfitesFree,
       lines: linesToJson(r.ingredientLines),
     })),
   });

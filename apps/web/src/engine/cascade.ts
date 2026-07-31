@@ -5,6 +5,13 @@
 // directly or through other sub-recipes — has to be re-costed. This module
 // owns the dependency graph walk and the re-costing itself.
 //
+// Allergens ride the same walk. They are inherited, never authored, so a
+// product gaining an allergen has to reach every dish built on it — and by the
+// identical set of edges the cost travels along. Deriving them only when
+// someone opens and saves a detail page would leave a stale declaration on
+// every dish nobody happened to visit, which is the one kind of staleness
+// here that can hurt a guest.
+//
 // It is deliberately pure: it takes the current entities and returns new ones,
 // so it can be unit-tested and reused once the data comes from Supabase.
 // ---------------------------------------------------------------------------
@@ -23,6 +30,7 @@ import {
   calculateGrossProfitPercent,
   toDecimal,
 } from "./cost-engine";
+import { deriveAllergens, deriveDietaryFlags } from "./nutrition-engine";
 
 /** Per-unit costs are fractions of a rupiah per gram, so they need precision. */
 const UNIT_COST_DP = 5;
@@ -127,6 +135,23 @@ function topologicalOrder(
   return order;
 }
 
+/**
+ * Allergen sources backed by the same maps the costing uses.
+ *
+ * Sharing the maps matters: within a cascade pass the sub-recipe map is
+ * mutated in topological order, so a nested preparation's freshly derived
+ * allergens are already visible to whatever consumes it.
+ */
+function allergenSources(
+  productById: Map<string, Product>,
+  subRecipeById: Map<string, SubRecipe>,
+) {
+  return {
+    getProduct: (id: string) => productById.get(id),
+    getSubRecipe: (id: string) => subRecipeById.get(id),
+  };
+}
+
 // ── Line / entity re-costing ────────────────────────────────────────────────
 
 /**
@@ -204,6 +229,10 @@ export function recalculateSubRecipe(
     ingredientLines: results.map((r) => r.line),
     totalCost: totalCost.toFixed(MONEY_DP),
     costPerUnit: costPerUnit.toFixed(UNIT_COST_DP),
+    allergens: deriveAllergens(
+      sub.ingredientLines,
+      allergenSources(productById, subRecipeById),
+    ),
   };
 }
 
@@ -237,9 +266,21 @@ export function recalculateRecipe(
   const grossProfit = calculateContributionMargin(menuPrice, totalCog);
   const grossProfitPercent = calculateGrossProfitPercent(menuPrice, totalCog);
 
+  const allergens = deriveAllergens(
+    recipe.ingredientLines,
+    allergenSources(productById, subRecipeById),
+  );
+
   return {
     ...recipe,
     ingredientLines: results.map((r) => r.line),
+    allergens,
+    dietaryFlags: {
+      ...recipe.dietaryFlags,
+      // Vegetarian and vegan are author-controlled — no allergen list implies
+      // them — so only the free-from claims are overwritten here.
+      ...deriveDietaryFlags(allergens),
+    },
     pricing: {
       ...recipe.pricing,
       menuPrice: menuPrice.toFixed(MONEY_DP),
@@ -263,6 +304,38 @@ export interface CascadeResult {
   subRecipes: SubRecipe[];
   recipes: Recipe[];
   affected: Dependents;
+}
+
+/**
+ * Re-cost the entire catalogue, in dependency order.
+ *
+ * `cascadeFrom` answers "what did this change break?". This answers "what is
+ * everything worth right now?", which is the question after a bulk import: the
+ * COGS V5 catalogue arrived with ingredient lines but no derived totals, so
+ * every dish read as costing zero until something happened to touch it.
+ *
+ * Deriving those figures in SQL instead would put a second implementation of
+ * the costing rules next to this one, and the two would drift. There is one
+ * engine, and this runs it.
+ */
+export function recalculateAll(state: EntityState): CascadeResult {
+  const productById = new Map(state.products.map((p) => [p.id, p]));
+  const subRecipeById = new Map(state.subRecipes.map((s) => [s.id, s]));
+  const allSubIds = state.subRecipes.map((s) => s.id);
+
+  for (const id of topologicalOrder(allSubIds, subRecipeById)) {
+    const sub = subRecipeById.get(id);
+    if (!sub) continue;
+    subRecipeById.set(id, recalculateSubRecipe(sub, productById, subRecipeById));
+  }
+
+  return {
+    subRecipes: state.subRecipes.map((s) => subRecipeById.get(s.id) ?? s),
+    recipes: state.recipes.map((r) =>
+      recalculateRecipe(r, productById, subRecipeById),
+    ),
+    affected: { subRecipeIds: allSubIds, recipeIds: state.recipes.map((r) => r.id) },
+  };
 }
 
 /**

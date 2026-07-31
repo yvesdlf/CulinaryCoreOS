@@ -18,7 +18,19 @@ import { ready, openFirstRow } from "./helpers";
  * `page.accessibility` was removed in Playwright 1.62, and querying the DOM
  * instead would only re-check the markup we wrote rather than what the browser
  * actually exposes to a screen reader.
+ *
+ * CDP is Chromium-only, so the two tests built on it are skipped elsewhere.
+ * They were failing on the WebKit project with "CDP session is only available
+ * in Chromium" — a red result that says nothing about the app and trains
+ * everyone to ignore the suite. Worth stating plainly: the structural audit
+ * therefore only covers Chromium, and WebKit's tree is not checked at all.
  */
+const chromiumOnly = (browserName: string) =>
+  test.skip(
+    browserName !== "chromium",
+    "Accessibility.getFullAXTree is a Chrome DevTools Protocol API",
+  );
+
 async function axNodes(page: Page) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Accessibility.enable");
@@ -34,7 +46,9 @@ async function axNodes(page: Page) {
 test.describe("screen-reader structure", () => {
   test("page exposes landmarks a screen reader can jump between", async ({
     page,
+    browserName,
   }) => {
+    chromiumOnly(browserName);
     await page.goto("/recipes");
     await ready(page, "Recipes");
 
@@ -110,7 +124,9 @@ test.describe("screen-reader structure", () => {
 
   test("every control in the recipe editor has an accessible name", async ({
     page,
+    browserName,
   }) => {
+    chromiumOnly(browserName);
     await page.goto("/recipes");
     await ready(page, "Recipes");
     await openFirstRow(page);

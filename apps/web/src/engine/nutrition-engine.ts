@@ -2,6 +2,8 @@
 // Nutrition calculation engine
 // ---------------------------------------------------------------------------
 
+import { resolveAllergens } from "@/lib/allergens";
+
 /** Nutrition values per 100 g — local definition to avoid import coupling. */
 export interface NutritionPer100g {
   fatG: number;
@@ -167,18 +169,22 @@ export function deriveSubRecipeNutrition(
 }
 
 /**
- * Union of the allergens of every ingredient, sorted for a stable value.
- *
- * Allergens are inherited, never authored on a recipe: if a sub-recipe
- * contains gluten then so does everything built on it.
- */
-/**
  * The "free-from" dietary flags implied by a recipe's allergens.
  *
  * Only the negative claims are derivable: an allergen list tells you what is
- * present, so absence of "gluten" means gluten-free. Vegetarian and vegan
- * cannot be inferred this way — beef carries no allergen — so those stay
+ * present, so absence of gluten means gluten-free. Vegetarian and vegan cannot
+ * be inferred this way — beef carries no allergen — so those stay
  * author-controlled and are passed through by the caller.
+ *
+ * Resolution goes through the EU14 registry rather than matching literal
+ * strings. This previously tested for "gluten" and "dairy", which are aliases
+ * and not what anything actually stores: the real catalogue carries
+ * EU14_GLUTEN_CEREALS and EU14_MILK, so every imported dish claimed to be
+ * gluten-free and dairy-free no matter what was in it.
+ *
+ * An allergen we cannot map fails every claim closed. "Free from" is an
+ * assertion about the absence of something, and an unrecognised declaration is
+ * precisely the case where absence is not established.
  */
 export function deriveDietaryFlags(allergens: string[]): {
   glutenFree: boolean;
@@ -187,16 +193,36 @@ export function deriveDietaryFlags(allergens: string[]): {
   soyFree: boolean;
   sulfitesFree: boolean;
 } {
-  const has = (a: string) => allergens.includes(a);
+  const resolved = resolveAllergens(allergens);
+  const anyUnknown = resolved.some((r) => !r.known);
+  const ids = new Set(
+    resolved.filter((r) => r.known).map((r) => r.definition.id),
+  );
+  const free = (...of: string[]) =>
+    !anyUnknown && !of.some((id) => ids.has(id));
+
   return {
-    glutenFree: !has("gluten"),
-    dairyFree: !has("dairy"),
-    nutsFree: !has("nuts"),
-    soyFree: !has("soy"),
-    sulfitesFree: !has("sulfites"),
+    glutenFree: free("EU14_GLUTEN_CEREALS"),
+    dairyFree: free("EU14_MILK"),
+    // Legally distinct allergens, but one colloquial claim: "nut free" is
+    // untrue if either is present.
+    nutsFree: free("EU14_TREE_NUTS", "EU14_PEANUTS"),
+    soyFree: free("EU14_SOYBEANS"),
+    sulfitesFree: free("EU14_SULPHITES"),
   };
 }
 
+/**
+ * Union of the allergens of every ingredient, in registry order.
+ *
+ * Allergens are inherited, never authored: if a sub-recipe contains gluten then
+ * so does everything built on it.
+ *
+ * Values are canonicalised to registry ids on the way through, so a product
+ * declaring "dairy" and one declaring "EU14_MILK" collapse to one entry instead
+ * of showing the same allergen twice. Anything unmappable is kept verbatim —
+ * dropping a declaration we do not understand is a safety failure.
+ */
 export function deriveAllergens(
   lines: NutritionLine[],
   sources: {
@@ -204,14 +230,16 @@ export function deriveAllergens(
     getSubRecipe: (id: string) => { allergens?: string[] } | undefined;
   },
 ): string[] {
-  const found = new Set<string>();
+  const found: string[] = [];
   for (const line of lines) {
     const from = line.productId
       ? sources.getProduct(line.productId)?.allergens
       : line.subRecipeId
         ? sources.getSubRecipe(line.subRecipeId)?.allergens
         : undefined;
-    for (const a of from ?? []) found.add(a);
+    for (const a of from ?? []) found.push(a);
   }
-  return [...found].sort();
+  return resolveAllergens(found).map((r) =>
+    r.known ? r.definition.id : r.raw,
+  );
 }

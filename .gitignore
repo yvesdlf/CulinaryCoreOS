@@ -39,6 +39,9 @@ DerivedData/
 # Editor
 .vscode/
 .idea/
-tests/.auth/
-test-results/
-playwright-report/
+# Leading-slash-free patterns containing a slash are still anchored to this
+# file's directory, so `tests/.auth/` never matched apps/web/tests/.auth/ and a
+# Playwright storage state — a live session token — was committed.
+**/tests/.auth/
+**/test-results/
+**/playwright-report/

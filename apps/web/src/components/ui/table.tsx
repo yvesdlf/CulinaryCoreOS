@@ -2,11 +2,46 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Is this container actually scrolling right now?
+ *
+ * A container that overflows horizontally must be reachable by keyboard, or
+ * the off-screen columns exist only for people using a pointer (WCAG 2.1.1).
+ * A container that fits must NOT be a tab stop, though — that would put a stop
+ * before every table in the app for no benefit, which is its own accessibility
+ * cost. Neither state can be known from markup, so it is measured, and
+ * re-measured on resize because the same table overflows on a tablet and fits
+ * on a desktop.
+ */
+function useOverflows(ref: React.RefObject<HTMLDivElement | null>) {
+  const [overflows, setOverflows] = React.useState(false)
+
+  React.useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setOverflows(el.scrollWidth > el.clientWidth + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+
+  return overflows
+}
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const overflows = useOverflows(ref)
+
   return (
     <div
+      ref={ref}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      // Only a tab stop while there is something off-screen to scroll to.
+      tabIndex={overflows ? 0 : undefined}
+      role={overflows ? "region" : undefined}
+      aria-label={overflows ? "Table, scrollable" : undefined}
     >
       <table
         data-slot="table"

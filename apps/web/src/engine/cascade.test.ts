@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Product, SubRecipe, Recipe, IngredientLine } from "@ccos/shared";
-import { getDependents, cascadeFrom } from "./cascade";
+import { getDependents, cascadeFrom, recalculateAll } from "./cascade";
 
 /**
  * Unit tests for the dependency cascade.
@@ -177,6 +177,64 @@ describe("cascade re-costing", () => {
 
     const out = cascadeFrom("flour", { products, subRecipes, recipes });
     expect(out.recipes[0]).toBe(recipes[0]);
+  });
+
+  it("carries an allergen up through nesting to the dish", () => {
+    // The seeded catalogue had allergens on 352 products and on nothing built
+    // from them, because derivation only ran when a human saved a detail page.
+    const products = [{ ...product("flour", "10"), allergens: ["EU14_GLUTEN_CEREALS"] }];
+    const subRecipes = [
+      sub("dough", [line({ productId: "flour" })], 100),
+      sub("base", [line({ subRecipeId: "dough" })], 100),
+    ];
+    const recipes = [recipe("pizza", [line({ subRecipeId: "base" })])];
+
+    const out = cascadeFrom("flour", { products, subRecipes, recipes });
+    expect(out.subRecipes.find((s) => s.id === "dough")!.allergens).toEqual(["EU14_GLUTEN_CEREALS"]);
+    expect(out.subRecipes.find((s) => s.id === "base")!.allergens).toEqual(["EU14_GLUTEN_CEREALS"]);
+    expect(out.recipes[0].allergens).toEqual(["EU14_GLUTEN_CEREALS"]);
+  });
+
+  it("withdraws a free-from claim when an allergen appears upstream", () => {
+    const subRecipes = [sub("dough", [line({ productId: "flour" })], 100)];
+    const recipes = [recipe("pizza", [line({ subRecipeId: "dough" })])];
+
+    const clean = cascadeFrom("flour", {
+      products: [product("flour", "10")], subRecipes, recipes,
+    });
+    expect(clean.recipes[0].dietaryFlags.glutenFree).toBe(true);
+
+    const contaminated = cascadeFrom("flour", {
+      products: [{ ...product("flour", "10"), allergens: ["EU14_GLUTEN_CEREALS"] }],
+      subRecipes, recipes,
+    });
+    expect(contaminated.recipes[0].dietaryFlags.glutenFree).toBe(false);
+    // Author-controlled claims are not collateral damage.
+    expect(contaminated.recipes[0].dietaryFlags.vegetarian).toBe(
+      recipes[0].dietaryFlags.vegetarian,
+    );
+  });
+
+  it("costs everything, including what no single change touches", () => {
+    // After a bulk import nothing has "changed", so cascadeFrom has no entry
+    // point and every dish reads as costing zero. That is the state the COGS
+    // V5 catalogue actually landed in.
+    const products = [product("flour", "10"), product("salt", "2")];
+    const subRecipes = [
+      sub("dough", [line({ productId: "flour", nettQty: 100 })], 100),
+      sub("brine", [line({ productId: "salt", nettQty: 100 })], 100),
+    ];
+    const recipes = [
+      recipe("pizza", [line({ subRecipeId: "dough", nettQty: 100 })]),
+      recipe("pickle", [line({ subRecipeId: "brine", nettQty: 100 })]),
+    ];
+
+    const out = recalculateAll({ products, subRecipes, recipes });
+    expect(out.recipes.map((r) => r.pricing.totalCost)).toEqual([
+      "1000.00",
+      "200.00",
+    ]);
+    expect(out.subRecipes.every((s) => s.costPerUnit !== "0")).toBe(true);
   });
 
   it("does not hang when re-costing through a cycle", () => {

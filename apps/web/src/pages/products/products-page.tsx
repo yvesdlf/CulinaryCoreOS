@@ -29,6 +29,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/shared/table-pagination";
 import { useProductStore } from "@/stores/product-store";
 import { PRODUCT_CATEGORIES, PRODUCT_STATUSES } from "@/lib/constants";
 import { formatPercent } from "@/lib/format";
@@ -100,6 +104,8 @@ export function ProductsPage() {
 
     return result;
   }, [products, search, category, status]);
+
+  const pagination = usePagination(filtered);
 
   return (
     <div>
@@ -196,7 +202,7 @@ export function ProductsPage() {
               </TableCell>
             </TableRow>
           ) : (
-            filtered.map((product) => (
+            pagination.pageItems.map((product) => (
               <TableRow
                 key={product.id}
                 className="cursor-pointer"
@@ -254,6 +260,16 @@ export function ProductsPage() {
           )}
         </TableBody>
       </Table>
+
+      <TablePagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        from={pagination.from}
+        to={pagination.to}
+        total={pagination.total}
+        noun="products"
+        onPageChange={pagination.setPage}
+      />
     </div>
   );
 }
