@@ -45,7 +45,7 @@ export function AllergenReviewNotice({ reviews, className }: Props) {
               ? "1 ingredient needs an allergen check"
               : `${reviews.length} ingredients need an allergen check`}
           </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-foreground/80">
             These allergen lists were inferred from the ingredient name, not
             read from the product. Confirm them against the brand in the store
             before serving to a guest with an allergy.
@@ -61,13 +61,13 @@ export function AllergenReviewNotice({ reviews, className }: Props) {
                   {r.productName}
                 </Link>
                 {r.via.length > 0 && (
-                  <span className="text-muted-foreground">
+                  <span className="text-foreground/70">
                     {" "}
                     — via {r.via.join(" › ")}
                   </span>
                 )}
                 {r.note && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">{r.note}</p>
+                  <p className="mt-0.5 text-xs text-foreground/80">{r.note}</p>
                 )}
               </li>
             ))}

@@ -5,6 +5,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Save, X, TriangleAlert } from "lucide-react";
+import { PriceImpact } from "@/components/products/price-impact";
+import { WhereUsed } from "@/components/shared/where-used";
 import { toast } from "sonner";
 import type { Product, NutritionPer100g, ProductStatus } from "@ccos/shared";
 
@@ -849,6 +851,15 @@ export function ProductDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Only for a saved product: a price that does not exist yet cannot
+          have moved, and nothing can depend on it. */}
+      {!isNew && existing && (
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <PriceImpact product={existing} />
+          <WhereUsed entityId={existing.id} />
+        </div>
+      )}
     </div>
   );
 }

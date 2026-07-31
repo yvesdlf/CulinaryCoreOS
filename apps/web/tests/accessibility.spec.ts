@@ -21,6 +21,7 @@ const PAGES = [
   { name: "recipes list", path: "/recipes", heading: "Recipes" },
   { name: "sub-recipes list", path: "/sub-recipes", heading: "Sub Recipes" },
   { name: "products list", path: "/products", heading: "Products" },
+  { name: "allergen matrix", path: "/allergen-matrix", heading: "Allergen matrix" },
   { name: "dashboard", path: "/", heading: "Dashboard" },
 ];
 

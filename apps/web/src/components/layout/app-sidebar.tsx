@@ -4,6 +4,7 @@ import {
   Package,
   ChefHat,
   Layers,
+  ShieldAlert,
   Truck,
   Warehouse,
   Factory,
@@ -28,6 +29,7 @@ const navItems = [
   { title: "Products", to: "/products", icon: Package },
   { title: "Recipes", to: "/recipes", icon: ChefHat },
   { title: "Sub Recipes", to: "/sub-recipes", icon: Layers },
+  { title: "Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
 ];
 
 const managementItems = [

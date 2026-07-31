@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { IngredientLinesTable } from "@/components/recipes/ingredient-lines-table";
 import { BatchCostPanel } from "@/components/sub-recipes/batch-cost-panel";
+import { WhereUsed } from "@/components/shared/where-used";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
 import { AllergenPanel } from "@/components/recipes/allergen-panel";
 import { AllergenReviewNotice } from "@/components/shared/allergen-review-notice";
@@ -327,6 +328,7 @@ export function SubRecipeDetailPage() {
           />
           <AllergenPanel lines={lines} />
           <AllergenReviewNotice reviews={allergenReviews} />
+          {!isNew && id && <WhereUsed entityId={id} selfId={id} />}
         </div>
       </div>
     </div>
