@@ -1,0 +1,5977 @@
+{
+ "source": "Manuza COGS V5 CLEANED.xlsx",
+ "note": "Golden master for the cost engine. Stated* fields are the workbook's own computed figures, produced by a spreadsheet this code has never seen \u2014 the only non-circular check available. Three dishes (Greek salad, Duck salad, Rainbow rice) have truncated SUM ranges in the source and are expected to diverge.",
+ "params": {
+  "subRecipeWastePercent": 5.0,
+  "wastePercent": 4.0,
+  "inflationPercent": 4.0,
+  "marginPercent": 24.0,
+  "taxMultiplier": 1.21
+ },
+ "dishes": [
+  {
+   "name": "Grilled Octopus",
+   "section": "Starters",
+   "menuPrice": 240000.0,
+   "statedCostPercent": 0.2511833409090909,
+   "statedIngredientCost": 57965.38636363636,
+   "statedWasteAllowance": 2318.6154545454547,
+   "statedTotalCost": 60284.001818181816,
+   "lines": [
+    {
+     "ingredient": "Octopus Whole",
+     "qty": 0.36,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 45000.0
+    },
+    {
+     "ingredient": "Pimenton-Chili Oil",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 58537.50000000001,
+     "lineTotal": 1170.7500000000002
+    },
+    {
+     "ingredient": "Red Pepper & Almond Sauce",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 99463.63636363635,
+     "lineTotal": 994.6363636363635
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 300.0
+    },
+    {
+     "ingredient": "Extra Virgin Olive Oil Cobram Estate",
+     "qty": 0.03,
+     "unit": "L",
+     "costPerUnit": 200000.0,
+     "lineTotal": 6000.0
+    },
+    {
+     "ingredient": "Red Bell Pepper",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 4500.0
+    }
+   ]
+  },
+  {
+   "name": "Mahi-Mahi blacken fillet",
+   "section": "Starters",
+   "menuPrice": 215000.0,
+   "statedCostPercent": 0.252558219025884,
+   "statedIngredientCost": 52211.5548947741,
+   "statedWasteAllowance": 2088.462195790964,
+   "statedTotalCost": 54300.01709056506,
+   "lines": [
+    {
+     "ingredient": "Mahi-Mahi Fillet",
+     "qty": 0.22,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 18700.0
+    },
+    {
+     "ingredient": "Cajun Spice mix",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 259459.44958851679,
+     "lineTotal": 15567.566975311007
+    },
+    {
+     "ingredient": "Coleslaw Mix",
+     "qty": 0.3,
+     "unit": "KG",
+     "costPerUnit": 43493.959731543626,
+     "lineTotal": 13048.187919463087
+    },
+    {
+     "ingredient": "Coriander Aioli",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 10895.0,
+     "lineTotal": 435.8
+    },
+    {
+     "ingredient": "Sea Salt",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 30.0
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 30.0
+    },
+    {
+     "ingredient": "Potato",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 22000.0,
+     "lineTotal": 4400.0
+    }
+   ]
+  },
+  {
+   "name": "Sambal Matah",
+   "section": "Starters",
+   "menuPrice": 39000.0,
+   "statedCostPercent": 0.25032902960399844,
+   "statedIngredientCost": 9387.338610149942,
+   "statedWasteAllowance": 375.4935444059977,
+   "statedTotalCost": 9762.83215455594,
+   "lines": [
+    {
+     "ingredient": "Shallots",
+     "qty": 0.09,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 3600.0
+    },
+    {
+     "ingredient": "Lemongrass",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 600.0
+    },
+    {
+     "ingredient": "Kaffir Lime Leaf",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 13660.26384083045,
+     "lineTotal": 273.205276816609
+    },
+    {
+     "ingredient": "Bird's Eye Chili",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 10895.0,
+     "lineTotal": 435.8
+    },
+    {
+     "ingredient": "Galangal",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 13000.0,
+     "lineTotal": 520.0
+    },
+    {
+     "ingredient": "Coconut Oil",
+     "qty": 0.028,
+     "unit": "L",
+     "costPerUnit": 133333.33333333334,
+     "lineTotal": 3733.3333333333335
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 225.0
+    }
+   ]
+  },
+  {
+   "name": "Salsa Criolla (Tomato & Herb)",
+   "section": "Starters",
+   "menuPrice": 39000.0,
+   "statedCostPercent": 0.23666666666666647,
+   "statedIngredientCost": 8874.999999999993,
+   "statedWasteAllowance": 354.9999999999997,
+   "statedTotalCost": 9229.999999999993,
+   "lines": [
+    {
+     "ingredient": "Parsley",
+     "qty": 0.0066666666666667,
+     "unit": "KG",
+     "costPerUnit": 70000.0,
+     "lineTotal": 466.666666666669
+    },
+    {
+     "ingredient": "Coriander",
+     "qty": 0.0066666666666667,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 1333.33333333334
+    },
+    {
+     "ingredient": "Red Onion",
+     "qty": 0.0133333333333333,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 866.6666666666645
+    },
+    {
+     "ingredient": "Red Chili",
+     "qty": 0.006666666666666667,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 233.33333333333334
+    },
+    {
+     "ingredient": "Green Chili",
+     "qty": 0.006666666666666667,
+     "unit": "KG",
+     "costPerUnit": 43000.0,
+     "lineTotal": 286.6666666666667
+    },
+    {
+     "ingredient": "Beef Tomato",
+     "qty": 0.0233333333333333,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 1516.6666666666645
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.0133333333333333,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 546.6666666666653
+    },
+    {
+     "ingredient": "Sherry Vinegar",
+     "qty": 0.0133333333333333,
+     "unit": "L",
+     "costPerUnit": 264000.0,
+     "lineTotal": 3519.999999999991
+    },
+    {
+     "ingredient": "White Pepper",
+     "qty": 0.0006666666666666666,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 80.0
+    },
+    {
+     "ingredient": "Salt",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 25.0
+    }
+   ]
+  },
+  {
+   "name": "Wood-Ear Mushroom Reduction",
+   "section": "Starters",
+   "menuPrice": 42000.0,
+   "statedCostPercent": 0.2455349206349206,
+   "statedIngredientCost": 9915.833333333332,
+   "statedWasteAllowance": 396.63333333333327,
+   "statedTotalCost": 10312.466666666665,
+   "lines": [
+    {
+     "ingredient": "Dashi Stock (In House)",
+     "qty": 0.11,
+     "unit": "L",
+     "costPerUnit": 10000.0,
+     "lineTotal": 1100.0
+    },
+    {
+     "ingredient": "Shallots",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 1600.0
+    },
+    {
+     "ingredient": "Soy Sauce",
+     "qty": 0.03,
+     "unit": "L",
+     "costPerUnit": 61000.0,
+     "lineTotal": 1830.0
+    },
+    {
+     "ingredient": "Mirin (Cooking Wine)",
+     "qty": 0.03,
+     "unit": "L",
+     "costPerUnit": 54000.0,
+     "lineTotal": 1620.0
+    },
+    {
+     "ingredient": "Mushroom buttom",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 900.0
+    },
+    {
+     "ingredient": "Dried Wood-Ear Mushroom",
+     "qty": 0.0127,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 2540.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.00666666666666665,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 273.33333333333263
+    },
+    {
+     "ingredient": "White Pepper",
+     "qty": 0.0003333333333333333,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 40.0
+    },
+    {
+     "ingredient": "Salt",
+     "qty": 0.0025,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 12.5
+    }
+   ]
+  },
+  {
+   "name": "Rock Cod Miso-Glazed",
+   "section": "Main Seafood",
+   "menuPrice": 133000.0,
+   "statedCostPercent": 0.4033375438596492,
+   "statedIngredientCost": 51580.66666666667,
+   "statedWasteAllowance": 2063.226666666667,
+   "statedTotalCost": 53643.89333333334,
+   "lines": [
+    {
+     "ingredient": "Rock Cod Fillet",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 140000.0,
+     "lineTotal": 28000.0
+    },
+    {
+     "ingredient": "Tamarind & Miso Glaze",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 64516.666666666664,
+     "lineTotal": 2580.6666666666665
+    },
+    {
+     "ingredient": "Dashi - Kombu & Bonito",
+     "qty": 0.05,
+     "unit": "portion",
+     "costPerUnit": 420000.0,
+     "lineTotal": 21000.0
+    }
+   ]
+  },
+  {
+   "name": "Giant Freshwater Prawns",
+   "section": "Main Seafood",
+   "menuPrice": 345000.0,
+   "statedCostPercent": 0.2445448710963928,
+   "statedIngredientCost": 81123.0582002457,
+   "statedWasteAllowance": 3244.9223280098277,
+   "statedTotalCost": 84367.98052825552,
+   "lines": [
+    {
+     "ingredient": "Giant Freshwater Prawn",
+     "qty": 0.26,
+     "unit": "KG",
+     "costPerUnit": 285000.0,
+     "lineTotal": 74100.0
+    },
+    {
+     "ingredient": "Lemongrass-Kaffir Butter Log",
+     "qty": 0.025,
+     "unit": "portion",
+     "costPerUnit": 126803.40909090906,
+     "lineTotal": 3170.0852272727266
+    },
+    {
+     "ingredient": "Tiger Prawn Chili Salsa",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 59216.21621621621,
+     "lineTotal": 3552.9729729729725
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 300.0
+    }
+   ]
+  },
+  {
+   "name": "Red Seabream Whole",
+   "section": "Main Seafood",
+   "menuPrice": 666000.0,
+   "statedCostPercent": 0.23822496096096096,
+   "statedIngredientCost": 152555.6,
+   "statedWasteAllowance": 6102.224,
+   "statedTotalCost": 158657.824,
+   "lines": [
+    {
+     "ingredient": "Red Snapper (Whole)",
+     "qty": 1.0,
+     "unit": "KG",
+     "costPerUnit": 150000.0,
+     "lineTotal": 150000.0
+    },
+    {
+     "ingredient": "Tomato Paste Heinz 3.15 Kg",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 71780.0,
+     "lineTotal": 1435.6000000000001
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 300.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 820.0
+    }
+   ]
+  },
+  {
+   "name": "Coconut Clams",
+   "section": "Main Seafood",
+   "menuPrice": 386000.0,
+   "statedCostPercent": 0.2523420682210708,
+   "statedIngredientCost": 93657.72916666666,
+   "statedWasteAllowance": 3746.3091666666664,
+   "statedTotalCost": 97404.03833333333,
+   "lines": [
+    {
+     "ingredient": "Manila Clams",
+     "qty": 0.25,
+     "unit": "KG",
+     "costPerUnit": 101000.0,
+     "lineTotal": 25250.0
+    },
+    {
+     "ingredient": "Kombu",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 400000.0,
+     "lineTotal": 20000.0
+    },
+    {
+     "ingredient": "Sambal Matah - Bali Raw",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 46924.305555555555,
+     "lineTotal": 1407.7291666666665
+    },
+    {
+     "ingredient": "Coconut Water Fresh",
+     "qty": 1.0,
+     "unit": "L",
+     "costPerUnit": 15000.0,
+     "lineTotal": 15000.0
+    },
+    {
+     "ingredient": "Sourdough bread",
+     "qty": 1.0,
+     "unit": "portion",
+     "costPerUnit": 32000.0,
+     "lineTotal": 32000.0
+    }
+   ]
+  },
+  {
+   "name": "Grilled Lobster",
+   "section": "Main Seafood",
+   "menuPrice": 1753000.0,
+   "statedCostPercent": 0.2402379235596121,
+   "statedIngredientCost": 404939.5,
+   "statedWasteAllowance": 16197.58,
+   "statedTotalCost": 421137.08,
+   "lines": [
+    {
+     "ingredient": "Lobster",
+     "qty": 0.5,
+     "unit": "KG",
+     "costPerUnit": 800000.0,
+     "lineTotal": 400000.0
+    },
+    {
+     "ingredient": "Miso Butter - Pacojet",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 149150.0,
+     "lineTotal": 4474.5
+    },
+    {
+     "ingredient": "Panko Breadcrumbs",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 29000.0,
+     "lineTotal": 290.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 175.0
+    }
+   ]
+  },
+  {
+   "name": "Yellowfin Tuna Ribeye",
+   "section": "Main Seafood",
+   "menuPrice": 1078000.0,
+   "statedCostPercent": 0.24028171335807047,
+   "statedIngredientCost": 249061.2375,
+   "statedWasteAllowance": 9962.4495,
+   "statedTotalCost": 259023.68699999998,
+   "lines": [
+    {
+     "ingredient": "Bluefin Tuna Loin",
+     "qty": 0.5,
+     "unit": "KG",
+     "costPerUnit": 494000.0,
+     "lineTotal": 247000.0
+    },
+    {
+     "ingredient": "Wild Pepper Dry Rub",
+     "qty": 0.005,
+     "unit": "portion",
+     "costPerUnit": 300247.5,
+     "lineTotal": 1501.2375
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 410.0
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    }
+   ]
+  },
+  {
+   "name": "Roasted Chicken",
+   "section": "Main Meat",
+   "menuPrice": 266000.0,
+   "statedCostPercent": 0.2503213533834586,
+   "statedIngredientCost": 64024.5,
+   "statedWasteAllowance": 2560.98,
+   "statedTotalCost": 66585.48,
+   "lines": [
+    {
+     "ingredient": "Chicken Whole Free Range",
+     "qty": 0.72,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 61200.0
+    },
+    {
+     "ingredient": "Tamarind Marinade (Chicken)",
+     "qty": 0.05,
+     "unit": "portion",
+     "costPerUnit": 41850.0,
+     "lineTotal": 2092.5
+    },
+    {
+     "ingredient": "Java Pepper Chicken Jus",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 12200.0,
+     "lineTotal": 732.0
+    }
+   ]
+  },
+  {
+   "name": "Beef Tenderloin",
+   "section": "Main Meat",
+   "menuPrice": 1260800.0,
+   "statedCostPercent": 0.2505255384505906,
+   "statedIngredientCost": 303714.03738317755,
+   "statedWasteAllowance": 12148.561495327102,
+   "statedTotalCost": 315862.59887850465,
+   "lines": [
+    {
+     "ingredient": "Beef Tenderloin Stockyard 1",
+     "qty": 0.26,
+     "unit": "KG",
+     "costPerUnit": 1144000.0,
+     "lineTotal": 297440.0
+    },
+    {
+     "ingredient": "Spice Glaze - Beef",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 111201.8691588785,
+     "lineTotal": 2224.03738317757
+    },
+    {
+     "ingredient": "Shallots",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 2400.0
+    },
+    {
+     "ingredient": "Butter",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 165000.0,
+     "lineTotal": 1650.0
+    }
+   ]
+  },
+  {
+   "name": "Sirloin Black Angus",
+   "section": "Main Meat",
+   "menuPrice": 672000.0,
+   "statedCostPercent": 0.24037619047619047,
+   "statedIngredientCost": 155320.0,
+   "statedWasteAllowance": 6212.8,
+   "statedTotalCost": 161532.8,
+   "lines": [
+    {
+     "ingredient": "Black Angus Sirloin",
+     "qty": 0.22,
+     "unit": "KG",
+     "costPerUnit": 703000.0,
+     "lineTotal": 154660.0
+    },
+    {
+     "ingredient": "Kusamba Sea Salt",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 50000.0,
+     "lineTotal": 250.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 410.0
+    }
+   ]
+  },
+  {
+   "name": "Cote de Boeuf",
+   "section": "Main Meat",
+   "menuPrice": 783000.0,
+   "statedCostPercent": 0.2403256372924649,
+   "statedIngredientCost": 180937.475,
+   "statedWasteAllowance": 7237.499000000001,
+   "statedTotalCost": 188174.97400000002,
+   "lines": [
+    {
+     "ingredient": "Wagyu Tokusen Short Rib Boneless",
+     "qty": 0.45,
+     "unit": "Kg",
+     "costPerUnit": 394500.0,
+     "lineTotal": 177525.0
+    },
+    {
+     "ingredient": "Wild Pepper Dry Rub",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 300247.5,
+     "lineTotal": 3002.475
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 410.0
+    }
+   ]
+  },
+  {
+   "name": "Tomahawk",
+   "section": "Main Meat",
+   "menuPrice": 4759000.0,
+   "statedCostPercent": 0.2403866358478672,
+   "statedIngredientCost": 1100000.0,
+   "statedWasteAllowance": 44000.0,
+   "statedTotalCost": 1144000.0,
+   "lines": [
+    {
+     "ingredient": "Beef Tomahawk",
+     "qty": 1.4,
+     "unit": "KG",
+     "costPerUnit": 785000.0,
+     "lineTotal": 1099000.0
+    },
+    {
+     "ingredient": "Kusamba Sea Salt",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 50000.0,
+     "lineTotal": 500.0
+    },
+    {
+     "ingredient": "Rosemary Fresh",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 500.0
+    }
+   ]
+  },
+  {
+   "name": "Presa Iberico",
+   "section": "Main Meat",
+   "menuPrice": 525000.0,
+   "statedCostPercent": 0.2372733012306046,
+   "statedIngredientCost": 119777.38764044944,
+   "statedWasteAllowance": 4791.095505617977,
+   "statedTotalCost": 124568.48314606742,
+   "lines": [
+    {
+     "ingredient": "Iberico Pork Presa",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 590000.0,
+     "lineTotal": 118000.0
+    },
+    {
+     "ingredient": "Tangerine & Star Anise Glaze",
+     "qty": 0.015,
+     "unit": "portion",
+     "costPerUnit": 51825.84269662922,
+     "lineTotal": 777.3876404494382
+    },
+    {
+     "ingredient": "White Miso Paste",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 1000.0
+    }
+   ]
+  },
+  {
+   "name": "Mushroom & Truffle Pasta",
+   "section": "Pasta",
+   "menuPrice": 175000.0,
+   "statedCostPercent": 0.24044161142857146,
+   "statedIngredientCost": 40458.925,
+   "statedWasteAllowance": 1618.3570000000002,
+   "statedTotalCost": 42077.28200000001,
+   "lines": [
+    {
+     "ingredient": "Pasta - Gnocchetti Sardi",
+     "qty": 0.13,
+     "unit": "KG",
+     "costPerUnit": 28000.0,
+     "lineTotal": 3640.0
+    },
+    {
+     "ingredient": "Shiitake Mushroom",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 180000.0,
+     "lineTotal": 14400.0
+    },
+    {
+     "ingredient": "Truffle Butter Log",
+     "qty": 0.015,
+     "unit": "portion",
+     "costPerUnit": 630595.0,
+     "lineTotal": 9458.925
+    },
+    {
+     "ingredient": "Parmesan",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 325000.0,
+     "lineTotal": 6500.0
+    },
+    {
+     "ingredient": "Truffle Oil 250 ML",
+     "qty": 0.005,
+     "unit": "L",
+     "costPerUnit": 1292000.0,
+     "lineTotal": 6460.0
+    }
+   ]
+  },
+  {
+   "name": "Grilled Cod & Orzo",
+   "section": "Pasta",
+   "menuPrice": 202000.0,
+   "statedCostPercent": 0.24329993399339936,
+   "statedIngredientCost": 47256.333333333336,
+   "statedWasteAllowance": 1890.2533333333336,
+   "statedTotalCost": 49146.58666666667,
+   "lines": [
+    {
+     "ingredient": "Rock Cod Fillet",
+     "qty": 0.18,
+     "unit": "KG",
+     "costPerUnit": 140000.0,
+     "lineTotal": 25200.0
+    },
+    {
+     "ingredient": "Pasta - Orzo",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 3000.0
+    },
+    {
+     "ingredient": "Tomato Cherry Red",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 1400.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 820.0
+    },
+    {
+     "ingredient": "Butter",
+     "qty": 0.025,
+     "unit": "KG",
+     "costPerUnit": 165000.0,
+     "lineTotal": 4125.0
+    },
+    {
+     "ingredient": "Fennel",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 80000.0,
+     "lineTotal": 4000.0
+    },
+    {
+     "ingredient": "Tamarind & Miso Glaze",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 64516.666666666664,
+     "lineTotal": 5161.333333333333
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 1800.0
+    },
+    {
+     "ingredient": "Red Chili",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 1750.0
+    }
+   ]
+  },
+  {
+   "name": "Uni & Spaghetti",
+   "section": "Pasta",
+   "menuPrice": 1325000.0,
+   "statedCostPercent": 0.2403067169811321,
+   "statedIngredientCost": 306160.0,
+   "statedWasteAllowance": 12246.4,
+   "statedTotalCost": 318406.4,
+   "lines": [
+    {
+     "ingredient": "Pasta - Spaghetti",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 2000.0
+    },
+    {
+     "ingredient": "Sea Urchin (Uni)",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 3000000.0,
+     "lineTotal": 300000.0
+    },
+    {
+     "ingredient": "President - Whipping Cream Pastry",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 92000.0,
+     "lineTotal": 3680.0
+    },
+    {
+     "ingredient": "Lemon",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 480.0
+    }
+   ]
+  },
+  {
+   "name": "Lobster Linguine",
+   "section": "Pasta",
+   "menuPrice": 2508300.0,
+   "statedCostPercent": 0.3593642672295515,
+   "statedIngredientCost": 866724.4148960423,
+   "statedWasteAllowance": 34668.97659584169,
+   "statedTotalCost": 901393.391491884,
+   "lines": [
+    {
+     "ingredient": "Lobster",
+     "qty": 1.0,
+     "unit": "KG",
+     "costPerUnit": 800000.0,
+     "lineTotal": 800000.0
+    },
+    {
+     "ingredient": "Linguine 500Gr Fresh",
+     "qty": 0.18,
+     "unit": "EA",
+     "costPerUnit": 318400.8461538461,
+     "lineTotal": 57312.152307692304
+    },
+    {
+     "ingredient": "Lobster Bisque",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 30772.60053619303,
+     "lineTotal": 2461.808042895442
+    },
+    {
+     "ingredient": "Sofrito - Smoked Butter",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 51886.36363636363,
+     "lineTotal": 2075.4545454545455
+    },
+    {
+     "ingredient": "Parmesan",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 325000.0,
+     "lineTotal": 4875.0
+    }
+   ]
+  },
+  {
+   "name": "A5 Wagyu Maki (8 pcs)",
+   "section": "Maki",
+   "menuPrice": 871000.0,
+   "statedCostPercent": 0.2501758897818599,
+   "statedIngredientCost": 209522.3076923077,
+   "statedWasteAllowance": 8380.892307692307,
+   "statedTotalCost": 217903.19999999998,
+   "lines": [
+    {
+     "ingredient": "A5 Kagoshima Wagyu Sirloin",
+     "qty": 0.09,
+     "unit": "KG",
+     "costPerUnit": 2300000.0,
+     "lineTotal": 207000.0
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 2060.0
+    },
+    {
+     "ingredient": "Nori Sheet",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 45.0,
+     "lineTotal": 45.0
+    },
+    {
+     "ingredient": "Sushi Vinegar Master Blend",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 41730.769230769234,
+     "lineTotal": 417.3076923076924
+    }
+   ]
+  },
+  {
+   "name": "Crab & Avocado Maki (8 pcs)",
+   "section": "Maki",
+   "menuPrice": 2264000.0,
+   "statedCostPercent": 0.2403442526501767,
+   "statedIngredientCost": 523210.95,
+   "statedWasteAllowance": 20928.438000000002,
+   "statedTotalCost": 544139.388,
+   "lines": [
+    {
+     "ingredient": "Blue Crab Meat Picked",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 770000.0,
+     "lineTotal": 61600.0
+    },
+    {
+     "ingredient": "Avocado ripe",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 2000.0
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 2060.0
+    },
+    {
+     "ingredient": "Nori Sheet",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 45.0,
+     "lineTotal": 45.0
+    },
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 451200.0
+    },
+    {
+     "ingredient": "Truffle Butter Log",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 630595.0,
+     "lineTotal": 6305.95
+    }
+   ]
+  },
+  {
+   "name": "Spicy Crab Salad",
+   "section": "Salads",
+   "menuPrice": 347000.0,
+   "statedCostPercent": 0.14720901391559568,
+   "statedIngredientCost": 49116.85368145356,
+   "statedWasteAllowance": 1964.6741472581425,
+   "statedTotalCost": 51081.5278287117,
+   "lines": [
+    {
+     "ingredient": "Crab Medium",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 290000.0,
+     "lineTotal": 29000.0
+    },
+    {
+     "ingredient": "Avocado ripe",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 2400.0
+    },
+    {
+     "ingredient": "Green Unripe Mango",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 500.0
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    },
+    {
+     "ingredient": "Chili sauce",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 34892.307692307695,
+     "lineTotal": 348.92307692307696
+    },
+    {
+     "ingredient": "Lime Dressing",
+     "qty": 0.09,
+     "unit": "portion",
+     "costPerUnit": 131800.97546341465,
+     "lineTotal": 11862.087791707318
+    },
+    {
+     "ingredient": "pomelo",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 700.0
+    },
+    {
+     "ingredient": "Crab Salad Lettuce Mix",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 103896.07032057914,
+     "lineTotal": 4155.842812823165
+    }
+   ]
+  },
+  {
+   "name": "Luwak Tiramisu",
+   "section": "Desserts",
+   "menuPrice": 152000.0,
+   "statedCostPercent": 0.388791633054599,
+   "statedIngredientCost": 56823.39252336448,
+   "statedWasteAllowance": 2272.935700934579,
+   "statedTotalCost": 59096.32822429905,
+   "lines": [
+    {
+     "ingredient": "Lady Fingers",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 56000.0,
+     "lineTotal": 1680.0
+    },
+    {
+     "ingredient": "Luwak Tiramisu Cream",
+     "qty": 0.15,
+     "unit": "portion",
+     "costPerUnit": 362322.6168224299,
+     "lineTotal": 54348.39252336448
+    },
+    {
+     "ingredient": "Cocoa Powder",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 265000.0,
+     "lineTotal": 795.0
+    }
+   ]
+  },
+  {
+   "name": "Balinese Chocolate Bar",
+   "section": "Desserts",
+   "menuPrice": 95000.0,
+   "statedCostPercent": 0.24062315789473684,
+   "statedIngredientCost": 21980.0,
+   "statedWasteAllowance": 879.2,
+   "statedTotalCost": 22859.2,
+   "lines": [
+    {
+     "ingredient": "Chocolate Dak Chefmate",
+     "qty": 0.3,
+     "unit": "KG",
+     "costPerUnit": 57400.0,
+     "lineTotal": 17220.0
+    },
+    {
+     "ingredient": "President - Whipping Cream Pastry",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 92000.0,
+     "lineTotal": 2760.0
+    },
+    {
+     "ingredient": "Honey",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 2000.0
+    }
+   ]
+  },
+  {
+   "name": "Mango Tarte Tatin",
+   "section": "Desserts",
+   "menuPrice": 97000.0,
+   "statedCostPercent": 0.23379633333333333,
+   "statedIngredientCost": 21806.004166666666,
+   "statedWasteAllowance": 872.2401666666666,
+   "statedTotalCost": 22678.244333333332,
+   "lines": [
+    {
+     "ingredient": "Mango Harum Manis",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 3000.0
+    },
+    {
+     "ingredient": "Puff Pastry",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 266666.6666666667,
+     "lineTotal": 16000.0
+    },
+    {
+     "ingredient": "Lemongrass Caramel",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 52031.24999999999,
+     "lineTotal": 1560.9374999999998
+    },
+    {
+     "ingredient": "Peanut Caramel Sauce",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 62253.33333333334,
+     "lineTotal": 1245.0666666666668
+    }
+   ]
+  },
+  {
+   "name": "Tres Leches",
+   "section": "Desserts",
+   "menuPrice": 101000.0,
+   "statedCostPercent": 0.10779254990326621,
+   "statedIngredientCost": 10468.314942528737,
+   "statedWasteAllowance": 418.73259770114953,
+   "statedTotalCost": 10887.047540229887,
+   "lines": [
+    {
+     "ingredient": "Lady Fingers",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 56000.0,
+     "lineTotal": 4480.0
+    },
+    {
+     "ingredient": "Tres Leches Soak",
+     "qty": 0.1,
+     "unit": "portion",
+     "costPerUnit": 52701.14942528736,
+     "lineTotal": 5270.114942528737
+    },
+    {
+     "ingredient": "Italian Meringue",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 17955.0,
+     "lineTotal": 718.2
+    }
+   ]
+  },
+  {
+   "name": "Seared Tuna Maki (8 pcs)",
+   "section": "Maki",
+   "menuPrice": 168000.0,
+   "statedCostPercent": 0.2375080424430642,
+   "statedIngredientCost": 38366.68377926422,
+   "statedWasteAllowance": 1534.6673511705687,
+   "statedTotalCost": 39901.351130434785,
+   "lines": [
+    {
+     "ingredient": "Bluefin Tuna Loin",
+     "qty": 0.07,
+     "unit": "KG",
+     "costPerUnit": 494000.0,
+     "lineTotal": 34580.0
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 2060.0
+    },
+    {
+     "ingredient": "Nori Sheet",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 45.0,
+     "lineTotal": 45.0
+    },
+    {
+     "ingredient": "Sushi Vinegar Master Blend",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 41730.769230769234,
+     "lineTotal": 417.3076923076924
+    },
+    {
+     "ingredient": "Fermented Chili-Garlic Sauce",
+     "qty": 0.015,
+     "unit": "portion",
+     "costPerUnit": 49770.0,
+     "lineTotal": 746.55
+    },
+    {
+     "ingredient": "Mandarin Ponzu Gel",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 51782.608695652176,
+     "lineTotal": 517.8260869565217
+    }
+   ]
+  },
+  {
+   "name": "Spicy Mahi-Mahi Maki (8 pcs)",
+   "section": "Maki",
+   "menuPrice": 170000.0,
+   "statedCostPercent": 0.2388662689466484,
+   "statedIngredientCost": 39045.44780858676,
+   "statedWasteAllowance": 1561.8179123434704,
+   "statedTotalCost": 40607.26572093023,
+   "lines": [
+    {
+     "ingredient": "Mahi-Mahi Fillet",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 6800.0
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 2060.0
+    },
+    {
+     "ingredient": "Nori Sheet",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 45.0,
+     "lineTotal": 45.0
+    },
+    {
+     "ingredient": "Sushi Vinegar Master Blend",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 41730.769230769234,
+     "lineTotal": 417.3076923076924
+    },
+    {
+     "ingredient": "Tobiko Spicy Mayo",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 586157.0058139535,
+     "lineTotal": 11723.14011627907
+    },
+    {
+     "ingredient": "Tobiko (Flying Fish Roe)",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 1800000.0,
+     "lineTotal": 18000.0
+    }
+   ]
+  },
+  {
+   "name": "Smoked Mushroom Maki (8 pcs)",
+   "section": "Maki",
+   "menuPrice": 347000.0,
+   "statedCostPercent": 0.23971642651296826,
+   "statedIngredientCost": 79982.30769230769,
+   "statedWasteAllowance": 3199.2923076923075,
+   "statedTotalCost": 83181.59999999999,
+   "lines": [
+    {
+     "ingredient": "Dried Shiitake",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 400000.0,
+     "lineTotal": 16000.0
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 2060.0
+    },
+    {
+     "ingredient": "Nori Sheet",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 45.0,
+     "lineTotal": 45.0
+    },
+    {
+     "ingredient": "Sushi Vinegar Master Blend",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 41730.769230769234,
+     "lineTotal": 417.3076923076924
+    },
+    {
+     "ingredient": "Micro Coriander / Cilantro",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 1375000.0,
+     "lineTotal": 55000.0
+    },
+    {
+     "ingredient": "Truffle Oil 250 ML",
+     "qty": 0.005,
+     "unit": "L",
+     "costPerUnit": 1292000.0,
+     "lineTotal": 6460.0
+    }
+   ]
+  },
+  {
+   "name": "Tuna Belly Toro Nigiri (2 pcs)",
+   "section": "Nigiri",
+   "menuPrice": 160000.0,
+   "statedCostPercent": 0.240119,
+   "statedIngredientCost": 36941.38461538462,
+   "statedWasteAllowance": 1477.6553846153847,
+   "statedTotalCost": 38419.04,
+   "lines": [
+    {
+     "ingredient": "Tuna Belly (Otoro)",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 850000.0,
+     "lineTotal": 34000.0
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 1236.0
+    },
+    {
+     "ingredient": "Sushi Vinegar Master Blend",
+     "qty": 0.006,
+     "unit": "portion",
+     "costPerUnit": 41730.769230769234,
+     "lineTotal": 250.38461538461542
+    },
+    {
+     "ingredient": "Wasabi Paste",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 450000.0,
+     "lineTotal": 1350.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 105.0
+    }
+   ]
+  },
+  {
+   "name": "Hamachi Yellowtail Nigiri (2 pcs)",
+   "section": "Nigiri",
+   "menuPrice": 210000.0,
+   "statedCostPercent": 0.24408495238095243,
+   "statedIngredientCost": 49286.384615384624,
+   "statedWasteAllowance": 1971.4553846153851,
+   "statedTotalCost": 51257.84000000001,
+   "lines": [
+    {
+     "ingredient": "Tiger Prawn S10",
+     "qty": 0.14,
+     "unit": "KG",
+     "costPerUnit": 285000.0,
+     "lineTotal": 39900.00000000001
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 1236.0
+    },
+    {
+     "ingredient": "Sushi Vinegar Master Blend",
+     "qty": 0.006,
+     "unit": "portion",
+     "costPerUnit": 41730.769230769234,
+     "lineTotal": 250.38461538461542
+    },
+    {
+     "ingredient": "Yuzu Kosho Paste",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 1500000.0,
+     "lineTotal": 7500.0
+    },
+    {
+     "ingredient": "Shallots",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 400.0
+    }
+   ]
+  },
+  {
+   "name": "Golden Eye Snapper Nigiri (2 pcs)",
+   "section": "Nigiri",
+   "menuPrice": 32000.0,
+   "statedCostPercent": 0.235995,
+   "statedIngredientCost": 7261.384615384615,
+   "statedWasteAllowance": 290.4553846153846,
+   "statedTotalCost": 7551.84,
+   "lines": [
+    {
+     "ingredient": "Snapper Fillet",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 140000.0,
+     "lineTotal": 5600.0
+    },
+    {
+     "ingredient": "Japanese Sushi Rice",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 20600.0,
+     "lineTotal": 1236.0
+    },
+    {
+     "ingredient": "Sushi Vinegar Master Blend",
+     "qty": 0.006,
+     "unit": "portion",
+     "costPerUnit": 41730.769230769234,
+     "lineTotal": 250.38461538461542
+    },
+    {
+     "ingredient": "Kusamba Sea Salt",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 50000.0,
+     "lineTotal": 100.0
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 75.0
+    }
+   ]
+  },
+  {
+   "name": "Sashimi Selection (5 pcs)",
+   "section": "Sashimi",
+   "menuPrice": 161000.0,
+   "statedCostPercent": 0.24075031055900623,
+   "statedIngredientCost": 37270.0,
+   "statedWasteAllowance": 1490.8,
+   "statedTotalCost": 38760.8,
+   "lines": [
+    {
+     "ingredient": "Bluefin Tuna Loin",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 494000.0,
+     "lineTotal": 14820.0
+    },
+    {
+     "ingredient": "Hamachi (Yellowtail)",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 420000.0,
+     "lineTotal": 12600.0
+    },
+    {
+     "ingredient": "Snapper Fillet",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 140000.0,
+     "lineTotal": 4200.0
+    },
+    {
+     "ingredient": "Mahi-Mahi Fillet",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 2550.0
+    },
+    {
+     "ingredient": "Wasabi Paste",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 450000.0,
+     "lineTotal": 2250.0
+    },
+    {
+     "ingredient": "Pickled Ginger (Gari)",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 850.0
+    }
+   ]
+  },
+  {
+   "name": "Mezze Platter",
+   "section": "Sharing Platter",
+   "menuPrice": 1158000.0,
+   "statedCostPercent": 0.19075806040221324,
+   "statedIngredientCost": 212401.76340938744,
+   "statedWasteAllowance": 8496.070536375497,
+   "statedTotalCost": 220897.83394576295,
+   "lines": [
+    {
+     "ingredient": "Sourdough Base",
+     "qty": 0.5,
+     "unit": "portion",
+     "costPerUnit": 33000.0,
+     "lineTotal": 16500.0
+    },
+    {
+     "ingredient": "Milk Bun Dough",
+     "qty": 0.5,
+     "unit": "portion",
+     "costPerUnit": 50603.75161707631,
+     "lineTotal": 25301.875808538156
+    },
+    {
+     "ingredient": "Avocado Dip Base",
+     "qty": 1.0,
+     "unit": "portion",
+     "costPerUnit": 51835.11218713768,
+     "lineTotal": 51835.11218713768
+    },
+    {
+     "ingredient": "Baba Ghanoush Base",
+     "qty": 1.0,
+     "unit": "portion",
+     "costPerUnit": 46822.22222222222,
+     "lineTotal": 46822.22222222222
+    },
+    {
+     "ingredient": "White Bean Hummus",
+     "qty": 1.0,
+     "unit": "portion",
+     "costPerUnit": 66842.55319148935,
+     "lineTotal": 66842.55319148935
+    },
+    {
+     "ingredient": "Baby Corn Organic",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 43000.0,
+     "lineTotal": 2580.0
+    },
+    {
+     "ingredient": "Cucumber lokal",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 7000.0,
+     "lineTotal": 420.0
+    },
+    {
+     "ingredient": "Baby Corn",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 2100.0
+    }
+   ]
+  },
+  {
+   "name": "Flores Oysters (6 pcs)",
+   "section": "Sharing Platter",
+   "menuPrice": 917000.0,
+   "statedCostPercent": 0.24037753486215818,
+   "statedIngredientCost": 211948.26871980677,
+   "statedWasteAllowance": 8477.93074879227,
+   "statedTotalCost": 220426.19946859905,
+   "lines": [
+    {
+     "ingredient": "Flores Oysters",
+     "qty": 6.0,
+     "unit": "EA",
+     "costPerUnit": 35000.0,
+     "lineTotal": 210000.0
+    },
+    {
+     "ingredient": "Pineapple Vinegar Mignonette",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 42989.13043478261,
+     "lineTotal": 859.7826086956521
+    },
+    {
+     "ingredient": "Sambal Matah - Bali Raw",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 46924.305555555555,
+     "lineTotal": 938.4861111111111
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    }
+   ]
+  },
+  {
+   "name": "Caviar Service 125g",
+   "section": "Sharing Platter",
+   "menuPrice": 8000000.0,
+   "statedCostPercent": 0.32736672289719626,
+   "statedIngredientCost": 2518205.5607476635,
+   "statedWasteAllowance": 100728.22242990654,
+   "statedTotalCost": 2618933.78317757,
+   "lines": [
+    {
+     "ingredient": "caviar Perseus 125g",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 2500000.0,
+     "lineTotal": 2500000.0
+    },
+    {
+     "ingredient": "Potato Blini Batter",
+     "qty": 0.1,
+     "unit": "portion",
+     "costPerUnit": 38555.60747663551,
+     "lineTotal": 3855.560747663551
+    },
+    {
+     "ingredient": "Creme Fraiche",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 10000.0
+    },
+    {
+     "ingredient": "Egg Chicken (Whole)",
+     "qty": 2.0,
+     "unit": "EA",
+     "costPerUnit": 2000.0,
+     "lineTotal": 4000.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 350.0
+    }
+   ]
+  },
+  {
+   "name": "Caviar Service 125g",
+   "section": "Sharing Platter",
+   "menuPrice": 2300000.0,
+   "statedCostPercent": 0.3315364274685088,
+   "statedIngredientCost": 733205.5607476636,
+   "statedWasteAllowance": 29328.222429906546,
+   "statedTotalCost": 762533.7831775702,
+   "lines": [
+    {
+     "ingredient": "Caviar Perseus 30g",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 715000.0,
+     "lineTotal": 715000.0
+    },
+    {
+     "ingredient": "Potato Blini Batter",
+     "qty": 0.1,
+     "unit": "portion",
+     "costPerUnit": 38555.60747663551,
+     "lineTotal": 3855.560747663551
+    },
+    {
+     "ingredient": "Creme Fraiche",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 10000.0
+    },
+    {
+     "ingredient": "Egg Chicken (Whole)",
+     "qty": 2.0,
+     "unit": "EA",
+     "costPerUnit": 2000.0,
+     "lineTotal": 4000.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 350.0
+    }
+   ]
+  },
+  {
+   "name": "Bisque de Marisco (serves 2)",
+   "section": "Sharing Platter",
+   "menuPrice": 797000.0,
+   "statedCostPercent": 0.20869304680748907,
+   "statedIngredientCost": 159931.1137553546,
+   "statedWasteAllowance": 6397.2445502141845,
+   "statedTotalCost": 166328.35830556878,
+   "lines": [
+    {
+     "ingredient": "Bisque de Marisco Broth",
+     "qty": 0.6,
+     "unit": "portion",
+     "costPerUnit": 101101.85625892432,
+     "lineTotal": 60661.11375535459
+    },
+    {
+     "ingredient": "Slipper Lobster",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 175000.0,
+     "lineTotal": 26250.0
+    },
+    {
+     "ingredient": "Tiger Prawn S15",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 230000.0,
+     "lineTotal": 23000.0
+    },
+    {
+     "ingredient": "Scallops (Half Shell)",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 380000.0,
+     "lineTotal": 38000.0
+    },
+    {
+     "ingredient": "Manila Clams",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 101000.0,
+     "lineTotal": 10100.0
+    },
+    {
+     "ingredient": "Sourdough",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 32000.0,
+     "lineTotal": 1920.0
+    }
+   ]
+  },
+  {
+   "name": "Seafood Voyage (sharing)",
+   "section": "Signature",
+   "menuPrice": 705000.0,
+   "statedCostPercent": 0.24059058037235811,
+   "statedIngredientCost": 163092.65304087737,
+   "statedWasteAllowance": 6523.706121635095,
+   "statedTotalCost": 169616.35916251247,
+   "lines": [
+    {
+     "ingredient": "Bluefin Tuna Loin",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 494000.0,
+     "lineTotal": 29640.0
+    },
+    {
+     "ingredient": "Tiger Prawn S15",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 230000.0,
+     "lineTotal": 18400.0
+    },
+    {
+     "ingredient": "Sea Urchin (Uni)",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 3000000.0,
+     "lineTotal": 90000.0
+    },
+    {
+     "ingredient": "Crispy Rice Base",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 19611.86440677966,
+     "lineTotal": 1176.7118644067796
+    },
+    {
+     "ingredient": "Scallops (Half Shell)",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 380000.0,
+     "lineTotal": 22800.0
+    },
+    {
+     "ingredient": "Sour Mango Sambal",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 35864.705882352944,
+     "lineTotal": 1075.9411764705883
+    }
+   ]
+  },
+  {
+   "name": "Breads",
+   "section": "Starters",
+   "menuPrice": 76000.0,
+   "statedCostPercent": 0.2344328789632554,
+   "statedIngredientCost": 17131.633462699436,
+   "statedWasteAllowance": 685.2653385079774,
+   "statedTotalCost": 17816.89880120741,
+   "lines": [
+    {
+     "ingredient": "Milk Bun Dough",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 50603.75161707631,
+     "lineTotal": 4048.300129366105
+    },
+    {
+     "ingredient": "Cultured Butter - Seasoned",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 213888.88888888888,
+     "lineTotal": 12833.333333333332
+    },
+    {
+     "ingredient": "Kusamba Sea Salt",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 50000.0,
+     "lineTotal": 250.0
+    }
+   ]
+  },
+  {
+   "name": "Avocado Dip",
+   "section": "Dips",
+   "menuPrice": 172000.0,
+   "statedCostPercent": 0.1969925583092627,
+   "statedIngredientCost": 32579.538489608833,
+   "statedWasteAllowance": 1303.1815395843532,
+   "statedTotalCost": 33882.72002919319,
+   "lines": [
+    {
+     "ingredient": "Avocado Dip Base",
+     "qty": 0.23,
+     "unit": "portion",
+     "costPerUnit": 51835.11218713768,
+     "lineTotal": 11922.075803041667
+    },
+    {
+     "ingredient": "Torch Ginger Flower",
+     "qty": 0.07,
+     "unit": "KG",
+     "costPerUnit": 80000.0,
+     "lineTotal": 5600.000000000001
+    },
+    {
+     "ingredient": "Coriander Leaves",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 4000.0
+    },
+    {
+     "ingredient": "Extra Virgin Olive Oil Cobram Estate",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 200000.0,
+     "lineTotal": 4000.0
+    },
+    {
+     "ingredient": "Root Veg Crisps",
+     "qty": 0.2,
+     "unit": "portion",
+     "costPerUnit": 35287.31343283582,
+     "lineTotal": 7057.462686567164
+    }
+   ]
+  },
+  {
+   "name": "Eggplant Dip",
+   "section": "Dips",
+   "menuPrice": 72000.0,
+   "statedCostPercent": 0.18770555555555554,
+   "statedIngredientCost": 12995.0,
+   "statedWasteAllowance": 519.8,
+   "statedTotalCost": 13514.8,
+   "lines": [
+    {
+     "ingredient": "Baba Ghanoush Base",
+     "qty": 0.225,
+     "unit": "portion",
+     "costPerUnit": 46822.22222222222,
+     "lineTotal": 10535.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.06,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 2460.0
+    }
+   ]
+  },
+  {
+   "name": "Bean Dip",
+   "section": "Dips",
+   "menuPrice": 76000.0,
+   "statedCostPercent": 0.1779174468085106,
+   "statedIngredientCost": 13001.659574468084,
+   "statedWasteAllowance": 520.0663829787234,
+   "statedTotalCost": 13521.725957446806,
+   "lines": [
+    {
+     "ingredient": "White Bean Hummus",
+     "qty": 0.18,
+     "unit": "portion",
+     "costPerUnit": 66842.55319148935,
+     "lineTotal": 12031.659574468084
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 820.0
+    },
+    {
+     "ingredient": "Corriander Powder",
+     "qty": 0.005,
+     "unit": "Kg",
+     "costPerUnit": 30000.0,
+     "lineTotal": 150.0
+    }
+   ]
+  },
+  {
+   "name": "Crudit\u00e9s",
+   "section": "Starters",
+   "menuPrice": 45000.0,
+   "statedCostPercent": 0.2415770686641698,
+   "statedIngredientCost": 10452.85393258427,
+   "statedWasteAllowance": 418.1141573033708,
+   "statedTotalCost": 10870.968089887641,
+   "lines": [
+    {
+     "ingredient": "Carrot",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 10000.0,
+     "lineTotal": 600.0
+    },
+    {
+     "ingredient": "Baby Corn",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 1400.0
+    },
+    {
+     "ingredient": "Cherry Tomato",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 6000.0
+    },
+    {
+     "ingredient": "Long Beans (Snake)",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 18000.0,
+     "lineTotal": 720.0
+    },
+    {
+     "ingredient": "Avocado Aioli",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 43321.34831460674,
+     "lineTotal": 1732.8539325842696
+    }
+   ]
+  },
+  {
+   "name": "Burrata",
+   "section": "Starters",
+   "menuPrice": 332000.0,
+   "statedCostPercent": 0.24749180722891567,
+   "statedIngredientCost": 79007.0,
+   "statedWasteAllowance": 3160.28,
+   "statedTotalCost": 82167.28,
+   "lines": [
+    {
+     "ingredient": "Burrata 200g",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 300000.0,
+     "lineTotal": 60000.0
+    },
+    {
+     "ingredient": "Heirloom Tomato Island Organic",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 14400.0
+    },
+    {
+     "ingredient": "Pomelo",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 2100.0
+    },
+    {
+     "ingredient": "Basil Oil",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 64350.0,
+     "lineTotal": 1287.0
+    },
+    {
+     "ingredient": "Coconut Balsamic",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 122000.0,
+     "lineTotal": 1220.0
+    }
+   ]
+  },
+  {
+   "name": "Halloumi Carpaccio",
+   "section": "Starters",
+   "menuPrice": 209000.0,
+   "statedCostPercent": 0.2399023923444976,
+   "statedIngredientCost": 48211.153846153844,
+   "statedWasteAllowance": 1928.4461538461537,
+   "statedTotalCost": 50139.6,
+   "lines": [
+    {
+     "ingredient": "Halloumi Cheese",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 320000.0,
+     "lineTotal": 38400.0
+    },
+    {
+     "ingredient": "Watermelon",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 18461.53846153846,
+     "lineTotal": 1846.1538461538462
+    },
+    {
+     "ingredient": "Olives (Black)",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 180000.0,
+     "lineTotal": 5400.0
+    },
+    {
+     "ingredient": "Red Onion",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 1950.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.015,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 615.0
+    }
+   ]
+  },
+  {
+   "name": "Caviar Crispy Potato (3 pcs)",
+   "section": "Starters",
+   "menuPrice": 9814000.0,
+   "statedCostPercent": 0.24042283238285586,
+   "statedIngredientCost": 2268759.304812834,
+   "statedWasteAllowance": 90750.37219251337,
+   "statedTotalCost": 2359509.6770053473,
+   "lines": [
+    {
+     "ingredient": "Potato Medium",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 22000.0,
+     "lineTotal": 3300.0
+    },
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 2256000.0
+    },
+    {
+     "ingredient": "Wasabi Cream",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 142732.62032085564,
+     "lineTotal": 5709.304812834226
+    },
+    {
+     "ingredient": "Creme Fraiche",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 3750.0
+    }
+   ]
+  },
+  {
+   "name": "Zucchini & Eggplant",
+   "section": "Starters",
+   "menuPrice": 144000.0,
+   "statedCostPercent": 0.21778144575922173,
+   "statedIngredientCost": 30154.35402819993,
+   "statedWasteAllowance": 1206.1741611279972,
+   "statedTotalCost": 31360.528189327928,
+   "lines": [
+    {
+     "ingredient": "Zucchini",
+     "qty": 0.14,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 6300.000000000001
+    },
+    {
+     "ingredient": "Eggplant / Aubergine",
+     "qty": 0.14,
+     "unit": "KG",
+     "costPerUnit": 20000.0,
+     "lineTotal": 2800.0000000000005
+    },
+    {
+     "ingredient": "Potato flour  Batter",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 26585.272277227723,
+     "lineTotal": 1595.1163366336634
+    },
+    {
+     "ingredient": "Labneh (Strained Yoghurt)",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 92362.04819277108,
+     "lineTotal": 5541.7228915662645
+    },
+    {
+     "ingredient": "Pomegranate",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 3750.0
+    },
+    {
+     "ingredient": "Pomegranate Molases",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 338917.16,
+     "lineTotal": 10167.514799999999
+    }
+   ]
+  },
+  {
+   "name": "Satay Lilit (3 skewers)",
+   "section": "Starters",
+   "menuPrice": 77000.0,
+   "statedCostPercent": 0.2571748917748918,
+   "statedIngredientCost": 19040.833333333332,
+   "statedWasteAllowance": 761.6333333333333,
+   "statedTotalCost": 19802.466666666667,
+   "lines": [
+    {
+     "ingredient": "Snapper Fillet",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 140000.0,
+     "lineTotal": 16800.0
+    },
+    {
+     "ingredient": "Lemongrass",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 18750.0,
+     "lineTotal": 562.5
+    },
+    {
+     "ingredient": "Galangal",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 13000.0,
+     "lineTotal": 195.0
+    },
+    {
+     "ingredient": "Coconut Oil",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 133333.33333333334,
+     "lineTotal": 1333.3333333333335
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    }
+   ]
+  },
+  {
+   "name": "Scallops (3 pcs)",
+   "section": "Starters",
+   "menuPrice": 227000.0,
+   "statedCostPercent": 0.2403453744493392,
+   "statedIngredientCost": 52460.0,
+   "statedWasteAllowance": 2098.4,
+   "statedTotalCost": 54558.4,
+   "lines": [
+    {
+     "ingredient": "Scallops (Half Shell)",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 380000.0,
+     "lineTotal": 45600.0
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 225.0
+    },
+    {
+     "ingredient": "Truffle Oil 250 ML",
+     "qty": 0.005,
+     "unit": "L",
+     "costPerUnit": 1292000.0,
+     "lineTotal": 6460.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 175.0
+    }
+   ]
+  },
+  {
+   "name": "Tuna Tartare",
+   "section": "Starters",
+   "menuPrice": 214000.0,
+   "statedCostPercent": 0.2353699218004959,
+   "statedIngredientCost": 48431.88775510204,
+   "statedWasteAllowance": 1937.2755102040817,
+   "statedTotalCost": 50369.163265306124,
+   "lines": [
+    {
+     "ingredient": "Red Snapper (Whole)",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 150000.0,
+     "lineTotal": 18000.0
+    },
+    {
+     "ingredient": "Tuna Tartare Dressing",
+     "qty": 0.025,
+     "unit": "portion",
+     "costPerUnit": 111275.51020408161,
+     "lineTotal": 2781.8877551020405
+    },
+    {
+     "ingredient": "Shallot",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 1600.0
+    },
+    {
+     "ingredient": "Tamarillo",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 1050.0
+    },
+    {
+     "ingredient": "Basmati Rice",
+     "qty": 0.25,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 25000.0
+    }
+   ]
+  },
+  {
+   "name": "Sea Urchin Rice Ball (3 pcs)",
+   "section": "Starters",
+   "menuPrice": 595000.0,
+   "statedCostPercent": 0.24097151148235968,
+   "statedIngredientCost": 137863.50897308078,
+   "statedWasteAllowance": 5514.540358923231,
+   "statedTotalCost": 143378.049332004,
+   "lines": [
+    {
+     "ingredient": "Sea Urchin (Uni)",
+     "qty": 0.045,
+     "unit": "KG",
+     "costPerUnit": 3000000.0,
+     "lineTotal": 135000.0
+    },
+    {
+     "ingredient": "Crispy Rice Base",
+     "qty": 0.09,
+     "unit": "portion",
+     "costPerUnit": 19611.86440677966,
+     "lineTotal": 1765.0677966101694
+    },
+    {
+     "ingredient": "Sour Mango Sambal",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 35864.705882352944,
+     "lineTotal": 1075.9411764705883
+    },
+    {
+     "ingredient": "Nori Sheet",
+     "qty": 0.5,
+     "unit": "EA",
+     "costPerUnit": 45.0,
+     "lineTotal": 22.5
+    }
+   ]
+  },
+  {
+   "name": "Mixed Seafood Escabeche",
+   "section": "Starters",
+   "menuPrice": 170000.0,
+   "statedCostPercent": 0.2388829946524064,
+   "statedIngredientCost": 39048.181818181816,
+   "statedWasteAllowance": 1561.9272727272728,
+   "statedTotalCost": 40610.109090909085,
+   "lines": [
+    {
+     "ingredient": "Snapper Fillet",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 140000.0,
+     "lineTotal": 11200.0
+    },
+    {
+     "ingredient": "Tiger Prawn S15",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 230000.0,
+     "lineTotal": 18400.0
+    },
+    {
+     "ingredient": "Escabeche Broth",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 76602.27272727274,
+     "lineTotal": 6128.181818181819
+    },
+    {
+     "ingredient": "Onion",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 33000.0,
+     "lineTotal": 1320.0
+    },
+    {
+     "ingredient": "Coriander Leaves",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 2000.0
+    }
+   ]
+  },
+  {
+   "name": "Tuna Carpaccio",
+   "section": "Crudos",
+   "menuPrice": 207000.0,
+   "statedCostPercent": 0.240294531835206,
+   "statedIngredientCost": 47827.85393258427,
+   "statedWasteAllowance": 1913.114157303371,
+   "statedTotalCost": 49740.96808988764,
+   "lines": [
+    {
+     "ingredient": "Bluefin Tuna Loin",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 494000.0,
+     "lineTotal": 39520.0
+    },
+    {
+     "ingredient": "Avocado Aioli",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 43321.34831460674,
+     "lineTotal": 1732.8539325842696
+    },
+    {
+     "ingredient": "Lemon",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 960.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.015,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 615.0
+    },
+    {
+     "ingredient": "Maldon Sea Salt",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 2500000.0,
+     "lineTotal": 5000.0
+    }
+   ]
+  },
+  {
+   "name": "Snapper Ceviche",
+   "section": "Crudos",
+   "menuPrice": 189000.0,
+   "statedCostPercent": 0.24224527088212336,
+   "statedIngredientCost": 44023.41941992434,
+   "statedWasteAllowance": 1760.9367767969738,
+   "statedTotalCost": 45784.35619672132,
+   "lines": [
+    {
+     "ingredient": "Snapper Fillet",
+     "qty": 0.14,
+     "unit": "KG",
+     "costPerUnit": 140000.0,
+     "lineTotal": 19600.000000000004
+    },
+    {
+     "ingredient": "Snapper tiger",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 78315.96469104665,
+     "lineTotal": 4698.957881462799
+    },
+    {
+     "ingredient": "Radish Mix Retail Organic",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 5100.0
+    },
+    {
+     "ingredient": "Coriander Leaves",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 8000.0
+    },
+    {
+     "ingredient": "Chili sauce",
+     "qty": 0.005,
+     "unit": "portion",
+     "costPerUnit": 34892.307692307695,
+     "lineTotal": 174.46153846153848
+    },
+    {
+     "ingredient": "Coconut Shaved",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 90000.0,
+     "lineTotal": 450.0
+    },
+    {
+     "ingredient": "Banana kepok",
+     "qty": 0.5,
+     "unit": "KG",
+     "costPerUnit": 12000.0,
+     "lineTotal": 6000.0
+    }
+   ]
+  },
+  {
+   "name": "Tiger Prawns Crudo",
+   "section": "Crudos",
+   "menuPrice": 202000.0,
+   "statedCostPercent": 0.24285570297029707,
+   "statedIngredientCost": 47170.05,
+   "statedWasteAllowance": 1886.8020000000001,
+   "statedTotalCost": 49056.852000000006,
+   "lines": [
+    {
+     "ingredient": "Prawn U20 whole",
+     "qty": 0.14,
+     "unit": "KG",
+     "costPerUnit": 185000.0,
+     "lineTotal": 25900.000000000004
+    },
+    {
+     "ingredient": "lemon",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 96.0
+    },
+    {
+     "ingredient": "Basil Italian",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 450.0
+    },
+    {
+     "ingredient": "Extra Virgin Olive Oil Cobram Estate",
+     "qty": 0.1,
+     "unit": "L",
+     "costPerUnit": 200000.0,
+     "lineTotal": 20000.0
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 30.0
+    },
+    {
+     "ingredient": "Lime Koshu",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 34702.5,
+     "lineTotal": 694.0500000000001
+    }
+   ]
+  },
+  {
+   "name": "Seacuterie Plate",
+   "section": "Crudos",
+   "menuPrice": 361000.0,
+   "statedCostPercent": 0.0637092427619278,
+   "statedIngredientCost": 22114.458304861477,
+   "statedWasteAllowance": 884.5783321944591,
+   "statedTotalCost": 22999.036637055935,
+   "lines": [
+    {
+     "ingredient": "Mojama - Tuna Cure",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 107725.33333333333,
+     "lineTotal": 4309.013333333333
+    },
+    {
+     "ingredient": "Amberjack Pastrami",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 141792.25347887326,
+     "lineTotal": 5671.690139154931
+    },
+    {
+     "ingredient": "FISH RILLETTES",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 132227.02698648648,
+     "lineTotal": 5289.081079459459
+    },
+    {
+     "ingredient": "Tuna Nduja",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 171116.84382284386,
+     "lineTotal": 6844.6737529137545
+    }
+   ]
+  },
+  {
+   "name": "Baby Gem & Radicchio",
+   "section": "Salads",
+   "menuPrice": 168000.0,
+   "statedCostPercent": 0.1965662464385568,
+   "statedIngredientCost": 31753.009040074558,
+   "statedWasteAllowance": 1270.1203616029823,
+   "statedTotalCost": 33023.12940167754,
+   "lines": [
+    {
+     "ingredient": "Baby Gem Lettuce",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 9600.0
+    },
+    {
+     "ingredient": "Radicchio",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 180000.0,
+     "lineTotal": 9000.0
+    },
+    {
+     "ingredient": "Caesar-Miso Dressing",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 63994.48275862068,
+     "lineTotal": 2559.779310344827
+    },
+    {
+     "ingredient": "Manchego",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 625000.0,
+     "lineTotal": 9375.0
+    },
+    {
+     "ingredient": "Panko Breadcrumbs",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 29000.0,
+     "lineTotal": 580.0
+    },
+    {
+     "ingredient": "Cured Egg Yolk",
+     "qty": 0.05,
+     "unit": "portion",
+     "costPerUnit": 12764.594594594593,
+     "lineTotal": 638.2297297297297
+    }
+   ]
+  },
+  {
+   "name": "Watermelon & Feta",
+   "section": "Salads",
+   "menuPrice": 168000.0,
+   "statedCostPercent": 0.20730253191695702,
+   "statedIngredientCost": 33487.33207889306,
+   "statedWasteAllowance": 1339.4932831557223,
+   "statedTotalCost": 34826.82536204878,
+   "lines": [
+    {
+     "ingredient": "Watermelon",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 18461.53846153846,
+     "lineTotal": 3692.3076923076924
+    },
+    {
+     "ingredient": "Feta Cheese",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 280000.0,
+     "lineTotal": 16800.0
+    },
+    {
+     "ingredient": "Cherry Tomato",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 7200.0
+    },
+    {
+     "ingredient": "Pomegranate",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Lime Dressing",
+     "qty": 0.025,
+     "unit": "portion",
+     "costPerUnit": 131800.97546341465,
+     "lineTotal": 3295.0243865853663
+    }
+   ]
+  },
+  {
+   "name": "Heirloom Tomato",
+   "section": "Salads",
+   "menuPrice": 129000.0,
+   "statedCostPercent": 0.23894806201550386,
+   "statedIngredientCost": 29638.75,
+   "statedWasteAllowance": 1185.55,
+   "statedTotalCost": 30824.3,
+   "lines": [
+    {
+     "ingredient": "Cherry Tomato",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 18000.0
+    },
+    {
+     "ingredient": "Tomato Cherry Yellow",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 3200.0
+    },
+    {
+     "ingredient": "Basil Oil",
+     "qty": 0.025,
+     "unit": "portion",
+     "costPerUnit": 64350.0,
+     "lineTotal": 1608.75
+    },
+    {
+     "ingredient": "Coconut Balsamic",
+     "qty": 0.015,
+     "unit": "L",
+     "costPerUnit": 122000.0,
+     "lineTotal": 1830.0
+    },
+    {
+     "ingredient": "Maldon Sea Salt",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 2500000.0,
+     "lineTotal": 5000.0
+    }
+   ]
+  },
+  {
+   "name": "Grilled Squid",
+   "section": "Salads",
+   "menuPrice": 197000.0,
+   "statedCostPercent": 0.1944866175465488,
+   "statedIngredientCost": 36840.253516028955,
+   "statedWasteAllowance": 1473.6101406411583,
+   "statedTotalCost": 38313.86365667012,
+   "lines": [
+    {
+     "ingredient": "Baby Squid (Cumi Manis)",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 150000.0,
+     "lineTotal": 22500.0
+    },
+    {
+     "ingredient": "Fennel",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 80000.0,
+     "lineTotal": 3200.0
+    },
+    {
+     "ingredient": "English Spinach",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 1400.0
+    },
+    {
+     "ingredient": "Black Garlic Dressing",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 151515.0,
+     "lineTotal": 4545.45
+    },
+    {
+     "ingredient": "Crab Salad Lettuce Mix",
+     "qty": 0.05,
+     "unit": "portion",
+     "costPerUnit": 103896.07032057914,
+     "lineTotal": 5194.803516028957
+    }
+   ]
+  },
+  {
+   "name": "Mango & Arugula",
+   "section": "Sides",
+   "menuPrice": 88000.0,
+   "statedCostPercent": 0.23914481818181818,
+   "statedIngredientCost": 20235.330769230768,
+   "statedWasteAllowance": 809.4132307692307,
+   "statedTotalCost": 21044.744,
+   "lines": [
+    {
+     "ingredient": "Mango Harum Manis",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 3000.0
+    },
+    {
+     "ingredient": "Arugula / Rocket",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 180000.0,
+     "lineTotal": 7200.0
+    },
+    {
+     "ingredient": "Mango Chili-Lime Dressing",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 126177.6923076923,
+     "lineTotal": 3785.330769230769
+    },
+    {
+     "ingredient": "Almond Slice 1 Kg",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 3000.0
+    },
+    {
+     "ingredient": "Cheese Parmesan / Grana Padano",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 325000.0,
+     "lineTotal": 3250.0
+    }
+   ]
+  },
+  {
+   "name": "Sea Grape & Palm Heart",
+   "section": "Sides",
+   "menuPrice": 142000.0,
+   "statedCostPercent": 0.24015211267605632,
+   "statedIngredientCost": 32790.0,
+   "statedWasteAllowance": 1311.6000000000001,
+   "statedTotalCost": 34101.6,
+   "lines": [
+    {
+     "ingredient": "Sea Grapes (Caulerpa)",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 9600.0
+    },
+    {
+     "ingredient": "Palm Heart (Pickled)",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 180000.0,
+     "lineTotal": 14400.0
+    },
+    {
+     "ingredient": "Cherry Tomato",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 7200.0
+    },
+    {
+     "ingredient": "Calamansi",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 1200.0
+    },
+    {
+     "ingredient": "Cane Vinegar",
+     "qty": 0.015,
+     "unit": "L",
+     "costPerUnit": 26000.0,
+     "lineTotal": 390.0
+    }
+   ]
+  },
+  {
+   "name": "Roasted Corn",
+   "section": "Sides",
+   "menuPrice": 83000.0,
+   "statedCostPercent": 0.2469686746987952,
+   "statedIngredientCost": 19710.0,
+   "statedWasteAllowance": 788.4,
+   "statedTotalCost": 20498.4,
+   "lines": [
+    {
+     "ingredient": "Baby Corn",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 7000.0
+    },
+    {
+     "ingredient": "Greek Yogurt Plain Green Fields",
+     "qty": 0.09,
+     "unit": "L",
+     "costPerUnit": 90000.0,
+     "lineTotal": 8100.0
+    },
+    {
+     "ingredient": "Smoked Paprika Powder",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 170000.0,
+     "lineTotal": 510.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 175.0
+    },
+    {
+     "ingredient": "butter",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 165000.0,
+     "lineTotal": 825.0
+    },
+    {
+     "ingredient": "white pepper",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 600.0
+    },
+    {
+     "ingredient": "Maldon Sea Salt",
+     "qty": 0.001,
+     "unit": "KG",
+     "costPerUnit": 2500000.0,
+     "lineTotal": 2500.0
+    }
+   ]
+  },
+  {
+   "name": "Tender Kailan Shoots",
+   "section": "Sides",
+   "menuPrice": 61000.0,
+   "statedCostPercent": 0.24828874754098362,
+   "statedIngredientCost": 14563.09,
+   "statedWasteAllowance": 582.5236,
+   "statedTotalCost": 15145.6136,
+   "lines": [
+    {
+     "ingredient": "Kailan Shoots",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 8000.0
+    },
+    {
+     "ingredient": "Miso Butter - Pacojet",
+     "qty": 0.035,
+     "unit": "portion",
+     "costPerUnit": 149150.0,
+     "lineTotal": 5220.250000000001
+    },
+    {
+     "ingredient": "Garlic Clean",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 800.0
+    },
+    {
+     "ingredient": "Sesame Seed",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 67568.0,
+     "lineTotal": 337.84000000000003
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.005,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 205.0
+    }
+   ]
+  },
+  {
+   "name": "Balinese Heritage Long Beans",
+   "section": "Sides",
+   "menuPrice": 71000.0,
+   "statedCostPercent": 0.24883098591549296,
+   "statedIngredientCost": 16987.5,
+   "statedWasteAllowance": 679.5,
+   "statedTotalCost": 17667.0,
+   "lines": [
+    {
+     "ingredient": "Long Beans (Snake)",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 18000.0,
+     "lineTotal": 1800.0
+    },
+    {
+     "ingredient": "Long Beans (black)",
+     "qty": 0.1,
+     "unit": "portion",
+     "costPerUnit": 20000.0,
+     "lineTotal": 2000.0
+    },
+    {
+     "ingredient": "Wing beans",
+     "qty": 0.1,
+     "unit": "portion",
+     "costPerUnit": 22000.0,
+     "lineTotal": 2200.0
+    },
+    {
+     "ingredient": "Green beans",
+     "qty": 0.12,
+     "unit": "portion",
+     "costPerUnit": 24000.0,
+     "lineTotal": 2880.0
+    },
+    {
+     "ingredient": "Long Beans (black)",
+     "qty": 0.1,
+     "unit": "portion",
+     "costPerUnit": 20000.0,
+     "lineTotal": 2000.0
+    },
+    {
+     "ingredient": "Dry Coconut Sambal",
+     "qty": 0.1,
+     "unit": "portion",
+     "costPerUnit": 44624.99999999999,
+     "lineTotal": 4462.499999999999
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 225.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 820.0
+    },
+    {
+     "ingredient": "white pepper",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 600.0
+    }
+   ]
+  },
+  {
+   "name": "Baked Sweet Potato",
+   "section": "Sides",
+   "menuPrice": 47000.0,
+   "statedCostPercent": 0.23853617021276596,
+   "statedIngredientCost": 10780.0,
+   "statedWasteAllowance": 431.2,
+   "statedTotalCost": 11211.2,
+   "lines": [
+    {
+     "ingredient": "Sweet Potato",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 23000.0,
+     "lineTotal": 4600.0
+    },
+    {
+     "ingredient": "Corn (Sweet)",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 900.0
+    },
+    {
+     "ingredient": "Creme Fraiche",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 5000.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.008,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 280.0
+    }
+   ]
+  },
+  {
+   "name": "Potatoes & Rosemary",
+   "section": "Sides",
+   "menuPrice": 65000.0,
+   "statedCostPercent": 0.2568,
+   "statedIngredientCost": 16050.0,
+   "statedWasteAllowance": 642.0,
+   "statedTotalCost": 16692.0,
+   "lines": [
+    {
+     "ingredient": "Potato Medium",
+     "qty": 0.25,
+     "unit": "KG",
+     "costPerUnit": 22000.0,
+     "lineTotal": 5500.0
+    },
+    {
+     "ingredient": "Rosemary",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 8000.0
+    },
+    {
+     "ingredient": "Kusamba Sea Salt",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 50000.0,
+     "lineTotal": 250.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 820.0
+    },
+    {
+     "ingredient": "white pepper",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 600.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.008,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 280.0
+    },
+    {
+     "ingredient": "Dill",
+     "qty": 0.008,
+     "unit": "KG",
+     "costPerUnit": 75000.0,
+     "lineTotal": 600.0
+    }
+   ]
+  },
+  {
+   "name": "Tropical Magnum",
+   "section": "Desserts",
+   "menuPrice": 79000.0,
+   "statedCostPercent": 0.2552814541772152,
+   "statedIngredientCost": 19391.572,
+   "statedWasteAllowance": 775.66288,
+   "statedTotalCost": 20167.23488,
+   "lines": [
+    {
+     "ingredient": "Fresh Milk Full Fat",
+     "qty": 0.042,
+     "unit": "L",
+     "costPerUnit": 19000.0,
+     "lineTotal": 798.0
+    },
+    {
+     "ingredient": "Cream - Anchor Culinary Cream",
+     "qty": 0.032,
+     "unit": "L",
+     "costPerUnit": 100000.0,
+     "lineTotal": 3200.0
+    },
+    {
+     "ingredient": "Egg Yolk",
+     "qty": 0.005,
+     "unit": "EA",
+     "costPerUnit": 1500.0,
+     "lineTotal": 7.5
+    },
+    {
+     "ingredient": "Caster Sugar",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 26640.0,
+     "lineTotal": 1065.6
+    },
+    {
+     "ingredient": "Tropical Magnum Coating",
+     "qty": 0.04,
+     "unit": "portion",
+     "costPerUnit": 292861.80000000005,
+     "lineTotal": 11714.472000000002
+    },
+    {
+     "ingredient": "Tamarind Paste",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 225.0
+    },
+    {
+     "ingredient": "Butter Unsalted AUS 10 kg",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 500.0
+    },
+    {
+     "ingredient": "White Chocolate Chef Mate",
+     "qty": 0.033,
+     "unit": "KG",
+     "costPerUnit": 57000.0,
+     "lineTotal": 1881.0
+    }
+   ]
+  },
+  {
+   "name": "Island Fruits Platter (serves 2)",
+   "section": "Desserts",
+   "menuPrice": 110000.0,
+   "statedCostPercent": 0.2393890909090909,
+   "statedIngredientCost": 25320.0,
+   "statedWasteAllowance": 1012.8000000000001,
+   "statedTotalCost": 26332.8,
+   "lines": [
+    {
+     "ingredient": "Passionfruit",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 60000.0,
+     "lineTotal": 3600.0
+    },
+    {
+     "ingredient": "Pineapple",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 8000.0,
+     "lineTotal": 800.0
+    },
+    {
+     "ingredient": "Mango Harum Manis",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Dragon Fruit",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 24000.0,
+     "lineTotal": 1920.0
+    },
+    {
+     "ingredient": "Coconut Young (Tender)",
+     "qty": 0.5,
+     "unit": "EA",
+     "costPerUnit": 25000.0,
+     "lineTotal": 12500.0
+    },
+    {
+     "ingredient": "Honey",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 4000.0
+    }
+   ]
+  },
+  {
+   "name": "Tropical Magnum",
+   "section": "Desserts",
+   "menuPrice": 30000.0,
+   "statedCostPercent": 0.3129023164918014,
+   "statedIngredientCost": 9026.028360340424,
+   "statedWasteAllowance": 361.041134413617,
+   "statedTotalCost": 9387.069494754041,
+   "lines": [
+    {
+     "ingredient": "Yoghurt Ice Cream Base",
+     "qty": 0.12,
+     "unit": "portion",
+     "costPerUnit": 61994.6808361702,
+     "lineTotal": 7439.361700340423
+    },
+    {
+     "ingredient": "Desiccated Coconut",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 800.0
+    },
+    {
+     "ingredient": "Peanuts Toasted",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 38000.0,
+     "lineTotal": 570.0
+    },
+    {
+     "ingredient": "Cinnamon Powder/ Jar",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 108333.33,
+     "lineTotal": 216.66666
+    }
+   ]
+  },
+  {
+   "name": "Sorbets & Ice Creams",
+   "section": "Desserts",
+   "menuPrice": 37000.0,
+   "statedCostPercent": 0.266499439515298,
+   "statedIngredientCost": 9481.23005967887,
+   "statedWasteAllowance": 379.2492023871548,
+   "statedTotalCost": 9860.479262066025,
+   "lines": [
+    {
+     "ingredient": "Sorbet Base (Passionfruit)",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 53581.3953488372,
+     "lineTotal": 4286.511627906976
+    },
+    {
+     "ingredient": "Vanilla Ice Cream Base",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 42433.980397148676,
+     "lineTotal": 3394.7184317718943
+    },
+    {
+     "ingredient": "Passionfruit",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 60000.0,
+     "lineTotal": 1800.0
+    }
+   ]
+  },
+  {
+   "name": "Caviar Crispy Potato 5g (per pc)",
+   "section": "Caviar Menu",
+   "menuPrice": 3297000.0,
+   "statedCostPercent": 0.24029442470399157,
+   "statedIngredientCost": 761779.5367779426,
+   "statedWasteAllowance": 30471.181471117703,
+   "statedTotalCost": 792250.7182490602,
+   "lines": [
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 752000.0
+    },
+    {
+     "ingredient": "Potato Medium",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 22000.0,
+     "lineTotal": 2200.0
+    },
+    {
+     "ingredient": "Wasabi Cream",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 142732.62032085564,
+     "lineTotal": 4281.978609625669
+    },
+    {
+     "ingredient": "Creme Fraiche",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Beer Batter",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 26585.272277227723,
+     "lineTotal": 797.5581683168317
+    }
+   ]
+  },
+  {
+   "name": "Raunchy Oysters 2g (per pc)",
+   "section": "Caviar Menu",
+   "menuPrice": 1604000.0,
+   "statedCostPercent": 0.24043833351404098,
+   "statedIngredientCost": 370829.89130434784,
+   "statedWasteAllowance": 14833.195652173914,
+   "statedTotalCost": 385663.0869565217,
+   "lines": [
+    {
+     "ingredient": "Flores Oysters",
+     "qty": 1.0,
+     "unit": "EA",
+     "costPerUnit": 35000.0,
+     "lineTotal": 35000.0
+    },
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 300800.0
+    },
+    {
+     "ingredient": "Sea Urchin (Uni)",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 3000000.0,
+     "lineTotal": 30000.0
+    },
+    {
+     "ingredient": "Tiger Prawn S15",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 230000.0,
+     "lineTotal": 4600.0
+    },
+    {
+     "ingredient": "Pineapple Vinegar Mignonette",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 42989.13043478261,
+     "lineTotal": 429.89130434782606
+    }
+   ]
+  },
+  {
+   "name": "Caviar Rosette 3g (per pc)",
+   "section": "Caviar Menu",
+   "menuPrice": 1960000.0,
+   "statedCostPercent": 0.24023737525522385,
+   "statedIngredientCost": 452755.05336561415,
+   "statedWasteAllowance": 18110.202134624567,
+   "statedTotalCost": 470865.25550023874,
+   "lines": [
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 451200.0
+    },
+    {
+     "ingredient": "Avocado Dip Base",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 51835.11218713768,
+     "lineTotal": 1555.0533656141304
+    }
+   ]
+  },
+  {
+   "name": "Caviar Tuna Tartlet 5g (per pc)",
+   "section": "Caviar Menu",
+   "menuPrice": 3321000.0,
+   "statedCostPercent": 0.24040767360582466,
+   "statedIngredientCost": 767686.4269662921,
+   "statedWasteAllowance": 30707.457078651685,
+   "statedTotalCost": 798393.8840449437,
+   "lines": [
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 752000.0
+    },
+    {
+     "ingredient": "Bluefin Tuna Loin",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 494000.0,
+     "lineTotal": 14820.0
+    },
+    {
+     "ingredient": "Avocado Aioli",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 43321.34831460674,
+     "lineTotal": 866.4269662921348
+    }
+   ]
+  },
+  {
+   "name": "Sea Urchin Caviar Rice Ball 3g",
+   "section": "Caviar Menu",
+   "menuPrice": 2413000.0,
+   "statedCostPercent": 0.24053782271916124,
+   "statedIngredientCost": 558094.0059820539,
+   "statedWasteAllowance": 22323.760239282157,
+   "statedTotalCost": 580417.7662213361,
+   "lines": [
+    {
+     "ingredient": "Sea Urchin (Uni)",
+     "qty": 0.035,
+     "unit": "KG",
+     "costPerUnit": 3000000.0,
+     "lineTotal": 105000.00000000001
+    },
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 451200.0
+    },
+    {
+     "ingredient": "Crispy Rice Base",
+     "qty": 0.06,
+     "unit": "portion",
+     "costPerUnit": 19611.86440677966,
+     "lineTotal": 1176.7118644067796
+    },
+    {
+     "ingredient": "Sour Mango Sambal",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 35864.705882352944,
+     "lineTotal": 717.2941176470589
+    }
+   ]
+  },
+  {
+   "name": "Caviar Grilled Scallop 3g (per pc)",
+   "section": "Caviar Menu",
+   "menuPrice": 2068000.0,
+   "statedCostPercent": 0.24039992263056092,
+   "statedIngredientCost": 478026.0,
+   "statedWasteAllowance": 19121.04,
+   "statedTotalCost": 497147.04,
+   "lines": [
+    {
+     "ingredient": "Scallops (Half Shell)",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 380000.0,
+     "lineTotal": 22800.0
+    },
+    {
+     "ingredient": "Oscietra Caviar",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 150400000.0,
+     "lineTotal": 451200.0
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    },
+    {
+     "ingredient": "Truffle Oil 250 ML",
+     "qty": 0.003,
+     "unit": "L",
+     "costPerUnit": 1292000.0,
+     "lineTotal": 3876.0
+    }
+   ]
+  },
+  {
+   "name": "Rainbow rice",
+   "section": "Caviar Menu",
+   "menuPrice": 65000.0,
+   "statedCostPercent": 0.253368,
+   "statedIngredientCost": 15835.5,
+   "statedWasteAllowance": 633.42,
+   "statedTotalCost": 16468.92,
+   "lines": [
+    {
+     "ingredient": "Local Rice",
+     "qty": 0.175,
+     "unit": "KG",
+     "costPerUnit": 18000.0,
+     "lineTotal": 3150.0
+    },
+    {
+     "ingredient": "Parsley",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 70000.0,
+     "lineTotal": 3500.0
+    },
+    {
+     "ingredient": "Red Onion",
+     "qty": 0.075,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 4875.0
+    },
+    {
+     "ingredient": "Garlic Clean",
+     "qty": 0.0005,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 20.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.003,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 123.0
+    },
+    {
+     "ingredient": "Salt",
+     "qty": 0.0005,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 2.5
+    },
+    {
+     "ingredient": "Rosemary",
+     "qty": 0.004,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 400.0
+    },
+    {
+     "ingredient": "Kusamba Sea Salt",
+     "qty": 0.0025,
+     "unit": "KG",
+     "costPerUnit": 50000.0,
+     "lineTotal": 125.0
+    },
+    {
+     "ingredient": "Coriander",
+     "qty": 0.001,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 200.0
+    },
+    {
+     "ingredient": "white pepper",
+     "qty": 0.0025,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 300.0
+    },
+    {
+     "ingredient": "Chives",
+     "qty": 0.004,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 140.0
+    },
+    {
+     "ingredient": "Dill",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 75000.0,
+     "lineTotal": 3000.0
+    },
+    {
+     "ingredient": "Shallot",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 800.0
+    },
+    {
+     "ingredient": "Beetroot",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 28000.0,
+     "lineTotal": 560.0
+    },
+    {
+     "ingredient": "carrots",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 1600.0
+    },
+    {
+     "ingredient": "Cellery",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 1600.0
+    }
+   ]
+  },
+  {
+   "name": "Crustacean Ceviche",
+   "section": "Crudos",
+   "menuPrice": 238000.0,
+   "statedCostPercent": 0.24629850117723626,
+   "statedIngredientCost": 56364.464692482914,
+   "statedWasteAllowance": 2254.578587699317,
+   "statedTotalCost": 58619.04328018223,
+   "lines": [
+    {
+     "ingredient": "Prawns U30 Clean",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 175000.0,
+     "lineTotal": 14000.0
+    },
+    {
+     "ingredient": "Slipper Lobster",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 175000.0,
+     "lineTotal": 10500.0
+    },
+    {
+     "ingredient": "Blue Crab Meat Picked",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 770000.0,
+     "lineTotal": 23100.0
+    },
+    {
+     "ingredient": "Crustacean Tiger",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 68305.80865603646,
+     "lineTotal": 5464.464692482917
+    },
+    {
+     "ingredient": "Corn (Sweet)",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 600.0
+    },
+    {
+     "ingredient": "Baby Corn",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 700.0
+    },
+    {
+     "ingredient": "capsicum yellow",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 50000.0,
+     "lineTotal": 500.0
+    },
+    {
+     "ingredient": "Passionfruit",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 60000.0,
+     "lineTotal": 1200.0
+    },
+    {
+     "ingredient": "Lime Local",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 300.0
+    }
+   ]
+  },
+  {
+   "name": "Red Capsicum Dip",
+   "section": "Dips",
+   "menuPrice": 72000.0,
+   "statedCostPercent": 0.23246162804515744,
+   "statedIngredientCost": 16093.497326203207,
+   "statedWasteAllowance": 643.7398930481284,
+   "statedTotalCost": 16737.237219251336,
+   "lines": [
+    {
+     "ingredient": "Red Capsicum Dip Base",
+     "qty": 0.08,
+     "unit": "portion",
+     "costPerUnit": 188668.7165775401,
+     "lineTotal": 15093.497326203207
+    },
+    {
+     "ingredient": "Extra Virgin Olive Oil Cobram Estate",
+     "qty": 0.005,
+     "unit": "L",
+     "costPerUnit": 200000.0,
+     "lineTotal": 1000.0
+    }
+   ]
+  },
+  {
+   "name": "Lamb Dumpling",
+   "section": "Starters",
+   "menuPrice": 148000.0,
+   "statedCostPercent": 0.23836856381465868,
+   "statedIngredientCost": 33921.68023516297,
+   "statedWasteAllowance": 1356.8672094065187,
+   "statedTotalCost": 35278.547444569485,
+   "lines": [
+    {
+     "ingredient": "Minced Lamb",
+     "qty": 0.075,
+     "unit": "KG",
+     "costPerUnit": 350000.0,
+     "lineTotal": 26250.0
+    },
+    {
+     "ingredient": "Onion",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 33000.0,
+     "lineTotal": 495.0
+    },
+    {
+     "ingredient": "Mint",
+     "qty": 0.008,
+     "unit": "KG",
+     "costPerUnit": 70000.0,
+     "lineTotal": 560.0
+    },
+    {
+     "ingredient": "Plain Flour",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 12000.0,
+     "lineTotal": 360.0
+    },
+    {
+     "ingredient": "Lamb Spice Mix",
+     "qty": 0.003,
+     "unit": "portion",
+     "costPerUnit": 151355.56399999998,
+     "lineTotal": 454.066692
+    },
+    {
+     "ingredient": "Sichuan Red Pepper Chili Oil",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 61601.265393442605,
+     "lineTotal": 1232.0253078688522
+    },
+    {
+     "ingredient": "Garlic Yogurt",
+     "qty": 0.05,
+     "unit": "portion",
+     "costPerUnit": 91411.76470588235,
+     "lineTotal": 4570.588235294118
+    }
+   ]
+  },
+  {
+   "name": "Beetroot Salad",
+   "section": "Salads",
+   "menuPrice": 25000.0,
+   "statedCostPercent": 0.23872576,
+   "statedIngredientCost": 5738.6,
+   "statedWasteAllowance": 229.544,
+   "statedTotalCost": 5968.144,
+   "lines": [
+    {
+     "ingredient": "Baby Beetroot",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 1600.0
+    },
+    {
+     "ingredient": "Parsley",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 70000.0,
+     "lineTotal": 700.0
+    },
+    {
+     "ingredient": "Red Onion",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 975.0
+    },
+    {
+     "ingredient": "Garlic Clean",
+     "qty": 0.001,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 40.0
+    },
+    {
+     "ingredient": "Balsamic",
+     "qty": 0.006,
+     "unit": "L",
+     "costPerUnit": 122100.0,
+     "lineTotal": 732.6
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.006,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 246.0
+    },
+    {
+     "ingredient": "Walnut Oil",
+     "qty": 0.006,
+     "unit": "L",
+     "costPerUnit": 240000.0,
+     "lineTotal": 1440.0
+    },
+    {
+     "ingredient": "Salt",
+     "qty": 0.001,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 5.0
+    }
+   ]
+  },
+  {
+   "name": "Sourdough Bread Portion",
+   "section": "Starters",
+   "menuPrice": 32000.0,
+   "statedCostPercent": 0.2996124000749715,
+   "statedIngredientCost": 9218.843079229891,
+   "statedWasteAllowance": 368.75372316919567,
+   "statedTotalCost": 9587.596802399086,
+   "lines": [
+    {
+     "ingredient": "Sourdough Bread Base",
+     "qty": 0.221,
+     "unit": "kg",
+     "costPerUnit": 41714.222077963306,
+     "lineTotal": 9218.843079229891
+    }
+   ]
+  },
+  {
+   "name": "Sesame Bread ring",
+   "section": "Salads",
+   "menuPrice": 32000.0,
+   "statedCostPercent": 0.24524185085184058,
+   "statedIngredientCost": 7545.903103133556,
+   "statedWasteAllowance": 301.8361241253423,
+   "statedTotalCost": 7847.739227258899,
+   "lines": [
+    {
+     "ingredient": "Bread Ring Dough",
+     "qty": 0.21,
+     "unit": "kg",
+     "costPerUnit": 35932.8719196836,
+     "lineTotal": 7545.903103133556
+    }
+   ]
+  },
+  {
+   "name": "Milk Buns",
+   "section": "Salads",
+   "menuPrice": 32000.0,
+   "statedCostPercent": 0.23024706985769722,
+   "statedIngredientCost": 7084.525226390684,
+   "statedWasteAllowance": 283.3810090556274,
+   "statedTotalCost": 7367.906235446311,
+   "lines": [
+    {
+     "ingredient": "Milk Bun Dough",
+     "qty": 0.14,
+     "unit": "kg",
+     "costPerUnit": 50603.75161707631,
+     "lineTotal": 7084.525226390684
+    }
+   ]
+  },
+  {
+   "name": "Avocado & Root Crisps",
+   "section": "Starters",
+   "menuPrice": 54000.0,
+   "statedCostPercent": 0.2397342891278375,
+   "statedIngredientCost": 12447.741935483871,
+   "statedWasteAllowance": 497.90967741935486,
+   "statedTotalCost": 12945.651612903226,
+   "lines": [
+    {
+     "ingredient": "Avocado ripe",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 4800.0
+    },
+    {
+     "ingredient": "Green Olives 2.6 Kg",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 89516.12903225806,
+     "lineTotal": 1342.741935483871
+    },
+    {
+     "ingredient": "Kecombrang",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 17000.0,
+     "lineTotal": 85.0
+    },
+    {
+     "ingredient": "Beetroot",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 28000.0,
+     "lineTotal": 560.0
+    },
+    {
+     "ingredient": "Baby Carrot",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 250.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 410.0
+    },
+    {
+     "ingredient": "Maldon Sea Salt",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 2500000.0,
+     "lineTotal": 5000.0
+    }
+   ]
+  },
+  {
+   "name": "Beef Tenderloin",
+   "section": "Main Meat",
+   "menuPrice": 1260800.0,
+   "statedCostPercent": 0.2505255384505906,
+   "statedIngredientCost": 303714.03738317755,
+   "statedWasteAllowance": 12148.561495327102,
+   "statedTotalCost": 315862.59887850465,
+   "lines": [
+    {
+     "ingredient": "Beef Tenderloin Stockyard 1",
+     "qty": 0.26,
+     "unit": "KG",
+     "costPerUnit": 1144000.0,
+     "lineTotal": 297440.0
+    },
+    {
+     "ingredient": "Spice Glaze - Beef",
+     "qty": 0.02,
+     "unit": "portion",
+     "costPerUnit": 111201.8691588785,
+     "lineTotal": 2224.03738317757
+    },
+    {
+     "ingredient": "Shallots",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 2400.0
+    },
+    {
+     "ingredient": "Butter",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 165000.0,
+     "lineTotal": 1650.0
+    }
+   ]
+  },
+  {
+   "name": "Coffee Roasted Carrots",
+   "section": "Sides",
+   "menuPrice": 65000.0,
+   "statedCostPercent": 0.24432736,
+   "statedIngredientCost": 15270.46,
+   "statedWasteAllowance": 610.8184,
+   "statedTotalCost": 15881.2784,
+   "lines": [
+    {
+     "ingredient": "Baby Carrot",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Carrot Local",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Butter Unsalted AUS 10 kg",
+     "qty": 0.045,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 4500.0
+    },
+    {
+     "ingredient": "Arabica Coffee Bean 1kg",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 432692.0,
+     "lineTotal": 2163.46
+    },
+    {
+     "ingredient": "Honey (Clove)",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 250000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Mustard Seeds 200Gr",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 130000.0,
+     "lineTotal": 650.0
+    },
+    {
+     "ingredient": "Mint",
+     "qty": 0.001,
+     "unit": "KG",
+     "costPerUnit": 70000.0,
+     "lineTotal": 70.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.003,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 123.0
+    },
+    {
+     "ingredient": "Sherry Vinegar",
+     "qty": 0.001,
+     "unit": "L",
+     "costPerUnit": 264000.0,
+     "lineTotal": 264.0
+    }
+   ]
+  },
+  {
+   "name": "Tomato & Herb Salsa",
+   "section": "Sauces",
+   "menuPrice": 38000.0,
+   "statedCostPercent": 0.2619978947368421,
+   "statedIngredientCost": 9573.0,
+   "statedWasteAllowance": 382.92,
+   "statedTotalCost": 9955.92,
+   "lines": [
+    {
+     "ingredient": "Cherry Tomato",
+     "qty": 0.025,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 3000.0
+    },
+    {
+     "ingredient": "Red Onion",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 975.0
+    },
+    {
+     "ingredient": "Red Chili",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 210.0
+    },
+    {
+     "ingredient": "Green Chili",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 43000.0,
+     "lineTotal": 258.0
+    },
+    {
+     "ingredient": "Italian parsley",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 270.0
+    },
+    {
+     "ingredient": "Coriander Leaves",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 1200.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.012,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 492.0
+    },
+    {
+     "ingredient": "Sherry Vinegar",
+     "qty": 0.012,
+     "unit": "L",
+     "costPerUnit": 264000.0,
+     "lineTotal": 3168.0
+    }
+   ]
+  },
+  {
+   "name": "Fritto Misto",
+   "section": "Starters",
+   "menuPrice": 69000.0,
+   "statedCostPercent": 0.23989333333333332,
+   "statedIngredientCost": 15916.0,
+   "statedWasteAllowance": 636.64,
+   "statedTotalCost": 16552.64,
+   "lines": [
+    {
+     "ingredient": "Octopus",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 1250.0
+    },
+    {
+     "ingredient": "Squid tube clean",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 105000.0,
+     "lineTotal": 1050.0
+    },
+    {
+     "ingredient": "Sea Bass",
+     "qty": 0.012,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 2400.0
+    },
+    {
+     "ingredient": "Tiger Prawn S10",
+     "qty": 0.012,
+     "unit": "KG",
+     "costPerUnit": 285000.0,
+     "lineTotal": 3420.0
+    },
+    {
+     "ingredient": "Soft Shell Crab",
+     "qty": 0.012,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 1500.0
+    },
+    {
+     "ingredient": "Chickpeas/ kacang Arab",
+     "qty": 0.062,
+     "unit": "KG",
+     "costPerUnit": 67500.0,
+     "lineTotal": 4185.0
+    },
+    {
+     "ingredient": "Tapioca flour",
+     "qty": 0.062,
+     "unit": "KG",
+     "costPerUnit": 16000.0,
+     "lineTotal": 992.0
+    },
+    {
+     "ingredient": "Plain Flour",
+     "qty": 0.062,
+     "unit": "KG",
+     "costPerUnit": 12000.0,
+     "lineTotal": 744.0
+    },
+    {
+     "ingredient": "Lime (Lokal)",
+     "qty": 0.025,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 375.0
+    }
+   ]
+  },
+  {
+   "name": "Slipper Lobster Bao (Bread)",
+   "section": "Sunset Menu",
+   "menuPrice": 119000.0,
+   "statedCostPercent": 0.24011764705882352,
+   "statedIngredientCost": 27475.0,
+   "statedWasteAllowance": 1099.0,
+   "statedTotalCost": 28574.0,
+   "lines": [
+    {
+     "ingredient": "Slipper Lobster",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 175000.0,
+     "lineTotal": 26250.0
+    },
+    {
+     "ingredient": "All Purpose Flour",
+     "qty": 0.058,
+     "unit": "KG",
+     "costPerUnit": 12000.0,
+     "lineTotal": 696.0
+    },
+    {
+     "ingredient": "Fresh Milk Full Fat",
+     "qty": 0.001,
+     "unit": "L",
+     "costPerUnit": 19000.0,
+     "lineTotal": 19.0
+    },
+    {
+     "ingredient": "White Sugar",
+     "qty": 0.004,
+     "unit": "KG",
+     "costPerUnit": 18000.0,
+     "lineTotal": 72.0
+    },
+    {
+     "ingredient": "Burgemen Yeast 500 gr",
+     "qty": 0.001,
+     "unit": "KG",
+     "costPerUnit": 110000.0,
+     "lineTotal": 110.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.008,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 328.0
+    }
+   ]
+  },
+  {
+   "name": "Peking Duck Salad",
+   "section": "Salads",
+   "menuPrice": 145000.0,
+   "statedCostPercent": 0.2411290542448074,
+   "statedIngredientCost": 33618.95467836257,
+   "statedWasteAllowance": 1344.7581871345028,
+   "statedTotalCost": 34963.71286549707,
+   "lines": [
+    {
+     "ingredient": "Duck Peking 2.5 Kg",
+     "qty": 0.077,
+     "unit": "KG",
+     "costPerUnit": 60000.0,
+     "lineTotal": 4620.0
+    },
+    {
+     "ingredient": "Kecap Asin ABC 5.7 Kg/Gln",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 11929.824561403508,
+     "lineTotal": 59.64912280701754
+    },
+    {
+     "ingredient": "Mizkaan Rice Vinegar 1.8 L",
+     "qty": 0.004,
+     "unit": "L",
+     "costPerUnit": 50555.555555555555,
+     "lineTotal": 202.22222222222223
+    },
+    {
+     "ingredient": "Hoisin Sauce LKK 240 ML",
+     "qty": 0.017,
+     "unit": "EA",
+     "costPerUnit": 210416.6666666667,
+     "lineTotal": 3577.083333333334
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 410.0
+    },
+    {
+     "ingredient": "Micro Coriander / Cilantro",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 1375000.0,
+     "lineTotal": 13750.0
+    },
+    {
+     "ingredient": "Micro Mustard",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 1000000.0,
+     "lineTotal": 10000.0
+    },
+    {
+     "ingredient": "Honey (Clove)",
+     "qty": 0.004,
+     "unit": "KG",
+     "costPerUnit": 250000.0,
+     "lineTotal": 1000.0
+    }
+   ]
+  },
+  {
+   "name": "coffee carrots",
+   "section": "Sides",
+   "menuPrice": 84000.0,
+   "statedCostPercent": 0.24984761904761907,
+   "statedIngredientCost": 20180.0,
+   "statedWasteAllowance": 807.2,
+   "statedTotalCost": 20987.2,
+   "lines": [
+    {
+     "ingredient": "Baby Carrot",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Carrot Local",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Butter Unsalted AUS 10 kg",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 5000.0
+    },
+    {
+     "ingredient": "Honey (Clove)",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 250000.0,
+     "lineTotal": 2500.0
+    },
+    {
+     "ingredient": "Mustard Seeds 200Gr",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 130000.0,
+     "lineTotal": 6500.0
+    },
+    {
+     "ingredient": "Sunflower Oil",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 18000.0,
+     "lineTotal": 360.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 820.0
+    }
+   ]
+  },
+  {
+   "name": "Grilled Baby Corn",
+   "section": "Sides",
+   "menuPrice": 83000.0,
+   "statedCostPercent": 0.2519979585772533,
+   "statedIngredientCost": 20111.375540300025,
+   "statedWasteAllowance": 804.455021612001,
+   "statedTotalCost": 20915.830561912026,
+   "lines": [
+    {
+     "ingredient": "Baby Corn",
+     "qty": 0.17,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 5950.0
+    },
+    {
+     "ingredient": "Butter Unsalted AUS 10 kg",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 1500.0
+    },
+    {
+     "ingredient": "Cream - Anchor Culinary Cream",
+     "qty": 0.06,
+     "unit": "L",
+     "costPerUnit": 100000.0,
+     "lineTotal": 6000.0
+    },
+    {
+     "ingredient": "White Miso Paste",
+     "qty": 0.012,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 1200.0
+    },
+    {
+     "ingredient": "Kecap Asin ABC 5.7 Kg/Gln",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 11929.824561403508,
+     "lineTotal": 119.29824561403508
+    },
+    {
+     "ingredient": "Lee Kum Kee Sesame Oil 207 ML",
+     "qty": 0.005,
+     "unit": "Btl",
+     "costPerUnit": 724637.6811594203,
+     "lineTotal": 3623.1884057971015
+    },
+    {
+     "ingredient": "Sunflower Oil",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 18000.0,
+     "lineTotal": 360.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.02,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 820.0
+    },
+    {
+     "ingredient": "Mirin",
+     "qty": 0.01,
+     "unit": "L",
+     "costPerUnit": 53888.88888888889,
+     "lineTotal": 538.8888888888889
+    }
+   ]
+  },
+  {
+   "name": "Roasted Baby Potato",
+   "section": "Sides",
+   "menuPrice": 58000.0,
+   "statedCostPercent": 0.2393255172413793,
+   "statedIngredientCost": 13347.0,
+   "statedWasteAllowance": 533.88,
+   "statedTotalCost": 13880.88,
+   "lines": [
+    {
+     "ingredient": "Baby Potato",
+     "qty": 0.25,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 3750.0
+    },
+    {
+     "ingredient": "Butter Unsalted AUS 10 kg",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 3000.0
+    },
+    {
+     "ingredient": "Cashew Nut",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 206000.0,
+     "lineTotal": 1236.0
+    },
+    {
+     "ingredient": "Parmesan Achor",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 220000.0,
+     "lineTotal": 1320.0
+    },
+    {
+     "ingredient": "Panko Breadcrumbs",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 29000.0,
+     "lineTotal": 174.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.025,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 1025.0
+    },
+    {
+     "ingredient": "Mustard Dijon Extra Strong",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 160000.0,
+     "lineTotal": 800.0
+    },
+    {
+     "ingredient": "Honey (Clove)",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 250000.0,
+     "lineTotal": 1250.0
+    },
+    {
+     "ingredient": "Sherry Vinegar",
+     "qty": 0.003,
+     "unit": "L",
+     "costPerUnit": 264000.0,
+     "lineTotal": 792.0
+    }
+   ]
+  },
+  {
+   "name": "Peanut & Lemongrass Ice Cream",
+   "section": "Desserts",
+   "menuPrice": 57000.0,
+   "statedCostPercent": 0.24187298245614036,
+   "statedIngredientCost": 13256.5,
+   "statedWasteAllowance": 530.26,
+   "statedTotalCost": 13786.76,
+   "lines": [
+    {
+     "ingredient": "Peanuts",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 38000.0,
+     "lineTotal": 1140.0
+    },
+    {
+     "ingredient": "Cream - Anchor Culinary Cream",
+     "qty": 0.115,
+     "unit": "L",
+     "costPerUnit": 100000.0,
+     "lineTotal": 11500.0
+    },
+    {
+     "ingredient": "Lemongrass",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 18750.0,
+     "lineTotal": 112.5
+    },
+    {
+     "ingredient": "Glucose Syrup",
+     "qty": 0.004,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 180.0
+    },
+    {
+     "ingredient": "Dextrose",
+     "qty": 0.003,
+     "unit": "KG",
+     "costPerUnit": 60000.0,
+     "lineTotal": 180.0
+    },
+    {
+     "ingredient": "White Sugar",
+     "qty": 0.008,
+     "unit": "KG",
+     "costPerUnit": 18000.0,
+     "lineTotal": 144.0
+    }
+   ]
+  },
+  {
+   "name": "Chicken Skewer",
+   "section": "Sunset Menu",
+   "menuPrice": 17000.0,
+   "statedCostPercent": 0.23467294117647058,
+   "statedIngredientCost": 3836.0,
+   "statedWasteAllowance": 153.44,
+   "statedTotalCost": 3989.44,
+   "lines": [
+    {
+     "ingredient": "Tamarind Paste",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 1350.0
+    },
+    {
+     "ingredient": "Honey",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 1200.0
+    },
+    {
+     "ingredient": "Red Chili",
+     "qty": 0.009,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 315.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.006,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 246.0
+    },
+    {
+     "ingredient": "Thyme",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 500.0
+    },
+    {
+     "ingredient": "Lime (Lokal)",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 225.0
+    }
+   ]
+  },
+  {
+   "name": "Basil Tzarziki",
+   "section": "Starters",
+   "menuPrice": 57000.0,
+   "statedCostPercent": 0.23494877192982455,
+   "statedIngredientCost": 12877.0,
+   "statedWasteAllowance": 515.08,
+   "statedTotalCost": 13392.08,
+   "lines": [
+    {
+     "ingredient": "Greek Yoghurt",
+     "qty": 0.124,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 10540.0
+    },
+    {
+     "ingredient": "Cucumber lokal",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 7000.0,
+     "lineTotal": 140.0
+    },
+    {
+     "ingredient": "Garlic Clean",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 400.0
+    },
+    {
+     "ingredient": "Basil Italian",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 45000.0,
+     "lineTotal": 450.0
+    },
+    {
+     "ingredient": "Mint",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 70000.0,
+     "lineTotal": 350.0
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.005,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 205.0
+    },
+    {
+     "ingredient": "Sherry Vinegar",
+     "qty": 0.003,
+     "unit": "L",
+     "costPerUnit": 264000.0,
+     "lineTotal": 792.0
+    }
+   ]
+  },
+  {
+   "name": "Classic sauce",
+   "section": "Starters",
+   "menuPrice": 55000.0,
+   "statedCostPercent": 0.2550559566731141,
+   "statedIngredientCost": 13488.536170212765,
+   "statedWasteAllowance": 539.5414468085106,
+   "statedTotalCost": 14028.077617021276,
+   "lines": [
+    {
+     "ingredient": "White Onion",
+     "qty": 0.006382978723404255,
+     "unit": "KG",
+     "costPerUnit": 30000.0,
+     "lineTotal": 191.48936170212764
+    },
+    {
+     "ingredient": "Carrot",
+     "qty": 0.00851063829787234,
+     "unit": "KG",
+     "costPerUnit": 10000.0,
+     "lineTotal": 85.1063829787234
+    },
+    {
+     "ingredient": "Celery",
+     "qty": 0.00425531914893617,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 170.2127659574468
+    },
+    {
+     "ingredient": "Tomato Paste Heinz 3.15 Kg",
+     "qty": 0.000851063829787234,
+     "unit": "KG",
+     "costPerUnit": 71780.0,
+     "lineTotal": 61.08936170212766
+    },
+    {
+     "ingredient": "Beef Bones",
+     "qty": 0.0425531914893617,
+     "unit": "KG",
+     "costPerUnit": 100000.0,
+     "lineTotal": 4255.31914893617
+    },
+    {
+     "ingredient": "Shallots",
+     "qty": 0.01063829787234043,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 425.5319148936172
+    },
+    {
+     "ingredient": "Red Wine Vinegar Villux @5 Ltr",
+     "qty": 0.12,
+     "unit": "L",
+     "costPerUnit": 37500.0,
+     "lineTotal": 4500.0
+    },
+    {
+     "ingredient": "Star Anise",
+     "qty": 0.006382978723404255,
+     "unit": "KG",
+     "costPerUnit": 130000.0,
+     "lineTotal": 829.7872340425531
+    },
+    {
+     "ingredient": "Butter",
+     "qty": 0.018,
+     "unit": "KG",
+     "costPerUnit": 165000.0,
+     "lineTotal": 2970.0
+    }
+   ]
+  },
+  {
+   "name": "Tuna Burger",
+   "section": "Starters",
+   "menuPrice": 140000.0,
+   "statedCostPercent": 0.24033419221377356,
+   "statedIngredientCost": 32352.6797210849,
+   "statedWasteAllowance": 1294.107188843396,
+   "statedTotalCost": 33646.7869099283,
+   "lines": [
+    {
+     "ingredient": "Tuna Patty",
+     "qty": 0.15,
+     "unit": "portion",
+     "costPerUnit": 201661.198140566,
+     "lineTotal": 30249.1797210849
+    },
+    {
+     "ingredient": "Tomato Cherry Red",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 525.0
+    },
+    {
+     "ingredient": "Potato Chips",
+     "qty": 0.035,
+     "unit": "KG",
+     "costPerUnit": 45100.0,
+     "lineTotal": 1578.5000000000002
+    }
+   ]
+  },
+  {
+   "name": "Greek salad",
+   "section": "Starters",
+   "menuPrice": 236000.0,
+   "statedCostPercent": 0.24656978933823778,
+   "statedIngredientCost": 55952.375272907804,
+   "statedWasteAllowance": 2238.0950109163123,
+   "statedTotalCost": 58190.470283824114,
+   "lines": [
+    {
+     "ingredient": "Heirloom Tomato Island Organic",
+     "qty": 0.09,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 10800.0
+    },
+    {
+     "ingredient": "Tomat Red Besar",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 13000.0,
+     "lineTotal": 1040.0
+    },
+    {
+     "ingredient": "Tomato Cherry",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 7200.0
+    },
+    {
+     "ingredient": "Cucumber lokal",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 7000.0,
+     "lineTotal": 350.0
+    },
+    {
+     "ingredient": "capsicum green",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 2000.0
+    },
+    {
+     "ingredient": "Red Onion",
+     "qty": 0.008,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 520.0
+    },
+    {
+     "ingredient": "sea salt",
+     "qty": 0.035,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 525.0
+    },
+    {
+     "ingredient": "Black pepper",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 132857.14,
+     "lineTotal": 265.71428000000003
+    },
+    {
+     "ingredient": "Lemon",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 480.0
+    },
+    {
+     "ingredient": "Herb - Oregano",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 4250.0
+    },
+    {
+     "ingredient": "Dried Oregano",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 6000.0
+    },
+    {
+     "ingredient": "Capers In Brine",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 112766.55319148937,
+     "lineTotal": 5638.327659574468
+    },
+    {
+     "ingredient": "Caper Berry Italia",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 291666.6666666667,
+     "lineTotal": 14583.333333333336
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.05,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 2050.0
+    },
+    {
+     "ingredient": "Salt",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 250.0
+    },
+    {
+     "ingredient": "Feta Cheese",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 280000.0,
+     "lineTotal": 8400.0
+    },
+    {
+     "ingredient": "Feta mousse",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 160438.77535714282,
+     "lineTotal": 9626.32652142857
+    }
+   ]
+  },
+  {
+   "name": "Mahi-Mahi Burger",
+   "section": "Starters",
+   "menuPrice": 110000.0,
+   "statedCostPercent": 0.23942958184002563,
+   "statedIngredientCost": 25324.282694618098,
+   "statedWasteAllowance": 1012.9713077847239,
+   "statedTotalCost": 26337.25400240282,
+   "lines": [
+    {
+     "ingredient": "Mahi-Mahi Fillet",
+     "qty": 0.18,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 15300.0
+    },
+    {
+     "ingredient": "Cajun Spice mix",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 259459.44958851679,
+     "lineTotal": 2594.594495885168
+    },
+    {
+     "ingredient": "Coleslaw Mix",
+     "qty": 0.15,
+     "unit": "portion",
+     "costPerUnit": 43493.959731543626,
+     "lineTotal": 6524.093959731544
+    },
+    {
+     "ingredient": "Coriander Aioli",
+     "qty": 0.03,
+     "unit": "portion",
+     "costPerUnit": 13660.26384083045,
+     "lineTotal": 409.8079152249135
+    },
+    {
+     "ingredient": "Tomato Cherry Red",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 35000.0,
+     "lineTotal": 350.0
+    },
+    {
+     "ingredient": "Paia Magic Sauce",
+     "qty": 0.01,
+     "unit": "portion",
+     "costPerUnit": 14578.632377647058,
+     "lineTotal": 145.7863237764706
+    }
+   ]
+  },
+  {
+   "name": "Truffle pasta",
+   "section": "Starters",
+   "menuPrice": 496000.0,
+   "statedCostPercent": 0.2476290322580645,
+   "statedIngredientCost": 118100.0,
+   "statedWasteAllowance": 4724.0,
+   "statedTotalCost": 122824.0,
+   "lines": [
+    {
+     "ingredient": "Truffle Fresh (Black)",
+     "qty": 0.012,
+     "unit": "KG",
+     "costPerUnit": 8000000.0,
+     "lineTotal": 96000.0
+    },
+    {
+     "ingredient": "Fresh Cream",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 12500.0
+    },
+    {
+     "ingredient": "Pasta - Penne",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 80000.0,
+     "lineTotal": 9600.0
+    }
+   ]
+  },
+  {
+   "name": "Prawn Skewer",
+   "section": "Sunset Menu",
+   "menuPrice": 217000.0,
+   "statedCostPercent": 0.2400867728768927,
+   "statedIngredientCost": 50095.02857142858,
+   "statedWasteAllowance": 2003.801142857143,
+   "statedTotalCost": 52098.82971428572,
+   "lines": [
+    {
+     "ingredient": "Prawns U20 clean",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 242857.14285714287,
+     "lineTotal": 48571.42857142858
+    },
+    {
+     "ingredient": "Florina Sauce Per Portion",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 7618.0,
+     "lineTotal": 1142.7
+    },
+    {
+     "ingredient": "Prawn Glaze",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 7618.0,
+     "lineTotal": 380.90000000000003
+    }
+   ]
+  },
+  {
+   "name": "Squid & Guanciale Skewers",
+   "section": "Sunset Menu",
+   "menuPrice": 78000.0,
+   "statedCostPercent": 0.2411287970724638,
+   "statedIngredientCost": 18084.659780434784,
+   "statedWasteAllowance": 723.3863912173914,
+   "statedTotalCost": 18808.046171652175,
+   "lines": [
+    {
+     "ingredient": "Squid tube clean",
+     "qty": 0.045,
+     "unit": "KG",
+     "costPerUnit": 105000.0,
+     "lineTotal": 4725.0
+    },
+    {
+     "ingredient": "Guanciale",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 590000.52,
+     "lineTotal": 11800.010400000001
+    },
+    {
+     "ingredient": "Tom Yum Paste",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 13630.978260869564,
+     "lineTotal": 545.2391304347826
+    },
+    {
+     "ingredient": "Jalapeno Slice 2.8KG",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 36441.025,
+     "lineTotal": 364.41025
+    },
+    {
+     "ingredient": "Garlic",
+     "qty": 0.005,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 200.0
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 450.0
+    }
+   ]
+  },
+  {
+   "name": "Truffle pasta",
+   "section": "Starters",
+   "menuPrice": 418000.0,
+   "statedCostPercent": 0.24482296650717703,
+   "statedIngredientCost": 98400.0,
+   "statedWasteAllowance": 3936.0,
+   "statedTotalCost": 102336.0,
+   "lines": [
+    {
+     "ingredient": "Truffle Fresh (Black)",
+     "qty": 0.008,
+     "unit": "KG",
+     "costPerUnit": 8000000.0,
+     "lineTotal": 64000.0
+    },
+    {
+     "ingredient": "Tuna loin",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 20000.0
+    },
+    {
+     "ingredient": "Enoki Mushroom",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 14400.0
+    }
+   ]
+  },
+  {
+   "name": "Frito Misto",
+   "section": "Starters",
+   "menuPrice": 231000.0,
+   "statedCostPercent": 0.24081034549664573,
+   "statedIngredientCost": 53487.682509351114,
+   "statedWasteAllowance": 2139.5073003740445,
+   "statedTotalCost": 55627.18980972516,
+   "lines": [
+    {
+     "ingredient": "Octopus",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 5000.0
+    },
+    {
+     "ingredient": "Squid tube clean",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 105000.0,
+     "lineTotal": 4200.0
+    },
+    {
+     "ingredient": "Sea Bass",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 10000.0
+    },
+    {
+     "ingredient": "Tiger Prawn S10",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 285000.0,
+     "lineTotal": 14250.0
+    },
+    {
+     "ingredient": "Soft Shell Crab",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 6250.0
+    },
+    {
+     "ingredient": "Soft Shell Crab Marinade",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 38668.26923076923,
+     "lineTotal": 773.3653846153845
+    },
+    {
+     "ingredient": "Frito Verde Dressing",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 162678.96405919662,
+     "lineTotal": 13014.31712473573
+    }
+   ]
+  },
+  {
+   "name": "Beef burger",
+   "section": "Starters",
+   "menuPrice": 878000.0,
+   "statedCostPercent": 0.2314888382687927,
+   "statedIngredientCost": 195430.0,
+   "statedWasteAllowance": 7817.2,
+   "statedTotalCost": 203247.2,
+   "lines": [
+    {
+     "ingredient": "Truffle Fresh (Black)",
+     "qty": 0.006,
+     "unit": "KG",
+     "costPerUnit": 8000000.0,
+     "lineTotal": 48000.0
+    },
+    {
+     "ingredient": "Beef Burger Patties 150 gr",
+     "qty": 0.3,
+     "unit": "KG",
+     "costPerUnit": 350000.0,
+     "lineTotal": 105000.0
+    },
+    {
+     "ingredient": "Enoki Mushroom",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 14400.0
+    },
+    {
+     "ingredient": "Fontina Cheese",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 277500.0,
+     "lineTotal": 27750.0
+    },
+    {
+     "ingredient": "Purple Sweet Potato",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 14000.0,
+     "lineTotal": 280.0
+    }
+   ]
+  },
+  {
+   "name": "Frito Misto Platter",
+   "section": "Starters",
+   "menuPrice": 586000.0,
+   "statedCostPercent": 0.24052199181063058,
+   "statedIngredientCost": 135524.89153945146,
+   "statedWasteAllowance": 5420.995661578058,
+   "statedTotalCost": 140945.88720102952,
+   "lines": [
+    {
+     "ingredient": "Octopus",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 15000.0
+    },
+    {
+     "ingredient": "Squid tube clean",
+     "qty": 0.12,
+     "unit": "KG",
+     "costPerUnit": 105000.0,
+     "lineTotal": 12600.0
+    },
+    {
+     "ingredient": "Sea Bass",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 200000.0,
+     "lineTotal": 30000.0
+    },
+    {
+     "ingredient": "Tiger Prawn S10",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 285000.0,
+     "lineTotal": 42750.0
+    },
+    {
+     "ingredient": "Soft Shell Crab",
+     "qty": 0.15,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 18750.0
+    },
+    {
+     "ingredient": "Soft Shell Crab Marinade",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 38668.26923076923,
+     "lineTotal": 2320.0961538461534
+    },
+    {
+     "ingredient": "Frito Verde Dressing",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 162678.96405919662,
+     "lineTotal": 13014.31712473573
+    },
+    {
+     "ingredient": "Tom Yum Paste",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 13630.978260869564,
+     "lineTotal": 1090.4782608695652
+    }
+   ]
+  },
+  {
+   "name": "Frito Misto Bao",
+   "section": "Sunset Menu",
+   "menuPrice": 88000.0,
+   "statedCostPercent": 0.23914271452741054,
+   "statedIngredientCost": 20235.15276770397,
+   "statedWasteAllowance": 809.4061107081588,
+   "statedTotalCost": 21044.55887841213,
+   "lines": [
+    {
+     "ingredient": "Bao Bread",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 20520.89107420601,
+     "lineTotal": 820.8356429682404
+    },
+    {
+     "ingredient": "Octopus",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 1250.0
+    },
+    {
+     "ingredient": "Squid tube clean",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 105000.0,
+     "lineTotal": 1050.0
+    },
+    {
+     "ingredient": "Tiger Prawn S10",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 285000.0,
+     "lineTotal": 2850.0
+    },
+    {
+     "ingredient": "Soft Shell Crab",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 125000.0,
+     "lineTotal": 1250.0
+    },
+    {
+     "ingredient": "Frito Verde Dressing",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 162678.96405919662,
+     "lineTotal": 13014.31712473573
+    }
+   ]
+  },
+  {
+   "name": "Duck salad",
+   "section": "Starters",
+   "menuPrice": 369000.0,
+   "statedCostPercent": 0.2544543910130735,
+   "statedIngredientCost": 90282.37527290781,
+   "statedWasteAllowance": 3611.2950109163125,
+   "statedTotalCost": 93893.67028382412,
+   "lines": [
+    {
+     "ingredient": "Duck Peking 2.5 Kg",
+     "qty": 0.625,
+     "unit": "KG",
+     "costPerUnit": 60000.0,
+     "lineTotal": 37500.0
+    },
+    {
+     "ingredient": "Tomat Red Besar",
+     "qty": 0.09,
+     "unit": "KG",
+     "costPerUnit": 13000.0,
+     "lineTotal": 1170.0
+    },
+    {
+     "ingredient": "Tomato Cherry",
+     "qty": 0.08,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 9600.0
+    },
+    {
+     "ingredient": "Cucumber lokal",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 7000.0,
+     "lineTotal": 420.0
+    },
+    {
+     "ingredient": "capsicum green",
+     "qty": 0.07,
+     "unit": "KG",
+     "costPerUnit": 40000.0,
+     "lineTotal": 2800.0000000000005
+    },
+    {
+     "ingredient": "Red Onion",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 65000.0,
+     "lineTotal": 650.0
+    },
+    {
+     "ingredient": "sea salt",
+     "qty": 0.035,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 525.0
+    },
+    {
+     "ingredient": "Black pepper",
+     "qty": 0.002,
+     "unit": "KG",
+     "costPerUnit": 132857.14,
+     "lineTotal": 265.71428000000003
+    },
+    {
+     "ingredient": "Lemon",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 480.0
+    },
+    {
+     "ingredient": "Herb - Oregano",
+     "qty": 0.07,
+     "unit": "KG",
+     "costPerUnit": 85000.0,
+     "lineTotal": 5950.000000000001
+    },
+    {
+     "ingredient": "Dried Oregano",
+     "qty": 0.07,
+     "unit": "KG",
+     "costPerUnit": 120000.0,
+     "lineTotal": 8400.0
+    },
+    {
+     "ingredient": "Capers In Brine",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 112766.55319148937,
+     "lineTotal": 5638.327659574468
+    },
+    {
+     "ingredient": "Caper Berry Italia",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 291666.6666666667,
+     "lineTotal": 14583.333333333336
+    },
+    {
+     "ingredient": "EVOO (Extra Virgin Olive Oil)",
+     "qty": 0.05,
+     "unit": "L",
+     "costPerUnit": 41000.0,
+     "lineTotal": 2050.0
+    },
+    {
+     "ingredient": "Salt",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 250.0
+    },
+    {
+     "ingredient": "Feta Cheese",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 280000.0,
+     "lineTotal": 8400.0
+    },
+    {
+     "ingredient": "Feta mousse",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 0.0,
+     "lineTotal": 0.0
+    }
+   ]
+  },
+  {
+   "name": "Duck Skewer",
+   "section": "Sunset Menu",
+   "menuPrice": 148000.0,
+   "statedCostPercent": 0.24007438665998046,
+   "statedIngredientCost": 34164.431947766454,
+   "statedWasteAllowance": 1366.5772779106583,
+   "statedTotalCost": 35531.00922567711,
+   "lines": [
+    {
+     "ingredient": "Duck Local",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 43000.0,
+     "lineTotal": 2580.0
+    },
+    {
+     "ingredient": "Rock melon",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 16000.0,
+     "lineTotal": 640.0
+    },
+    {
+     "ingredient": "Duck Satay Glaze",
+     "qty": 0.02,
+     "unit": "KG",
+     "costPerUnit": 56648.106280320615,
+     "lineTotal": 1132.9621256064124
+    },
+    {
+     "ingredient": "Duck Marinade",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 81828.21997261267,
+     "lineTotal": 4091.410998630634
+    },
+    {
+     "ingredient": "Coriander Emulsion",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 387167.6470588235,
+     "lineTotal": 23230.05882352941
+    },
+    {
+     "ingredient": "Sweet Potato",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 23000.0,
+     "lineTotal": 690.0
+    },
+    {
+     "ingredient": "Orange sunkist",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 36000.0,
+     "lineTotal": 1800.0
+    }
+   ]
+  },
+  {
+   "name": "Halloumi Skewers",
+   "section": "Sunset Menu",
+   "menuPrice": 106000.0,
+   "statedCostPercent": 0.24130630581305518,
+   "statedIngredientCost": 24594.681169407548,
+   "statedWasteAllowance": 983.7872467763019,
+   "statedTotalCost": 25578.46841618385,
+   "lines": [
+    {
+     "ingredient": "Halloumi Cheese",
+     "qty": 0.07,
+     "unit": "KG",
+     "costPerUnit": 320000.0,
+     "lineTotal": 22400.000000000004
+    },
+    {
+     "ingredient": "Watermelon",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 18461.53846153846,
+     "lineTotal": 738.4615384615385
+    },
+    {
+     "ingredient": "Spiced Syrup",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 15540.654364866843,
+     "lineTotal": 466.2196309460053
+    },
+    {
+     "ingredient": "Lemon",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 480.0
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    },
+    {
+     "ingredient": "Orange sunkist",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 36000.0,
+     "lineTotal": 360.0
+    }
+   ]
+  },
+  {
+   "name": "Beef Skewers",
+   "section": "Sunset Menu",
+   "menuPrice": 156000.0,
+   "statedCostPercent": 0.24090697559368676,
+   "statedIngredientCost": 36136.04633905301,
+   "statedWasteAllowance": 1445.4418535621205,
+   "statedTotalCost": 37581.488192615136,
+   "lines": [
+    {
+     "ingredient": "Beef Picanha",
+     "qty": 0.075,
+     "unit": "KG",
+     "costPerUnit": 350000.0,
+     "lineTotal": 26250.0
+    },
+    {
+     "ingredient": "White Onion",
+     "qty": 0.03,
+     "unit": "KG",
+     "costPerUnit": 30000.0,
+     "lineTotal": 900.0
+    },
+    {
+     "ingredient": "Beef Glaze",
+     "qty": 0.015,
+     "unit": "KG",
+     "costPerUnit": 19621.716721181485,
+     "lineTotal": 294.3257508177223
+    },
+    {
+     "ingredient": "Herb & Cashew Sauce",
+     "qty": 0.06,
+     "unit": "KG",
+     "costPerUnit": 108150.0,
+     "lineTotal": 6489.0
+    },
+    {
+     "ingredient": "Dabu Dabu Salsa",
+     "qty": 0.05,
+     "unit": "KG",
+     "costPerUnit": 34454.41176470588,
+     "lineTotal": 1722.7205882352941
+    },
+    {
+     "ingredient": "Lemon",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 480.0
+    }
+   ]
+  },
+  {
+   "name": "Prawn Skewers",
+   "section": "Sunset Menu",
+   "menuPrice": 132000.0,
+   "statedCostPercent": 0.23878084848484848,
+   "statedIngredientCost": 30306.8,
+   "statedWasteAllowance": 1212.272,
+   "statedTotalCost": 31519.072,
+   "lines": [
+    {
+     "ingredient": "Tiger Prawn S10",
+     "qty": 0.075,
+     "unit": "KG",
+     "costPerUnit": 285000.0,
+     "lineTotal": 21375.0
+    },
+    {
+     "ingredient": "Kimchi sauce",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 4800.0
+    },
+    {
+     "ingredient": "Feta cheese",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 280000.0,
+     "lineTotal": 2800.0
+    },
+    {
+     "ingredient": "Florina Sauce Per Portion",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 7518.0,
+     "lineTotal": 751.8000000000001
+    },
+    {
+     "ingredient": "salt",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 50.0
+    },
+    {
+     "ingredient": "Red Paprika Oil",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 38000.0,
+     "lineTotal": 380.0
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    }
+   ]
+  },
+  {
+   "name": "Squid & Guanciale",
+   "section": "Sunset Menu",
+   "menuPrice": 92000.0,
+   "statedCostPercent": 0.2502059130434783,
+   "statedIngredientCost": 22133.6,
+   "statedWasteAllowance": 885.3439999999999,
+   "statedTotalCost": 23018.944,
+   "lines": [
+    {
+     "ingredient": "Baby Squid (Cumi Manis)",
+     "qty": 0.095,
+     "unit": "KG",
+     "costPerUnit": 150000.0,
+     "lineTotal": 14250.0
+    },
+    {
+     "ingredient": "Guanciale",
+     "qty": 0.1,
+     "unit": "KG",
+     "costPerUnit": 48000.0,
+     "lineTotal": 4800.0
+    },
+    {
+     "ingredient": "Ginger",
+     "qty": 0.04,
+     "unit": "KG",
+     "costPerUnit": 25000.0,
+     "lineTotal": 1000.0
+    },
+    {
+     "ingredient": "Tom Yum Paste",
+     "qty": 0.2,
+     "unit": "KG",
+     "costPerUnit": 7518.0,
+     "lineTotal": 1503.6000000000001
+    },
+    {
+     "ingredient": "salt",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 5000.0,
+     "lineTotal": 50.0
+    },
+    {
+     "ingredient": "Red Paprika Oil",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 38000.0,
+     "lineTotal": 380.0
+    },
+    {
+     "ingredient": "Lime",
+     "qty": 0.01,
+     "unit": "KG",
+     "costPerUnit": 15000.0,
+     "lineTotal": 150.0
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,122 @@
+name: CI
+
+# Every "verified" claim in docs/PROGRESS.md was a one-time manual check on one
+# machine. This makes the cheap, machine-checkable ones permanent.
+#
+# Staged by cost: typecheck and unit tests run in seconds and catch the class of
+# defect that has cost this project the most time (float money, waste
+# double-counting, cascade ordering). The browser suites need a database and are
+# therefore a separate, slower job.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter web typecheck
+
+      # Fast and dependency-free: the engines are pure functions.
+      - name: Unit tests
+        run: pnpm --filter web test:unit
+
+      - name: Production build
+        run: pnpm --filter web build
+
+  browser:
+    name: Accessibility and keyboard
+    runs-on: ubuntu-latest
+    # Only worth the minutes if the static gate already passed.
+    needs: static
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      # These suites sign in and read real rows, because scanning an empty page
+      # passes while proving nothing.
+      - name: Start Supabase
+        run: |
+          supabase start -x imgproxy,pooler,studio || supabase start
+          supabase db reset --no-seed || true
+        continue-on-error: true
+
+      - name: Write env
+        run: |
+          mkdir -p apps/web
+          {
+            echo "VITE_SUPABASE_URL=http://127.0.0.1:54321"
+            echo "VITE_SUPABASE_ANON_KEY=$(supabase status -o env 2>/dev/null | grep ANON_KEY | cut -d= -f2- | tr -d '\"')"
+          } > apps/web/.env.local
+        continue-on-error: true
+
+      # Visual baselines are macOS-rendered and will not match Linux, so they
+      # are excluded until a Linux baseline set exists. Claiming otherwise
+      # would mean a permanently red job everyone learns to ignore.
+      - name: Accessibility, keyboard and screen-reader suites
+        run: pnpm --filter web exec playwright test accessibility.spec.ts keyboard.spec.ts screen-reader.spec.ts
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+  reconcile:
+    name: COGS golden master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Diffs the engine against the venue's own workbook figures. This is the
+      # only non-circular check available: the expected values were produced by
+      # a spreadsheet the code has never seen.
+      - name: Reconcile against COGS V5
+        run: pnpm --filter web reconcile

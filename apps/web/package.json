@@ -14,7 +14,10 @@
     "test:visual:update": "playwright test visual.spec.ts --update-snapshots",
     "test:keyboard": "playwright test keyboard.spec.ts",
     "test:sr": "playwright test screen-reader.spec.ts",
-    "test:a11y:all": "playwright test accessibility.spec.ts keyboard.spec.ts screen-reader.spec.ts"
+    "test:a11y:all": "playwright test accessibility.spec.ts keyboard.spec.ts screen-reader.spec.ts",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "reconcile": "esbuild scripts/reconcile-cogs.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=node_modules/.cache/reconcile.mjs --log-level=error && node node_modules/.cache/reconcile.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -48,8 +51,10 @@
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.5.4",
     "axe-core": "^4.12.1",
+    "esbuild": "^0.28.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.5.0",
-    "vite": "^5.4.0"
+    "vite": "^5.4.0",
+    "vitest": "^2.1.9"
   }
 }
