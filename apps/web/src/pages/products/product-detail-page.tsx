@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Save, X } from "lucide-react";
+import { Save, X, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import type { Product, NutritionPer100g, ProductStatus } from "@ccos/shared";
 
@@ -41,6 +41,8 @@ function emptyProduct(): Omit<Product, "id" | "createdAt" | "updatedAt"> {
     supplier: null,
     status: "ACTIVE" as ProductStatus,
     allergens: [],
+    allergensNeedReview: false,
+    allergenReviewNote: null,
     packing: {
       packQty: 1,
       packUnit: "pc",
@@ -118,6 +120,9 @@ export function ProductDetailPage() {
   // Allergens as comma string for editing
   const [allergensText, setAllergensText] = useState(
     form.allergens.join(", "),
+  );
+  const [needsReview, setNeedsReview] = useState(
+    existing?.allergensNeedReview ?? false,
   );
 
   // ── Field helpers ──────────────────────────────────────────────────────
@@ -221,7 +226,15 @@ export function ProductDetailPage() {
       .map((a) => a.trim())
       .filter(Boolean);
 
-    const data = { ...form, allergens };
+    const data = {
+      ...form,
+      allergens,
+      allergensNeedReview: needsReview,
+      // Clearing the flag clears the prompt with it: the note said what to go
+      // and check, and leaving it behind would read as a standing warning on a
+      // list somebody has just confirmed.
+      allergenReviewNote: needsReview ? (existing?.allergenReviewNote ?? null) : null,
+    };
 
     if (isNew) {
       try {
@@ -243,7 +256,7 @@ export function ProductDetailPage() {
       });
     }
     navigate("/products");
-  }, [form, allergensText, isNew, id, store, navigate]);
+  }, [form, allergensText, needsReview, existing, isNew, id, store, navigate]);
 
   // Don't render while redirecting
   if (id && !existing) return null;
@@ -360,6 +373,57 @@ export function ProductDetailPage() {
                     placeholder="dairy, gluten, nuts (comma-separated)"
                   />
                 </FormField>
+              </div>
+
+              {/*
+                This is where an unverified list gets resolved, so the control
+                to clear the flag lives beside the field it is about. Ticking
+                it is a claim that someone read the label — it does not change
+                the allergens, only who stands behind them.
+              */}
+              <div className="mt-4 sm:col-span-2">
+                {needsReview ? (
+                  <div
+                    role="alert"
+                    className="rounded-lg border border-status-warning/40 bg-status-warning-soft p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <TriangleAlert
+                        className="mt-0.5 size-4 shrink-0 text-status-warning"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <h3 className="text-sm font-medium text-status-warning">
+                          Allergens not verified against the product
+                        </h3>
+                        {existing?.allergenReviewNote && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {existing.allergenReviewNote}
+                          </p>
+                        )}
+                        <label className="mt-3 flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-[var(--color-status-success)]"
+                            checked={false}
+                            onChange={() => setNeedsReview(false)}
+                          />
+                          I have checked this against the product we buy
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      className="size-4"
+                      checked={needsReview}
+                      onChange={(e) => setNeedsReview(e.target.checked)}
+                    />
+                    Flag these allergens as needing a check against the brand
+                  </label>
+                )}
               </div>
             </CardContent>
           </Card>

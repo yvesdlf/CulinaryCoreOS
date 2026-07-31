@@ -24,7 +24,15 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { FoodCostIndicator } from "@/components/shared/food-cost-indicator";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { AllergenBadges } from "@/components/shared/allergen-badges";
+import { AllergenReviewFlag } from "@/components/shared/allergen-review-notice";
+import { findUnverifiedAllergens } from "@/engine/allergen-review";
 import { useRecipeStore } from "@/stores/recipe-store";
+import { useProductStore } from "@/stores/product-store";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/shared/table-pagination";
+import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { RECIPE_CATEGORIES, RECIPE_STATUSES } from "@/lib/constants";
 
 /**
@@ -44,6 +52,23 @@ const STATUS_ITEMS: Record<string, string> = {
 export function RecipesPage() {
   const navigate = useNavigate();
   const recipes = useRecipeStore((s) => s.recipes);
+  const products = useProductStore((s) => s.products);
+  const subRecipes = useSubRecipeStore((s) => s.subRecipes);
+
+  // Computed once for the whole list rather than per row: the walk is cheap
+  // but it crosses every sub-recipe, and doing it inside 115 rows on every
+  // keystroke in the search box is not.
+  const reviewCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of recipes) {
+      map.set(
+        r.id,
+        findUnverifiedAllergens(r.ingredientLines, { products, subRecipes })
+          .length,
+      );
+    }
+    return map;
+  }, [recipes, products, subRecipes]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -53,14 +78,17 @@ export function RecipesPage() {
     return recipes.filter((r) => {
       const q = searchQuery.toLowerCase();
       const matchesSearch =
-        !q || r.name.toLowerCase().includes(q) || r.category.toLowerCase().includes(q);
+        !q ||
+        r.name.toLowerCase().includes(q) ||
+        r.category.toLowerCase().includes(q);
       const matchesCategory =
         categoryFilter === "all" || r.category === categoryFilter;
-      const matchesStatus =
-        statusFilter === "all" || r.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [recipes, searchQuery, categoryFilter, statusFilter]);
+
+  const pagination = usePagination(filtered);
 
   return (
     <div>
@@ -87,7 +115,11 @@ export function RecipesPage() {
             className="pl-8"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")} items={CATEGORY_ITEMS}>
+        <Select
+          value={categoryFilter}
+          onValueChange={(v) => setCategoryFilter(v ?? "all")}
+          items={CATEGORY_ITEMS}
+        >
           <SelectTrigger aria-label="Filter by category">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -100,7 +132,11 @@ export function RecipesPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")} items={STATUS_ITEMS}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v ?? "all")}
+          items={STATUS_ITEMS}
+        >
           <SelectTrigger aria-label="Filter by status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -125,56 +161,75 @@ export function RecipesPage() {
           </p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Allergens</TableHead>
-              <TableHead className="text-right">Selling Price</TableHead>
-              <TableHead className="text-right">Food Cost %</TableHead>
-              <TableHead className="text-right">Ingredients</TableHead>
-              <TableHead className="text-right">Portions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((recipe) => (
-              <TableRow
-                key={recipe.id}
-                className="cursor-pointer"
-                onClick={() => navigate(`/recipes/${recipe.id}`)}
-              >
-                <TableCell className="font-medium">{recipe.name}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {recipe.category}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={recipe.status} />
-                </TableCell>
-                <TableCell>
-                  {/* Inherited from the ingredients and any nested sub-recipe. */}
-                  <AllergenBadges allergens={recipe.allergens} max={4} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <CurrencyDisplay
-                    value={recipe.pricing.priceInclTax}
-                    currency={recipe.pricing.currency}
-                  />
-                </TableCell>
-                <TableCell className="text-right">
-                  <FoodCostIndicator value={recipe.pricing.foodCostPercent} />
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {recipe.ingredientLines.length}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {recipe.portion.yieldQty}
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Allergens</TableHead>
+                <TableHead className="text-right">Selling Price</TableHead>
+                <TableHead className="text-right">Food Cost %</TableHead>
+                <TableHead className="text-right">Ingredients</TableHead>
+                <TableHead className="text-right">Portions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {pagination.pageItems.map((recipe) => (
+                <TableRow
+                  key={recipe.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/recipes/${recipe.id}`)}
+                >
+                  <TableCell className="font-medium">{recipe.name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {recipe.category}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={recipe.status} />
+                  </TableCell>
+                  <TableCell>
+                    {/* Inherited from the ingredients and any nested sub-recipe. */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <AllergenBadges allergens={recipe.allergens} max={4} />
+                      {/* Beside the badges, because it is a caveat on them: the
+                        list is only as good as the labels behind it. */}
+                      <AllergenReviewFlag
+                        count={reviewCounts.get(recipe.id) ?? 0}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <CurrencyDisplay
+                      value={recipe.pricing.priceInclTax}
+                      currency={recipe.pricing.currency}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <FoodCostIndicator value={recipe.pricing.foodCostPercent} />
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {recipe.ingredientLines.length}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {recipe.portion.yieldQty}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <TablePagination
+            page={pagination.page}
+            pageCount={pagination.pageCount}
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            noun="recipes"
+            onPageChange={pagination.setPage}
+          />
+        </>
       )}
     </div>
   );

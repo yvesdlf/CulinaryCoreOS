@@ -29,6 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { AllergenReviewFlag } from "@/components/shared/allergen-review-notice";
 import {
   TablePagination,
   usePagination,
@@ -76,8 +77,8 @@ export function ProductsPage() {
   const navigate = useNavigate();
 
   // Filter state. Seeded from the URL so a link can point at a subset — the
-  // dashboard's "ingredients to review" sends people to ?status=PENDING, and a
-  // filter that quietly ignored the query would make that link a lie.
+  // dashboard's "allergens to verify" sends people to ?review=1, and a filter
+  // that quietly ignored the query would make that link a lie.
   const [params] = useSearchParams();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>(
@@ -86,6 +87,10 @@ export function ProductsPage() {
   const [status, setStatus] = useState<string>(
     () => params.get("status") ?? "__all__",
   );
+  // Not a Select like the others: it is a single yes/no cut the dashboard
+  // links to, and adding it to the status dropdown would conflate "is this
+  // ingredient in use" with "has anyone read its label".
+  const [reviewOnly, setReviewOnly] = useState(() => params.get("review") === "1");
 
   // Filtered list
   const filtered = useMemo(() => {
@@ -109,8 +114,12 @@ export function ProductsPage() {
       result = result.filter((p) => p.status === status);
     }
 
+    if (reviewOnly) {
+      result = result.filter((p) => p.allergensNeedReview);
+    }
+
     return result;
-  }, [products, search, category, status]);
+  }, [products, search, category, status, reviewOnly]);
 
   const pagination = usePagination(filtered);
 
@@ -178,6 +187,19 @@ export function ProductsPage() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Allergen review cut. Rendered as a control rather than applied
+            invisibly from the URL: arriving from the dashboard into a filtered
+            list with nothing to switch off is a dead end. */}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4"
+            checked={reviewOnly}
+            onChange={(e) => setReviewOnly(e.target.checked)}
+          />
+          Allergens to verify
+        </label>
 
         {/* Count */}
         <span className="ml-auto text-sm text-muted-foreground">
@@ -260,7 +282,12 @@ export function ProductsPage() {
 
                 {/* Status */}
                 <TableCell>
-                  <StatusBadge status={product.status} />
+                  <div className="flex items-center gap-1">
+                    <StatusBadge status={product.status} />
+                    <AllergenReviewFlag
+                      count={product.allergensNeedReview ? 1 : 0}
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))

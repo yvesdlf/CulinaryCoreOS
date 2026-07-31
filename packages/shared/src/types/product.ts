@@ -54,6 +54,24 @@ export interface Product {
 
   allergens: string[]; // allergen tag ids — see allergen module (not yet scaffolded)
 
+  /**
+   * The allergen list has not been checked against the product in the store.
+   *
+   * Declarations imported from a costing sheet describe a generic ingredient,
+   * not the jar the kitchen actually buys. Whether a tom yum paste contains
+   * shrimp, or a soy sauce is brewed with wheat, is a property of the brand and
+   * batch — so a list that was inferred from a name is a prompt to go and read
+   * a label, not an answer.
+   *
+   * Kept separate from `status` on purpose. A product can be perfectly ACTIVE
+   * and still have an unverified allergen list, and collapsing the two would
+   * mean clearing one silently clears the other.
+   */
+  allergensNeedReview: boolean;
+
+  /** What to check and why, e.g. "verify the brand for shrimp paste". */
+  allergenReviewNote: string | null;
+
   createdAt: string;
   updatedAt: string;
 }

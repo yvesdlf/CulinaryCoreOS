@@ -2,6 +2,10 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/shared/table-pagination";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,11 +71,12 @@ export function SubRecipesPage() {
         s.category.toLowerCase().includes(q);
       const matchesCategory =
         categoryFilter === "all" || s.category === categoryFilter;
-      const matchesStatus =
-        statusFilter === "all" || s.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || s.status === statusFilter;
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [subRecipes, searchQuery, categoryFilter, statusFilter]);
+
+  const pagination = usePagination(filtered);
 
   return (
     <div>
@@ -98,7 +103,11 @@ export function SubRecipesPage() {
             className="pl-8"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")} items={CATEGORY_ITEMS}>
+        <Select
+          value={categoryFilter}
+          onValueChange={(v) => setCategoryFilter(v ?? "all")}
+          items={CATEGORY_ITEMS}
+        >
           <SelectTrigger aria-label="Filter by category">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -111,7 +120,11 @@ export function SubRecipesPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")} items={STATUS_ITEMS}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v ?? "all")}
+          items={STATUS_ITEMS}
+        >
           <SelectTrigger aria-label="Filter by status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -136,44 +149,56 @@ export function SubRecipesPage() {
           </p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Batch Yield</TableHead>
-              <TableHead className="text-right">Total Cost</TableHead>
-              <TableHead className="text-right">Cost/Unit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((sub) => (
-              <TableRow
-                key={sub.id}
-                className="cursor-pointer"
-                onClick={() => navigate(`/sub-recipes/${sub.id}`)}
-              >
-                <TableCell className="font-medium">{sub.name}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {sub.category}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={sub.status} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatWeight(sub.batchYield.qty, sub.batchYield.unit)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <CurrencyDisplay value={sub.totalCost} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <CurrencyDisplay value={sub.costPerUnit} decimals={4} />
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Batch Yield</TableHead>
+                <TableHead className="text-right">Total Cost</TableHead>
+                <TableHead className="text-right">Cost/Unit</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {pagination.pageItems.map((sub) => (
+                <TableRow
+                  key={sub.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/sub-recipes/${sub.id}`)}
+                >
+                  <TableCell className="font-medium">{sub.name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {sub.category}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={sub.status} />
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatWeight(sub.batchYield.qty, sub.batchYield.unit)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <CurrencyDisplay value={sub.totalCost} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <CurrencyDisplay value={sub.costPerUnit} decimals={4} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <TablePagination
+            page={pagination.page}
+            pageCount={pagination.pageCount}
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            noun="sub-recipes"
+            onPageChange={pagination.setPage}
+          />
+        </>
       )}
     </div>
   );

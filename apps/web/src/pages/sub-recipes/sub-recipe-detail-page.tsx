@@ -19,6 +19,8 @@ import { IngredientLinesTable } from "@/components/recipes/ingredient-lines-tabl
 import { BatchCostPanel } from "@/components/sub-recipes/batch-cost-panel";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
 import { AllergenPanel } from "@/components/recipes/allergen-panel";
+import { AllergenReviewNotice } from "@/components/shared/allergen-review-notice";
+import { useAllergenReviews } from "@/hooks/use-allergen-reviews";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import {
   updateSubRecipeAndCascade,
@@ -97,6 +99,8 @@ export function SubRecipeDetailPage() {
   const [lines, setLines] = useState<IngredientLine[]>(
     existing?.ingredientLines ?? [],
   );
+
+  const allergenReviews = useAllergenReviews(lines);
 
   const isNew = !id;
 
@@ -322,6 +326,7 @@ export function SubRecipeDetailPage() {
             batchQty={batchYieldQty}
           />
           <AllergenPanel lines={lines} />
+          <AllergenReviewNotice reviews={allergenReviews} />
         </div>
       </div>
     </div>

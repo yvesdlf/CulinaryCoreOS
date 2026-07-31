@@ -40,6 +40,7 @@ import { FoodCostIndicator } from "@/components/shared/food-cost-indicator";
 import { useProductStore } from "@/stores/product-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
+import { findUnverifiedAllergens } from "@/engine/allergen-review";
 import {
   calculateRecommendedPrice,
   roundToNearest,
@@ -115,10 +116,16 @@ export function DashboardPage() {
       offTarget,
       onTarget: priced.length - offTarget.length,
       blended,
-      // Products the import could not resolve, or whose data was inferred.
-      needsReview: products.filter((p) => p.status === "PENDING").length,
+      // Ingredients whose allergen list was inferred from a name rather than
+      // read off the product, and the dishes that inherit one.
+      needsReview: products.filter((p) => p.allergensNeedReview).length,
+      dishesAffected: recipes.filter(
+        (r) =>
+          findUnverifiedAllergens(r.ingredientLines, { products, subRecipes })
+            .length > 0,
+      ).length,
     };
-  }, [recipes, products, upper, lower]);
+  }, [recipes, products, subRecipes, upper, lower]);
 
   return (
     <div>
@@ -178,23 +185,27 @@ export function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardDescription>Ingredients to review</CardDescription>
+            <CardDescription>Allergens to verify</CardDescription>
             <CardTitle className="text-3xl tabular-nums">
               {summary.needsReview}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-xs text-muted-foreground">
-              Imported with inferred data
+              {/* The count that matters is dishes, not ingredients: one
+                  unchecked jar can reach a dozen plates. */}
+              Inferred from the name, not read off the product — affecting{" "}
+              {summary.dishesAffected}{" "}
+              {summary.dishesAffected === 1 ? "dish" : "dishes"}
             </p>
             <Button
               variant="outline"
               size="sm"
               nativeButton={false}
-              render={<Link to="/products?status=PENDING" />}
+              render={<Link to="/products?review=1" />}
             >
               Review
-              <ArrowRight className="ml-1 size-3" />
+              <ArrowRight className="ml-1 size-3" aria-hidden="true" />
             </Button>
           </CardContent>
         </Card>

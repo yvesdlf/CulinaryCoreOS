@@ -39,6 +39,8 @@ const product = (id: string, gross: string): Product => ({
   status: "ACTIVE",
   nutrition: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
   allergens: [],
+  allergensNeedReview: false,
+  allergenReviewNote: null,
   createdAt: "",
   updatedAt: "",
 });

@@ -19,6 +19,8 @@ import { IngredientLinesTable } from "@/components/recipes/ingredient-lines-tabl
 import { CostSummaryPanel } from "@/components/recipes/cost-summary-panel";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
 import { AllergenPanel } from "@/components/recipes/allergen-panel";
+import { AllergenReviewNotice } from "@/components/shared/allergen-review-notice";
+import { useAllergenReviews } from "@/hooks/use-allergen-reviews";
 import { useRecipeStore } from "@/stores/recipe-store";
 import {
   RECIPE_CATEGORIES,
@@ -92,6 +94,10 @@ export function RecipeDetailPage() {
   const [lines, setLines] = useState<IngredientLine[]>(
     existing?.ingredientLines ?? [],
   );
+
+  // Recomputed as lines change rather than read from the saved recipe, so
+  // adding an unverified ingredient warns immediately instead of after a save.
+  const allergenReviews = useAllergenReviews(lines);
 
   const isNew = !id;
 
@@ -343,6 +349,9 @@ export function RecipeDetailPage() {
           />
           <NutritionPanel lines={lines} portions={yieldQty} />
           <AllergenPanel lines={lines} />
+          {/* Sits directly under the allergen list, because it is a caveat on
+              that list rather than a separate concern. */}
+          <AllergenReviewNotice reviews={allergenReviews} />
         </div>
       </div>
     </div>
