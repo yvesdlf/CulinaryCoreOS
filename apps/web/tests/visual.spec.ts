@@ -8,6 +8,17 @@ import { ready, setTheme, openFirstRow } from "./helpers";
  * regression is far more likely to appear in one theme than both. The suite
  * guards the surfaces where a silent visual break would be costly: the costing
  * panels and the allergen badges.
+ *
+ * List screenshots mask the table body. The baselines were previously pixel
+ * bound to whatever rows the database happened to hold, so importing the real
+ * catalogue reddened eleven of them at once and repairing a unit price reddened
+ * them again — a suite that cries every time the seed moves is a suite people
+ * stop reading. Masking keeps what these shots are actually for (layout,
+ * spacing, chrome, both themes) and drops what they were never testing.
+ *
+ * Row rendering is not left unguarded: the allergen badge and cost summary
+ * shots below are deliberately unmasked, and the a11y and screen-reader suites
+ * assert on the real content.
  */
 
 const SCREENS = [
@@ -25,6 +36,7 @@ for (const screen of SCREENS) {
       await setTheme(page, theme);
       await expect(page).toHaveScreenshot(`${screen.name}-${theme}.png`, {
         fullPage: true,
+        mask: [page.locator("tbody")],
       });
     });
   }
