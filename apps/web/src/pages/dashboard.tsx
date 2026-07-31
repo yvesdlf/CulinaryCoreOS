@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Package, ChefHat, Layers, ArrowRight, TriangleAlert } from "lucide-react";
 import type { Recipe } from "@ccos/shared";
+import type Decimal from "decimal.js";
 
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -119,6 +120,46 @@ export function DashboardPage() {
       // Ingredients whose allergen list was inferred from a name rather than
       // read off the product, and the dishes that inherit one.
       needsReview: products.filter((p) => p.allergensNeedReview).length,
+      /*
+       * The venue's categories are its menu sections — Sunset Menu, Caviar
+       * Menu, Sharing Platter — so this is menu engineering, not a taxonomy
+       * report. It answers which part of the menu is dragging, which reading
+       * 115 rows one at a time does not.
+       *
+       * Weighted per section for the same reason the headline is: a section
+       * average would let one cheap side dish offset a platter.
+       */
+      sections: [
+        ...priced
+          .reduce((map, r) => {
+            const s = map.get(r.category) ?? {
+              category: r.category,
+              dishes: 0,
+              cog: toDecimal(0),
+              revenue: toDecimal(0),
+              offTarget: 0,
+            };
+            s.dishes++;
+            s.cog = s.cog.plus(toDecimal(r.pricing.totalCog));
+            s.revenue = s.revenue.plus(toDecimal(r.pricing.menuPrice));
+            if (
+              r.pricing.foodCostPercent > upper ||
+              r.pricing.foodCostPercent < lower
+            ) {
+              s.offTarget++;
+            }
+            map.set(r.category, s);
+            return map;
+          }, new Map<string, { category: string; dishes: number; cog: Decimal; revenue: Decimal; offTarget: number }>())
+          .values(),
+      ]
+        .map((s) => ({
+          ...s,
+          percent: s.revenue.greaterThan(0)
+            ? s.cog.dividedBy(s.revenue).times(100).toNumber()
+            : 0,
+        }))
+        .sort((a, b) => b.percent - a.percent),
       dishesAffected: recipes.filter(
         (r) =>
           findUnverifiedAllergens(r.ingredientLines, { products, subRecipes })
@@ -286,6 +327,64 @@ export function DashboardPage() {
               )}
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ── Menu sections ─────────────────────────────────────────────────── */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base">Food cost by menu section</CardTitle>
+          <CardDescription>
+            Each section weighted by money, worst first — one cheap side dish
+            should not offset a platter.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Section</TableHead>
+                <TableHead className="text-right">Dishes</TableHead>
+                <TableHead className="text-right">Off target</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="text-right">Menu value</TableHead>
+                <TableHead className="text-right">Food cost</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {summary.sections.map((s) => (
+                <TableRow key={s.category}>
+                  <TableCell className="font-medium">
+                    <Link
+                      to={`/recipes?category=${encodeURIComponent(s.category)}`}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {s.category}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {s.dishes}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {s.offTarget > 0 ? (
+                      <span className="text-status-warning">{s.offTarget}</span>
+                    ) : (
+                      <span className="text-muted-foreground">--</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <CurrencyDisplay value={s.cog.toFixed(2)} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <CurrencyDisplay value={s.revenue.toFixed(2)} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <FoodCostIndicator value={s.percent} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 

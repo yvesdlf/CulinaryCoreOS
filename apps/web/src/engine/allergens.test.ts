@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { deriveAllergens, deriveDietaryFlags } from "./nutrition-engine";
+import {
+  deriveAllergens,
+  deriveDietaryFlags,
+  nutritionCoverage,
+  ZERO_NUTRITION,
+} from "./nutrition-engine";
 import { resolveAllergens, allergenNames } from "@/lib/allergens";
 
 /**
@@ -126,5 +131,67 @@ describe("presentation", () => {
     const [nut] = resolveAllergens(["EU14_TREE_NUTS"]);
     expect(pnt.known && pnt.definition.code).toBe("PNT");
     expect(nut.known && nut.definition.code).toBe("NUT");
+  });
+});
+
+describe("nutrition coverage", () => {
+  /**
+   * Separating "no calories" from "nobody entered any". The imported
+   * catalogue is entirely the second case, and the panel rendered it as the
+   * first — a confident 0 kcal on a wagyu dish.
+   */
+  const sources = (
+    products: Record<string, number>,
+    subs: Record<string, number> = {},
+  ) => ({
+    getProduct: (id: string) =>
+      id in products
+        ? { nutrition: { ...ZERO_NUTRITION, kcal: products[id] } }
+        : undefined,
+    getSubRecipe: (id: string) =>
+      id in subs
+        ? { nutritionPer100g: { ...ZERO_NUTRITION, kcal: subs[id] } }
+        : undefined,
+  });
+
+  const nline = (over: { productId?: string; subRecipeId?: string }) => ({
+    productId: over.productId ?? null,
+    subRecipeId: over.subRecipeId ?? null,
+    nettQty: 100,
+  });
+
+  it("reports nothing covered when no ingredient carries data", () => {
+    const out = nutritionCoverage(
+      [nline({ productId: "a" }), nline({ productId: "b" })],
+      sources({ a: 0, b: 0 }),
+    );
+    expect(out).toEqual({ withData: 0, total: 2 });
+  });
+
+  it("counts partial coverage rather than rounding it to all or nothing", () => {
+    const out = nutritionCoverage(
+      [nline({ productId: "a" }), nline({ productId: "b" }), nline({ productId: "c" })],
+      sources({ a: 250, b: 0, c: 0 }),
+    );
+    expect(out).toEqual({ withData: 1, total: 3 });
+  });
+
+  it("counts a row with macros but no kcal — kcal is derived from them", () => {
+    const withMacros = {
+      getProduct: () => ({
+        nutrition: { ...ZERO_NUTRITION, proteinG: 20, kcal: 0 },
+      }),
+      getSubRecipe: () => undefined,
+    };
+    expect(nutritionCoverage([nline({ productId: "a" })], withMacros).withData).toBe(1);
+  });
+
+  it("counts sub-recipes too, not just products", () => {
+    const out = nutritionCoverage([nline({ subRecipeId: "s" })], sources({}, { s: 100 }));
+    expect(out.withData).toBe(1);
+  });
+
+  it("does not count an ingredient it cannot resolve", () => {
+    expect(nutritionCoverage([nline({ productId: "gone" })], sources({})).withData).toBe(0);
   });
 });

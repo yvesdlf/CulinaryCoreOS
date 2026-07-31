@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, Search, Download } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { AllergenBadges } from "@/components/shared/allergen-badges";
 import { AllergenReviewFlag } from "@/components/shared/allergen-review-notice";
 import { findUnverifiedAllergens } from "@/engine/allergen-review";
+import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
+import { allergenNames } from "@/lib/allergens";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useProductStore } from "@/stores/product-store";
 import {
@@ -71,7 +73,12 @@ export function RecipesPage() {
   }, [recipes, products, subRecipes]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  // Seeded from the URL so the dashboard's menu-section rows can link
+  // straight to their dishes, the same way products takes ?review=1.
+  const [params] = useSearchParams();
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    () => params.get("category") ?? "all",
+  );
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filtered = useMemo(() => {
@@ -90,12 +97,59 @@ export function RecipesPage() {
 
   const pagination = usePagination(filtered);
 
+  /*
+   * Exports what is on screen, filters and all — not the whole catalogue.
+   * Someone who has narrowed to one menu section and then gets a file of all
+   * 115 dishes has to redo the filtering in Excel, which is the work they
+   * came here to avoid.
+   */
+  function exportCsv() {
+    downloadCsv(
+      datedFilename("ccos-costings"),
+      toCsv(
+        [
+          "Dish", "Category", "Status", "Ingredient cost", "Waste", "Inflation",
+          "Total cost", "Menu price (excl. tax)", "Guest price (incl. tax)",
+          "Food cost %", "Gross profit", "Allergens", "Allergens to verify",
+        ],
+        filtered.map((r) => [
+          r.name,
+          r.category,
+          r.status,
+          r.pricing.totalCost,
+          r.pricing.wasteAmount,
+          r.pricing.inflationAmount,
+          r.pricing.totalCog,
+          r.pricing.menuPrice,
+          r.pricing.priceInclTax,
+          r.pricing.foodCostPercent,
+          r.pricing.grossProfit,
+          // Full names, not codes: a spreadsheet has no tooltip to hold the
+          // legal wording, and Appendix G does not let a code stand alone.
+          allergenNames(r.allergens).join("; "),
+          reviewCounts.get(r.id) ?? 0,
+        ]),
+      ),
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Recipes"
         description="Manage your menu recipes and food cost analysis"
       >
+        {/* Outside the permission gate: exporting is a read, and a view-only
+            user is exactly the person most likely to want the figures in a
+            spreadsheet rather than in the app. */}
+        <Button
+          variant="outline"
+          onClick={exportCsv}
+          disabled={filtered.length === 0}
+        >
+          <Download className="mr-1 size-4" aria-hidden="true" />
+          Export CSV
+        </Button>
         <PermissionGate fallbackLabel="View only">
           <Button nativeButton={false} render={<Link to="/recipes/new" />}>
             <Plus className="mr-1 size-4" />

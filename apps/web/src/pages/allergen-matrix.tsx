@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Printer, TriangleAlert } from "lucide-react";
+import { Printer, Download, TriangleAlert } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { findUnverifiedAllergens } from "@/engine/allergen-review";
 import { EU14_ALLERGENS, resolveAllergens } from "@/lib/allergens";
+import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
 
 export function AllergenMatrixPage() {
   const recipes = useRecipeStore((s) => s.recipes);
@@ -74,12 +75,46 @@ export function AllergenMatrixPage() {
 
   const unverifiedTotal = rows.filter((r) => r.unverified > 0).length;
 
+  /*
+   * The grid, as a grid. Columns carry the full allergen name rather than the
+   * code, because a spreadsheet has no tooltip to hold the legal wording and
+   * Appendix G does not let a code stand alone.
+   *
+   * "Yes"/"" rather than the on-screen bullet: a dot is a rendering choice,
+   * and this file will be filtered and sorted by someone who needs the cells
+   * to mean something to Excel.
+   */
+  function exportCsv() {
+    downloadCsv(
+      datedFilename("ccos-allergen-matrix"),
+      toCsv(
+        ["Dish", "Category", ...EU14_ALLERGENS.map((a) => a.name),
+         "Also declared", "Ingredients to verify"],
+        rows.map(({ recipe, ids, unmapped, unverified }) => [
+          recipe.name,
+          recipe.category,
+          ...EU14_ALLERGENS.map((a) => (ids.has(a.id) ? "Yes" : "")),
+          unmapped.join("; "),
+          unverified,
+        ]),
+      ),
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Allergen matrix"
         description={`${rows.length} dishes against the regulated fourteen (EU FIC 1169/2011)`}
       >
+        <Button
+          variant="outline"
+          onClick={exportCsv}
+          disabled={rows.length === 0}
+        >
+          <Download className="mr-1 size-4" aria-hidden="true" />
+          Export CSV
+        </Button>
         <Button variant="outline" onClick={() => window.print()}>
           <Printer className="mr-1 size-4" aria-hidden="true" />
           Print

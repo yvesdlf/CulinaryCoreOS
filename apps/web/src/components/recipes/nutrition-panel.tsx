@@ -6,6 +6,7 @@ import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import {
   deriveRecipeNutrition,
   deriveSubRecipeNutrition,
+  nutritionCoverage,
 } from "@/engine/nutrition-engine";
 import { formatNumber } from "@/lib/format";
 import { ChefHat } from "lucide-react";
@@ -37,10 +38,21 @@ export function NutritionPanel({
       : deriveRecipeNutrition(lines, portions, sources);
   }, [lines, portions, per100g, batchQty, getProduct, getSubRecipe]);
 
+  /*
+   * Every imported ingredient arrived with no nutrition data, so this panel
+   * showed "0 kcal" on a wagyu dish — an absence rendered as a measurement.
+   * That is the same failure as a dish claiming to be gluten-free because
+   * nobody filled in its allergens, and it is worse here than showing nothing,
+   * because a zero looks like an answer.
+   */
+  const coverage = useMemo(
+    () => nutritionCoverage(lines, { getProduct, getSubRecipe }),
+    [lines, getProduct, getSubRecipe],
+  );
+
   const totalMacroG = nutrition.fatG + nutrition.carbsG + nutrition.proteinG;
   const fatPct = totalMacroG > 0 ? (nutrition.fatG / totalMacroG) * 100 : 0;
-  const carbsPct =
-    totalMacroG > 0 ? (nutrition.carbsG / totalMacroG) * 100 : 0;
+  const carbsPct = totalMacroG > 0 ? (nutrition.carbsG / totalMacroG) * 100 : 0;
   const proteinPct =
     totalMacroG > 0 ? (nutrition.proteinG / totalMacroG) * 100 : 0;
 
@@ -53,64 +65,84 @@ export function NutritionPanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Calories highlight */}
-        <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
-          <div className="text-2xl font-bold tabular-nums">
-            {Math.round(nutrition.kcal)}
-          </div>
-          <div className="text-xs text-muted-foreground">kcal</div>
-        </div>
+        {coverage.withData === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            {coverage.total === 0
+              ? "Add ingredients to see nutrition."
+              : "Not recorded. None of these ingredients carry nutrition data, so there is nothing to total — this is not a claim that the dish has none."}
+          </p>
+        ) : (
+          <>
+            {coverage.withData < coverage.total && (
+              // Partial data is still worth showing, but not without saying how
+              // partial: a figure covering 2 of 9 ingredients is a floor, not a
+              // total, and reads as a total unless it says otherwise.
+              <p className="rounded-md bg-status-warning-soft px-3 py-2 text-xs text-foreground/80">
+                Based on {coverage.withData} of {coverage.total} ingredients —
+                the rest have no nutrition data, so these figures are a minimum.
+              </p>
+            )}
 
-        {/* Macro bar */}
-        <div className="space-y-1.5">
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full">
-            <div
-              className="bg-chart-5 transition-all"
-              style={{ width: `${fatPct}%` }}
-            />
-            <div
-              className="bg-chart-2 transition-all"
-              style={{ width: `${carbsPct}%` }}
-            />
-            <div
-              className="bg-chart-1 transition-all"
-              style={{ width: `${proteinPct}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-full bg-chart-5" />
-              Fat
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-full bg-chart-2" />
-              Carbs
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-2 rounded-full bg-chart-1" />
-              Protein
-            </span>
-          </div>
-        </div>
+            {/* Calories highlight */}
+            <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
+              <div className="text-2xl font-bold tabular-nums">
+                {Math.round(nutrition.kcal)}
+              </div>
+              <div className="text-xs text-muted-foreground">kcal</div>
+            </div>
 
-        {/* Macros grid */}
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <MacroCell label="Fat" value={nutrition.fatG} unit="g" />
-          <MacroCell label="Carbs" value={nutrition.carbsG} unit="g" />
-          <MacroCell label="Protein" value={nutrition.proteinG} unit="g" />
-        </div>
+            {/* Macro bar */}
+            <div className="space-y-1.5">
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full">
+                <div
+                  className="bg-chart-5 transition-all"
+                  style={{ width: `${fatPct}%` }}
+                />
+                <div
+                  className="bg-chart-2 transition-all"
+                  style={{ width: `${carbsPct}%` }}
+                />
+                <div
+                  className="bg-chart-1 transition-all"
+                  style={{ width: `${proteinPct}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block size-2 rounded-full bg-chart-5" />
+                  Fat
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block size-2 rounded-full bg-chart-2" />
+                  Carbs
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block size-2 rounded-full bg-chart-1" />
+                  Protein
+                </span>
+              </div>
+            </div>
 
-        {/* Micronutrients */}
-        <div className="space-y-1 pt-1">
-          <div className="text-xs font-medium text-muted-foreground">
-            Vitamins & Minerals
-          </div>
-          <MicroRow label="Vitamin A" value={nutrition.vitAMg} unit="mg" />
-          <MicroRow label="Vitamin C" value={nutrition.vitCMg} unit="mg" />
-          <MicroRow label="Calcium" value={nutrition.calciumMg} unit="mg" />
-          <MicroRow label="Iron" value={nutrition.ironMg} unit="mg" />
-          <MicroRow label="Sodium" value={nutrition.sodiumMg} unit="mg" />
-        </div>
+            {/* Macros grid */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <MacroCell label="Fat" value={nutrition.fatG} unit="g" />
+              <MacroCell label="Carbs" value={nutrition.carbsG} unit="g" />
+              <MacroCell label="Protein" value={nutrition.proteinG} unit="g" />
+            </div>
+
+            {/* Micronutrients */}
+            <div className="space-y-1 pt-1">
+              <div className="text-xs font-medium text-muted-foreground">
+                Vitamins & Minerals
+              </div>
+              <MicroRow label="Vitamin A" value={nutrition.vitAMg} unit="mg" />
+              <MicroRow label="Vitamin C" value={nutrition.vitCMg} unit="mg" />
+              <MicroRow label="Calcium" value={nutrition.calciumMg} unit="mg" />
+              <MicroRow label="Iron" value={nutrition.ironMg} unit="mg" />
+              <MicroRow label="Sodium" value={nutrition.sodiumMg} unit="mg" />
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

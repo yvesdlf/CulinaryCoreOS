@@ -140,6 +140,37 @@ export function calculateTotalNutrition(
   );
 }
 
+/**
+ * How much of a dish the nutrition figures actually account for.
+ *
+ * Every one of the 1.106 imported ingredients arrived with no nutrition data,
+ * so the panel showed a confident "0 kcal" on a wagyu dish. Zero is a number,
+ * and presenting an absence as one is the same failure as a recipe claiming to
+ * be gluten-free because nobody filled in its allergens.
+ *
+ * `withData` counts lines whose source carries any nutrition at all, so a
+ * caller can tell "this dish has no calories" from "nobody has entered any".
+ */
+export function nutritionCoverage(
+  lines: NutritionLine[],
+  sources: NutritionSources,
+): { withData: number; total: number } {
+  let withData = 0;
+  for (const line of lines) {
+    const n = line.productId
+      ? sources.getProduct(line.productId)?.nutrition
+      : line.subRecipeId
+        ? sources.getSubRecipe(line.subRecipeId)?.nutritionPer100g
+        : undefined;
+    // kcal alone is not enough: it is derived from the macros, so a row with
+    // macros and an unset kcal still counts as having data.
+    if (n && (n.kcal > 0 || n.fatG > 0 || n.carbsG > 0 || n.proteinG > 0)) {
+      withData++;
+    }
+  }
+  return { withData, total: lines.length };
+}
+
 /** Nutrition for one portion of a recipe. */
 export function deriveRecipeNutrition(
   lines: NutritionLine[],
