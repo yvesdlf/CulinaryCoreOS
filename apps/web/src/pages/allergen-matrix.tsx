@@ -170,7 +170,13 @@ export function AllergenMatrixPage() {
                   than the letters G, L, U.
                 */}
                 <abbr title={a.name} className="no-underline">
-                  <span aria-hidden="true">{a.code}</span>
+                  {/* Icon above the code, both silent to assistive tech: the
+                      accessible name below carries the meaning, and Appendix G
+                      forbids an icon standing alone. */}
+                  <span className="flex flex-col items-center gap-0.5">
+                    <a.icon className="size-3.5" aria-hidden="true" />
+                    <span aria-hidden="true">{a.code}</span>
+                  </span>
                   <span className="sr-only">{a.name}</span>
                 </abbr>
               </TableHead>
@@ -209,7 +215,16 @@ export function AllergenMatrixPage() {
                         — a screen reader reading a row of silence cannot tell
                         an empty cell from one it skipped.
                       */}
-                      <span aria-hidden="true">{present ? "●" : "–"}</span>
+                      {present ? (
+                        <a.icon
+                          className="mx-auto size-4 text-status-danger"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <span aria-hidden="true" className="text-muted-foreground">
+                          –
+                        </span>
+                      )}
                       <span className="sr-only">
                         {present ? `Contains ${a.name}` : `No ${a.name} declared`}
                       </span>
@@ -244,7 +259,10 @@ export function AllergenMatrixPage() {
         <dl className="grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2 lg:grid-cols-3">
           {EU14_ALLERGENS.map((a) => (
             <div key={a.id} className="flex gap-2">
-              <dt className="w-10 shrink-0 font-medium">{a.code}</dt>
+              <dt className="flex w-14 shrink-0 items-center gap-1.5 font-medium">
+                <a.icon className="size-3.5" aria-hidden="true" />
+                {a.code}
+              </dt>
               <dd className="text-muted-foreground">
                 {a.name}
                 {a.note && <span className="block">{a.note}</span>}
@@ -253,7 +271,7 @@ export function AllergenMatrixPage() {
           ))}
         </dl>
         <p className="mt-4 text-xs text-muted-foreground">
-          ● contains · – not declared. Allergens are inherited from ingredients
+          An allergen icon means the dish contains it; – means not declared. Allergens are inherited from ingredients
           and preparations. A blank cell means nothing was declared, which is
           not the same as having been checked.
         </p>

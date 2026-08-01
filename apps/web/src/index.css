@@ -232,3 +232,69 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Print — DOC4 §11.3
+ * ---------------------------------------------------------------------------
+ * A recipe sheet goes on a pass or into a folder, so the page has to become a
+ * document: no sidebar, no header, no toolbars, and ink kept for the content.
+ * Screen surfaces are re-derived rather than inverted — a card with a tinted
+ * fill costs a kitchen printer a page of toner and reads worse than plain.
+ * ------------------------------------------------------------------------ */
+@media print {
+  /* Navigation chrome. The sidebar and header are structural, so they are
+     hidden by role rather than by a class that a refactor could rename. */
+  [data-slot="sidebar"],
+  [data-slot="sidebar-wrapper"] > [data-sidebar],
+  header,
+  nav[aria-label*="pagination" i],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Whatever the layout was doing on screen, on paper it is one column. */
+  html,
+  body,
+  #root,
+  main {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Ink, not fills. */
+  * {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* A rule survives photocopying; a 1px tint does not. */
+  table,
+  th,
+  td {
+    border-color: #000 !important;
+  }
+
+  /* Keep a section and its heading together, and never break a row. */
+  h1,
+  h2 {
+    break-after: avoid-page;
+  }
+  tr,
+  li {
+    break-inside: avoid;
+  }
+
+  /* A link's target is invisible on paper, so print it once, after the text. */
+  a[href^="/"]::after {
+    content: "";
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}

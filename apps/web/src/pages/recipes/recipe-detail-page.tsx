@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Printer } from "lucide-react";
 import type { IngredientLine, RecipeStatus } from "@ccos/shared";
 import { PageHeader } from "@/components/layout/page-header";
 import { PermissionGate } from "@/components/shared/permission-gate";
@@ -176,6 +176,18 @@ export function RecipeDetailPage() {
   return (
     <div>
       <PageHeader title={isNew ? "New Recipe" : name || "Edit Recipe"}>
+        {/* Only for a saved recipe: there is nothing to format until it
+            exists. */}
+        {!isNew && id && (
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link to={`/recipes/${id}/print`} />}
+          >
+            <Printer className="mr-1 size-4" aria-hidden="true" />
+            Recipe sheet
+          </Button>
+        )}
         <Button variant="outline" nativeButton={false} render={<Link to="/recipes" />}>
           <ArrowLeft className="mr-1 size-4" />
           Back
