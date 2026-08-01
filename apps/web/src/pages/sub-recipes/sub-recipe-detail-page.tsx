@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Printer } from "lucide-react";
 import type { IngredientLine, RecipeStatus, Preparation } from "@ccos/shared";
 import { EMPTY_PREPARATION } from "@ccos/shared";
 import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
@@ -189,6 +189,16 @@ function SubRecipeDetailForm() {
       <PageHeader
         title={isNew ? "New Sub Recipe" : name || "Edit Sub Recipe"}
       >
+        {!isNew && id && (
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link to={`/sub-recipes/${id}/print`} />}
+          >
+            <Printer className="mr-1 size-4" aria-hidden="true" />
+            Prep sheet
+          </Button>
+        )}
         <Button variant="outline" nativeButton={false} render={<Link to="/sub-recipes" />}>
           <ArrowLeft className="mr-1 size-4" />
           Back

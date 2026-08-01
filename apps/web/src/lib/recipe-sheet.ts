@@ -19,6 +19,71 @@ import { allergenBreakdown } from "@/engine/allergen-breakdown";
 import { resolveAllergens } from "@/lib/allergens";
 import { formatCurrency, formatPercent, formatNumber } from "@/lib/format";
 
+/**
+ * A preparation's own sheet.
+ *
+ * Exported alongside the dishes because a recipe sheet's "* prepared in house
+ * — see its own sheet" is a broken promise in a folder that contains only
+ * dishes, and a prep pack is mostly preparations.
+ */
+export function renderSubRecipeSheet(sub: SubRecipe, sources: Sources): string {
+  const productById = new Map(sources.products.map((p) => [p.id, p]));
+  const subById = new Map(sources.subRecipes.map((s) => [s.id, s]));
+  const nameOf = (l: SubRecipe["ingredientLines"][number]) =>
+    (l.productId ? productById.get(l.productId)?.name : subById.get(l.subRecipeId ?? "")?.name) ??
+    "Unknown ingredient";
+
+  const allergens = resolveAllergens(sub.allergens);
+
+  return page(
+    sub.name,
+    `<h1>${esc(sub.name)}</h1>
+<p class="meta">Preparation · ${esc(sub.category)} · ${esc(sub.status)} · Batch ${esc(
+      formatNumber(sub.batchYield.qty),
+    )} ${esc(sub.batchYield.unit)}${
+      sub.preparation.prepMinutes !== null ? ` · Prep ${sub.preparation.prepMinutes} min` : ""
+    }${
+      sub.preparation.cookMinutes !== null ? ` · Cook ${sub.preparation.cookMinutes} min` : ""
+    }</p>
+${
+  allergens.length
+    ? `<h2>Allergens carried into every dish using this</h2>
+<p>${allergens
+        .map((r) => (r.known ? `${esc(r.definition.name)} (${esc(r.definition.code)})` : esc(r.raw)))
+        .join(" · ")}</p>`
+    : ""
+}
+<h2>Ingredients</h2>
+<table>
+  <thead><tr><th class="num">Quantity</th><th>Ingredient</th><th class="num">Cost</th></tr></thead>
+  <tbody>
+${sub.ingredientLines
+  .map(
+    (l) => `    <tr><td class="num">${esc(formatNumber(l.nettQty))} ${esc(l.nettUnit)}</td>` +
+      `<td>${esc(nameOf(l))}</td><td class="num">${esc(formatCurrency(l.lineCost))}</td></tr>`,
+  )
+  .join("\n")}
+  </tbody>
+</table>
+
+<h2>Method</h2>
+${
+  sub.preparation.method.length === 0
+    ? '<p class="note">Not written yet.</p>'
+    : `<ol>${sub.preparation.method.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`
+}
+
+<h2>Batch cost</h2>
+<div class="cols">
+  <dl>
+    <div><dt>Ingredients</dt><dd>${esc(formatCurrency(sub.totalCost))}</dd></div>
+    <div><dt>Batch yield</dt><dd>${esc(formatNumber(sub.batchYield.qty))} ${esc(sub.batchYield.unit)}</dd></div>
+    <div><dt>Cost per unit</dt><dd>${esc(formatCurrency(sub.costPerUnit))}</dd></div>
+  </dl>
+</div>`,
+  );
+}
+
 /** Escape for HTML. A dish called "Fish & Chips" must not become markup. */
 function esc(s: string): string {
   return s

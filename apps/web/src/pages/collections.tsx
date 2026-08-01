@@ -34,7 +34,7 @@ import {
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { createZip, downloadZip, safeFilename } from "@/lib/zip";
-import { renderRecipeSheet } from "@/lib/recipe-sheet";
+import { renderRecipeSheet, renderSubRecipeSheet } from "@/lib/recipe-sheet";
 
 export function CollectionsPage() {
   const recipes = useRecipeStore((s) => s.recipes);
@@ -133,6 +133,22 @@ export function CollectionsPage() {
       name: `${folder}/${safeFilename(r.name)}.html`,
       content: renderRecipeSheet(r, { products, subRecipes }),
     }));
+
+    /*
+     * Every preparation those dishes reference, in its own subfolder. A pack
+     * of dish sheets whose footnotes say "see its own sheet" and that contains
+     * no such sheet is a pack that sends someone back to a screen.
+     */
+    const needed = new Set<string>();
+    for (const r of activeRecipes) {
+      for (const l of r.ingredientLines) if (l.subRecipeId) needed.add(l.subRecipeId);
+    }
+    for (const sub of subRecipes.filter((s) => needed.has(s.id))) {
+      entries.push({
+        name: `${folder}/preparations/${safeFilename(sub.name)}.html`,
+        content: renderSubRecipeSheet(sub, { products, subRecipes }),
+      });
+    }
     // An index, so the folder is navigable rather than a pile of files.
     entries.push({
       name: `${folder}/index.html`,
@@ -145,7 +161,9 @@ export function CollectionsPage() {
       }),
     });
     downloadZip(folder, createZip(entries));
-    toast.success(`${activeRecipes.length} recipe sheets exported`);
+    toast.success(`${entries.length - 1} sheets exported`, {
+      description: `${activeRecipes.length} dishes and the preparations they use.`,
+    });
   }
 
   return (

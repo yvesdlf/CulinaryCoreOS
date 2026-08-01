@@ -9,6 +9,7 @@ import { DuplicatesPage } from "@/pages/duplicates";
 import { CollectionsPage } from "@/pages/collections";
 import { CollectionPrintPage } from "@/pages/collection-print-page";
 import { RecipePrintPage } from "@/pages/recipes/recipe-print-page";
+import { SubRecipePrintPage } from "@/pages/sub-recipes/sub-recipe-print-page";
 import { ProductsPage } from "@/pages/products/products-page";
 import { ProductDetailPage } from "@/pages/products/product-detail-page";
 import { RecipesPage } from "@/pages/recipes/recipes-page";
@@ -56,6 +57,7 @@ export function App() {
         <Route path="/sub-recipes" element={<SubRecipesPage />} />
         <Route path="/sub-recipes/new" element={<SubRecipeDetailPage />} />
         <Route path="/sub-recipes/:id" element={<SubRecipeDetailPage />} />
+        <Route path="/sub-recipes/:id/print" element={<SubRecipePrintPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id/print" element={<CollectionPrintPage />} />
         <Route path="/duplicates" element={<DuplicatesPage />} />

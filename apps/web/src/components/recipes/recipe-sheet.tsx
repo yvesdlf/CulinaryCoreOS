@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
 import type { Recipe } from "@ccos/shared";
 
@@ -166,9 +167,21 @@ export function RecipeSheet({ recipe }: { recipe: Recipe }) {
                   {formatNumber(l.nettQty)} {l.nettUnit}
                 </td>
                 <td className="py-1.5">
-                  {lineName(l)}
-                  {/* The asterisk convention from §11.3: made in house. */}
-                  {l.subRecipeId && <span aria-label=" (made in house)">*</span>}
+                  {/* The asterisk convention from §11.3: made in house. On
+                      screen it links to that preparation's own sheet, which
+                      the footnote has been promising; on paper the link
+                      renders as plain text and the footnote still reads. */}
+                  {l.subRecipeId ? (
+                    <Link
+                      to={`/sub-recipes/${l.subRecipeId}/print`}
+                      className="underline-offset-4 hover:underline print:no-underline"
+                    >
+                      {lineName(l)}
+                      <span aria-label=" (made in house)">*</span>
+                    </Link>
+                  ) : (
+                    lineName(l)
+                  )}
                 </td>
                 <td className="py-1.5 text-right tabular-nums">
                   {formatCurrency(l.lineCost)}
