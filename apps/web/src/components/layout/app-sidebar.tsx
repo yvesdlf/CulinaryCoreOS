@@ -30,10 +30,10 @@ const navItems = [
   { title: "Recipes", to: "/recipes", icon: ChefHat },
   { title: "Sub Recipes", to: "/sub-recipes", icon: Layers },
   { title: "Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
+  { title: "Suppliers", to: "/suppliers", icon: Truck },
 ];
 
 const managementItems = [
-  { title: "Suppliers", icon: Truck },
   { title: "Inventory", icon: Warehouse },
   { title: "Production", icon: Factory },
 ];

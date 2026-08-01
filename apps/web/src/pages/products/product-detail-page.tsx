@@ -325,7 +325,7 @@ export function ProductDetailPage() {
                     value={form.category}
                     onValueChange={(val) => { if (val) setField("category", val) }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger aria-label="Category" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -355,7 +355,7 @@ export function ProductDetailPage() {
                       if (val) setField("status", val as ProductStatus)
                     }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger aria-label="Status" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -455,7 +455,7 @@ export function ProductDetailPage() {
                     value={form.packing.packUnit}
                     onValueChange={(val) => { if (val) setPacking("packUnit", val) }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger aria-label="Pack Unit" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -491,7 +491,7 @@ export function ProductDetailPage() {
                       if (val) setPacking("unitsPerPackUnit", val)
                     }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger aria-label="Units Per Pack Unit" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -518,7 +518,7 @@ export function ProductDetailPage() {
                     value={form.packing.totalUnit}
                     onValueChange={(val) => { if (val) setPacking("totalUnit", val) }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger aria-label="Total Unit" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -615,7 +615,7 @@ export function ProductDetailPage() {
                       value={form.yield_.grossUnit}
                       onValueChange={(val) => { if (val) setYield("grossUnit", val) }}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger aria-label="Gross Unit" className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -644,7 +644,7 @@ export function ProductDetailPage() {
                       value={form.yield_.wasteUnit}
                       onValueChange={(val) => { if (val) setYield("wasteUnit", val) }}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger aria-label="Waste Unit" className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -671,7 +671,7 @@ export function ProductDetailPage() {
                       value={form.yield_.nettUnit}
                       onValueChange={(val) => { if (val) setYield("nettUnit", val) }}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger aria-label="Nett Unit" className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

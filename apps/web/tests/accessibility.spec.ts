@@ -14,7 +14,21 @@ import { ready, setTheme, openFirstRow } from "./helpers";
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 function scanner(page: import("@playwright/test").Page) {
-  return new AxeBuilder({ page }).withTags(TAGS);
+  return (
+    new AxeBuilder({ page })
+      .withTags(TAGS)
+      /*
+       * Base UI injects 1x1 focus-guard sentinels around a dialog —
+       * `<span role="button" data-base-ui-inert>` with no accessible name.
+       * They are the library's own focus-trap machinery, not our markup, and
+       * they are marked inert precisely so nothing treats them as controls.
+       *
+       * Excluded by that attribute alone, so it cannot quietly widen: anything
+       * else nameless still fails, which is how the unlabelled selects on the
+       * product editor were caught.
+       */
+      .exclude("[data-base-ui-focus-guard]")
+  );
 }
 
 const PAGES = [
@@ -61,6 +75,94 @@ test("recipe editor has no WCAG AA violations", async ({ page }) => {
   if (results.violations.length) {
     console.log(
       "\nrecipe editor:\n" +
+        results.violations
+          .map((v) => `  [${v.impact}] ${v.id}: ${v.help}`)
+          .join("\n"),
+    );
+  }
+  expect(results.violations).toEqual([]);
+});
+
+/**
+ * The product editor carries the most recently added interactive UI — the
+ * price simulation, the where-used panel and the allergen verification
+ * control — and had never been scanned. Editors are where people spend their
+ * time; scanning only the lists checks the easy half.
+ */
+test("product editor has no WCAG AA violations", async ({ page }) => {
+  await page.goto("/products");
+  await ready(page, "Products");
+  await openFirstRow(page);
+  await expect(page.getByText("If this price changes")).toBeVisible();
+
+  const results = await scanner(page).analyze();
+  if (results.violations.length) {
+    console.log(
+      "\nproduct editor:\n" +
+        results.violations
+          .map((v) => `  [${v.impact}] ${v.id}: ${v.help}`)
+          .join("\n"),
+    );
+  }
+  expect(results.violations).toEqual([]);
+});
+
+/**
+ * The import preview is the last thing between a file and a thousand rewritten
+ * prices, so it has to be readable by whoever is checking it. Driven with a
+ * real file rather than a mocked state — an empty preview would pass while
+ * proving nothing.
+ */
+test("price import preview has no WCAG AA violations", async ({ page }) => {
+  await page.goto("/products");
+  await ready(page, "Products");
+
+  await page.setInputFiles(
+    'input[type="file"]',
+    {
+      name: "supplier-list.csv",
+      mimeType: "text/csv",
+      // One row that applies, one that cannot, so both halves of the preview
+      // render — the table and the problem list.
+      buffer: Buffer.from(
+        '"Name","Unit cost"\r\n"Guanciale","649000.57"\r\n"Not A Real Ingredient","1000"',
+      ),
+    },
+  );
+
+  await expect(page.getByText(/nothing has been changed yet/)).toBeVisible();
+  await expect(page.getByText(/will not be applied/)).toBeVisible();
+
+  const results = await scanner(page).analyze();
+  if (results.violations.length) {
+    console.log(
+      "\nprice import preview:\n" +
+        results.violations
+          .map((v) => `  [${v.impact}] ${v.id}: ${v.help}`)
+          .join("\n"),
+    );
+  }
+  expect(results.violations).toEqual([]);
+});
+
+/**
+ * Command palette. It searches 1.300 entities now, and a search whose results
+ * a screen reader cannot follow is a search only some people have.
+ */
+test("command palette results have no WCAG AA violations", async ({ page }) => {
+  await page.goto("/recipes");
+  await ready(page, "Recipes");
+
+  await page.keyboard.press("ControlOrMeta+k");
+  const input = page.getByPlaceholder(/Search dishes/i);
+  await expect(input).toBeVisible();
+  await input.fill("wagyu");
+  await expect(page.getByRole("option").first()).toBeVisible();
+
+  const results = await scanner(page).analyze();
+  if (results.violations.length) {
+    console.log(
+      "\ncommand palette:\n" +
         results.violations
           .map((v) => `  [${v.impact}] ${v.id}: ${v.help}`)
           .join("\n"),

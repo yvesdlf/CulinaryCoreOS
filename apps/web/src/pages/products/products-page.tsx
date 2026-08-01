@@ -82,7 +82,7 @@ export function ProductsPage() {
   // dashboard's "allergens to verify" sends people to ?review=1, and a filter
   // that quietly ignored the query would make that link a lie.
   const [params] = useSearchParams();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => params.get("search") ?? "");
   const [category, setCategory] = useState<string>(
     () => params.get("category") ?? "__all__",
   );

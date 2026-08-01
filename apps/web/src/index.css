@@ -114,7 +114,11 @@
 
     /* Text */
     --text-primary: #222222;
-    --text-secondary: #69707e;    /* Slate 500 darkened: 4.39:1 at 12px fails §12 */
+    /* Darkened twice. The first pass cleared the page background at 4,65:1;
+       raised surfaces are darker still (#efeeea for a selected command item
+       or an inactive tab), where it fell to 4,29:1. Tuning a token against
+       one background only holds until it is used on another. */
+    --text-secondary: #616876;    /* 5,23:1 on page, 4,82:1 on raised */
     --text-muted: #8a9099;
     --text-inverse: #ffffff;
 
