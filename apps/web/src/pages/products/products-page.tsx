@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Download } from "lucide-react";
 import type { Product } from "@ccos/shared";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -34,6 +34,8 @@ import {
   TablePagination,
   usePagination,
 } from "@/components/shared/table-pagination";
+import { PriceImportDialog } from "@/components/products/price-import-dialog";
+import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
 import { useProductStore } from "@/stores/product-store";
 import { PRODUCT_CATEGORIES, PRODUCT_STATUSES } from "@/lib/constants";
 import { formatPercent } from "@/lib/format";
@@ -123,13 +125,51 @@ export function ProductsPage() {
 
   const pagination = usePagination(filtered);
 
+  /*
+   * The other half of the round trip: export, edit in Excel, import back.
+   * Column headers are the ones the importer looks for, so a file that leaves
+   * here can come back without being reshaped — an export whose own format the
+   * import rejects would be a strange thing to ship.
+   */
+  function exportCsv() {
+    downloadCsv(
+      datedFilename("ccos-products"),
+      toCsv(
+        ["Name", "Brand", "Category", "Supplier", "Unit", "Unit cost",
+         "Yield %", "Status", "Allergens", "Allergens to verify"],
+        filtered.map((p) => [
+          p.name,
+          p.brand,
+          p.category,
+          p.supplier,
+          p.packing.totalUnit,
+          p.cost.grossPricePerUnit,
+          p.yield_.yieldPercent,
+          p.status,
+          p.allergens.join("; "),
+          p.allergensNeedReview ? "Yes" : "",
+        ]),
+      ),
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Products"
         description="Manage your ingredient catalog and supplier pricing"
       >
+        {/* Outside the gate: exporting is a read. */}
+        <Button
+          variant="outline"
+          onClick={exportCsv}
+          disabled={filtered.length === 0}
+        >
+          <Download className="mr-1 size-4" aria-hidden="true" />
+          Export CSV
+        </Button>
         <PermissionGate fallbackLabel="View only">
+          <PriceImportDialog />
           <Button nativeButton={false} render={<Link to="/products/new" />}>
             <Plus className="mr-1 size-4" />
             New Product

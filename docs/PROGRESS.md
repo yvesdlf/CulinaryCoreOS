@@ -1,6 +1,57 @@
 # Progress Tracker
 
+> A note on "verified" in this file. Every such claim below was, until
+> 2026-08-01, a one-time check on one laptop. CI was added to make them
+> permanent and then failed on all seven of its runs — it died at pnpm setup
+> before a single test executed, while six commits reported green. It now
+> passes all three jobs, including the browser suite against a real database.
+> Claims made from here are machine-checked; claims above that line were not.
+
 ## Done
+- [x] CI actually runs, and is green. Three jobs: typecheck/unit/build,
+      accessibility+keyboard+screen-reader against a real Supabase instance,
+      and the COGS golden-master reconciliation. Two defects had made it
+      structurally incapable of passing — a `version:` input fighting the
+      `packageManager` field, and a browser job that never installed the
+      Supabase CLI while carrying `continue-on-error` on both database steps,
+      so it would have scanned an empty page and called it a pass.
+- [x] Supplier price-list round trip. Export products to CSV, edit in Excel,
+      import back. Matching is by name and refuses to guess: an unknown name,
+      a duplicated name, an unreadable figure and a negative price are each
+      reported rather than skipped, because a half-applied import that reports
+      success is worse than one that fails. Nothing is written until a preview
+      shows every old and new price, sorted by size of move.
+      That preview immediately earned itself: costs are held to five decimal
+      places, so the app's own export contains "36441.025", which the number
+      parser read as thousands grouping and inflated a thousandfold. Export
+      then import unchanged now reports 0 changes across 1.102 products.
+- [x] CSV export of costings and the allergen matrix, honouring on-screen
+      filters, with unformatted numbers and a UTF-8 BOM so Excel neither
+      treats prices as text nor mangles "Crudités".
+- [x] Dashboard is the food cost summary: blended cost weighted by money,
+      dishes off target with the price that would fix them, and food cost by
+      menu section. Weighting changes the answer — Pasta is the worst section
+      at 31,3% because Lobster Linguine dominates it, where an unweighted mean
+      puts it at 27,1% and points elsewhere.
+- [x] Allergen matrix — 115 dishes against the regulated fourteen, printable
+      and exportable, with the key Appendix G requires and an explicit
+      statement that it is not a compliance record while unverified
+      ingredients remain.
+- [x] Allergen review workflow. Declarations inferred from an ingredient name
+      are marked as unverified and carry a note saying what to check against
+      the brand. The flag is transitive and derived, never stored: a dish three
+      levels above an unchecked jar is still what reaches the guest, and a
+      cached "nothing to check here" going stale is the failure being
+      prevented.
+- [x] Price-change simulation on any product, running the real cascade against
+      a copy — Guanciale at +10% takes Squid & Guanciale from 87,7% to 94,3%.
+- [x] "Where used" on products and sub-recipes. `getDependents` was written and
+      tested for cycles and depth, and had no UI, so edits were blind.
+- [x] Nutrition tells the truth. All 1.102 imported ingredients arrived without
+      nutrition data, so every dish showed a confident "0 kcal"; absence and
+      zero are now distinguished, and partial coverage is labelled a minimum.
+- [x] Lists paginate at 25 rows. 1.106 unvirtualised rows were slow to paint
+      and slow enough to walk that the tablet axe scan timed out.
 - [x] Real Manuza catalogue imported from COGS V5: 1.106 products (1.084 real +
       22 review placeholders), 112 sub-recipes with 634 lines, 115 dishes with
       649 of 665 lines resolved, and EU-14 allergens on 352 products.
@@ -191,7 +242,8 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
       planning tables still need to be added)
 - [ ] Decide on accounting/payments/staff-management integration strategy
       (see gaps flagged in Competitive Analysis)
-- [ ] Set up Supabase project (local + hosted) — requires user's machine
+- [x] Supabase project set up locally, with tenancy and RLS. Hosted still
+      outstanding.
 - [ ] Generate iOS project via Capacitor — requires user's machine + Xcode
 - [ ] Generate macOS project via Tauri — requires user's machine + Rust
 
@@ -204,10 +256,9 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
       write, but the editors still present Save as though it will succeed.
 - [ ] Reads are hydrate-once at startup. No realtime subscription and no
       refetch, so a second user's edits are not seen until reload.
-- [ ] Writes are optimistic and not transactional: the entity and its cascade
-      are separate requests, so a mid-cascade failure can leave the database
-      inconsistent with the UI until the next reload. Wrap the cascade in an
-      RPC/transaction.
+- [x] The cascade fan-out is wrapped in the `apply_cascade` RPC, so it commits
+      or does not. The primary entity's own UPDATE is still a separate request
+      — see below.
 - [ ] Products have no `version` column, so they get no lost-update protection
       (recipes and sub-recipes do). Add one if concurrent product editing
       becomes a real scenario.
@@ -217,8 +268,10 @@ ESM-only `@tailwindcss/vite` plugin from a CommonJS package.
 - [ ] Cascade `refPercent` too, if product yield should override recipe lines.
       Deliberately not done: ref % is editable per line in the ingredient grid,
       so overwriting it would discard a chef's intentional trim override.
-- [ ] Allergen management (EU 14 + US 9 union)
-- [ ] Menu engineering matrix
+- [x] Allergen management (EU 14). US 9 union still outstanding.
+- [x] Menu engineering: food cost by section, off-target dishes and
+      suggested prices on the dashboard. Sales-mix weighting still needs
+      POS data the app does not yet receive.
 - [ ] Supplier & procurement module
 - [ ] Inventory management
 - [ ] Production planning / prep lists

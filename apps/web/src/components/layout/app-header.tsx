@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CommandPalette } from "./command-palette";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth-store";
+import { currentTheme, setTheme } from "@/lib/theme";
 
 const routeLabels: Record<string, string> = {
   "": "Dashboard",
@@ -48,15 +49,15 @@ export function AppHeader() {
   const activeOrg = useAuthStore((s) => s.activeOrg);
   const session = useAuthStore((s) => s.session);
   const signOut = useAuthStore((s) => s.signOut);
-  const [isDark, setIsDark] = useState(
-    document.documentElement.classList.contains("dark")
-  );
+  const [isDark, setIsDark] = useState(() => currentTheme() === "dark");
   const breadcrumbs = useBreadcrumbs();
 
   function toggleTheme() {
     const next = !isDark;
     setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    // Persisted, so the choice survives a reload. It used to be a class and
+    // nothing else, which meant dark mode had to be re-picked every visit.
+    setTheme(next ? "dark" : "light");
   }
 
   return (
