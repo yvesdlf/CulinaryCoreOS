@@ -5,6 +5,7 @@ import {
   ChefHat,
   Layers,
   ShieldAlert,
+  CopyCheck,
   Truck,
   Warehouse,
   Factory,
@@ -31,6 +32,7 @@ const navItems = [
   { title: "Sub Recipes", to: "/sub-recipes", icon: Layers },
   { title: "Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
   { title: "Suppliers", to: "/suppliers", icon: Truck },
+  { title: "Duplicates", to: "/duplicates", icon: CopyCheck },
 ];
 
 const managementItems = [

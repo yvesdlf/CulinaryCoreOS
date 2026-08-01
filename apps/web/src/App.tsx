@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { DashboardPage } from "@/pages/dashboard";
 import { AllergenMatrixPage } from "@/pages/allergen-matrix";
 import { SuppliersPage } from "@/pages/suppliers";
+import { DuplicatesPage } from "@/pages/duplicates";
 import { ProductsPage } from "@/pages/products/products-page";
 import { ProductDetailPage } from "@/pages/products/product-detail-page";
 import { RecipesPage } from "@/pages/recipes/recipes-page";
@@ -51,6 +52,7 @@ export function App() {
         <Route path="/sub-recipes" element={<SubRecipesPage />} />
         <Route path="/sub-recipes/new" element={<SubRecipeDetailPage />} />
         <Route path="/sub-recipes/:id" element={<SubRecipeDetailPage />} />
+        <Route path="/duplicates" element={<DuplicatesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/allergen-matrix" element={<AllergenMatrixPage />} />
         <Route path="*" element={<NotFoundPage />} />

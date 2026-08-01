@@ -400,3 +400,43 @@ export async function persistCascade(
   });
   if (error) fail("persistCascade", error);
 }
+
+// ── Merging duplicates ──────────────────────────────────────────────────────
+
+/**
+ * Repoint every ingredient line from the losing products onto the survivor,
+ * then remove them.
+ *
+ * One RPC because it must be one transaction: a merge that moved half the
+ * lines and then failed would leave dishes costing from a row that no longer
+ * exists, and the UI would show the finished result either way.
+ */
+export async function mergeProducts(
+  survivorId: string,
+  loserIds: string[],
+): Promise<{ recipeLines: number; subRecipeLines: number; removed: number }> {
+  const { data, error } = await requireSupabase().rpc("merge_products", {
+    p_survivor: survivorId,
+    p_losers: loserIds,
+  });
+  if (error) fail("mergeProducts", error);
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    recipeLines: row?.recipe_lines_moved ?? 0,
+    subRecipeLines: row?.sub_recipe_lines_moved ?? 0,
+    removed: row?.products_removed ?? 0,
+  };
+}
+
+/** Rewrite alternative spellings of a supplier onto one name. */
+export async function mergeSupplierNames(
+  survivor: string,
+  losers: string[],
+): Promise<number> {
+  const { data, error } = await requireSupabase().rpc("merge_supplier_names", {
+    p_survivor: survivor,
+    p_losers: losers,
+  });
+  if (error) fail("mergeSupplierNames", error);
+  return typeof data === "number" ? data : 0;
+}
