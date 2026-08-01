@@ -57,6 +57,12 @@ export function RecipeSheet({ recipe }: { recipe: Recipe }) {
         <p className="mt-1 text-sm text-muted-foreground">
           {recipe.category} · {recipe.status} · Yields{" "}
           {formatNumber(recipe.portion.yieldQty)} {recipe.portion.yieldUnit}
+          {recipe.preparation.prepMinutes !== null && (
+            <> · Prep {recipe.preparation.prepMinutes} min</>
+          )}
+          {recipe.preparation.cookMinutes !== null && (
+            <> · Cook {recipe.preparation.cookMinutes} min</>
+          )}
         </p>
       </header>
 
@@ -176,6 +182,37 @@ export function RecipeSheet({ recipe }: { recipe: Recipe }) {
             * prepared in house — see its own sheet for the method.
           </p>
         )}
+      </section>
+
+      {/* ── Method ────────────────────────────────────────────────────────── */}
+      <section className="mt-6" aria-labelledby={`method-${recipe.id}`}>
+        <h2
+          id={`method-${recipe.id}`}
+          className="text-sm font-semibold uppercase tracking-wide"
+        >
+          Method
+        </h2>
+        {recipe.preparation.method.length === 0 ? (
+          // Said plainly rather than left blank: a sheet with an empty method
+          // section looks like a printing fault, and someone will assume the
+          // steps were lost rather than never written.
+          <p className="mt-2 text-sm text-muted-foreground">
+            Not written yet.
+          </p>
+        ) : (
+          <ol className="mt-2 space-y-2 text-sm">
+            {recipe.preparation.method.map((step, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="w-5 shrink-0 text-right tabular-nums text-muted-foreground">
+                  {i + 1}.
+                </span>
+                <span className="flex-1">{step}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        {/* internalNotes is deliberately absent — the editor promises it stays
+            off printed sheets, and this is the sheet. */}
       </section>
 
       {/* ── Cost and nutrition ────────────────────────────────────────────── */}

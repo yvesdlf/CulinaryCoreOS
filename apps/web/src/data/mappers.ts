@@ -79,6 +79,36 @@ export const NUTRITION_SELECT = NUTRITION_COLUMNS.join(", ");
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+
+/**
+ * Preparation, shared by dishes and the preparations they are built from.
+ *
+ * A null column becomes an empty list rather than undefined: "nobody has
+ * written the method down" is a state the UI must render, and undefined would
+ * make every consumer guard for it separately.
+ */
+function preparationFromRow(row: any) {
+  return {
+    method: row.method ?? [],
+    prepMinutes: row.prep_minutes ?? null,
+    cookMinutes: row.cook_minutes ?? null,
+    internalNotes: row.internal_notes ?? null,
+  };
+}
+
+function preparationToRow(
+  p: { method?: string[]; prepMinutes?: number | null; cookMinutes?: number | null; internalNotes?: string | null } | undefined,
+  row: Record<string, unknown>,
+): void {
+  if (!p) return;
+  // Blank steps are what an empty editor row leaves behind; storing them would
+  // print a numbered gap on a sheet.
+  if (p.method !== undefined) row.method = p.method.map((s) => s.trim()).filter(Boolean);
+  if (p.prepMinutes !== undefined) row.prep_minutes = p.prepMinutes;
+  if (p.cookMinutes !== undefined) row.cook_minutes = p.cookMinutes;
+  if (p.internalNotes !== undefined) row.internal_notes = p.internalNotes;
+}
+
 export function productFromRow(row: any): Product {
   return {
     id: row.id,
@@ -227,6 +257,7 @@ export function subRecipeFromRow(row: any): SubRecipe {
     securityMarginPercent: num(row.security_margin_percent, 5),
     nutritionPer100g: nutritionFromRow(row),
     allergens: row.allergens ?? [],
+    preparation: preparationFromRow(row),
     version: num(row.version, 1),
     createdAt: row.created_at ?? "",
     updatedAt: row.updated_at ?? "",
@@ -245,6 +276,7 @@ export function subRecipeToRow(s: Partial<SubRecipe>): Record<string, unknown> {
     row.inflation_percent = s.inflationPercent;
   if (s.taxPercent !== undefined) row.tax_percent = s.taxPercent;
   if (s.allergens !== undefined) row.allergens = s.allergens;
+  preparationToRow(s.preparation, row);
   if (s.version !== undefined) row.version = s.version;
   if (s.batchYield) {
     row.batch_yield_qty = s.batchYield.qty;
@@ -286,6 +318,7 @@ export function recipeFromRow(row: any): Recipe {
     taxPercent: num(row.tax_percent, 21),
     nutritionPerPortion: nutritionFromRow(row),
     allergens: row.allergens ?? [],
+    preparation: preparationFromRow(row),
     dietaryFlags: {
       glutenFree: Boolean(row.gluten_free),
       dairyFree: Boolean(row.dairy_free),
@@ -307,6 +340,7 @@ export function recipeToRow(r: Partial<Recipe>): Record<string, unknown> {
   if (r.category !== undefined) row.category = r.category;
   if (r.status !== undefined) row.status = r.status;
   if (r.allergens !== undefined) row.allergens = r.allergens;
+  preparationToRow(r.preparation, row);
   if (r.version !== undefined) row.version = r.version;
   if (r.portion) {
     row.yield_qty = r.portion.yieldQty;

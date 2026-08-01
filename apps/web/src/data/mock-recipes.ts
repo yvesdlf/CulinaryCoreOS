@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Recipe } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
 
 const now = new Date().toISOString();
 
@@ -39,6 +40,7 @@ export const MOCK_RECIPES: Recipe[] = [
     taxPercent: 21,
     nutritionPerPortion: { fatG: 38, carbsG: 16, proteinG: 62, vitAMg: 0.12, vitCMg: 8, calciumMg: 55, ironMg: 8.2, sodiumMg: 380, kcal: 650 },
     allergens: ["dairy"],
+    preparation: EMPTY_PREPARATION,
     dietaryFlags: { glutenFree: true, dairyFree: false, vegetarian: false, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
     version: 1,
     createdAt: now,
@@ -76,6 +78,7 @@ export const MOCK_RECIPES: Recipe[] = [
     taxPercent: 21,
     nutritionPerPortion: { fatG: 32, carbsG: 4, proteinG: 44, vitAMg: 0.04, vitCMg: 18, calciumMg: 30, ironMg: 2.1, sodiumMg: 280, kcal: 480 },
     allergens: ["fish"],
+    preparation: EMPTY_PREPARATION,
     dietaryFlags: { glutenFree: true, dairyFree: true, vegetarian: false, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
     version: 1,
     createdAt: now,
@@ -112,6 +115,7 @@ export const MOCK_RECIPES: Recipe[] = [
     taxPercent: 21,
     nutritionPerPortion: { fatG: 18, carbsG: 6, proteinG: 52, vitAMg: 0.05, vitCMg: 14, calciumMg: 340, ironMg: 2.4, sodiumMg: 520, kcal: 395 },
     allergens: ["dairy"],
+    preparation: EMPTY_PREPARATION,
     dietaryFlags: { glutenFree: true, dairyFree: false, vegetarian: false, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
     version: 1,
     createdAt: now,
@@ -148,6 +152,7 @@ export const MOCK_RECIPES: Recipe[] = [
     taxPercent: 21,
     nutritionPerPortion: { fatG: 16, carbsG: 72, proteinG: 28, vitAMg: 0.1, vitCMg: 12, calciumMg: 520, ironMg: 4.8, sodiumMg: 850, kcal: 545 },
     allergens: ["gluten", "dairy"],
+    preparation: EMPTY_PREPARATION,
     dietaryFlags: { glutenFree: false, dairyFree: false, vegetarian: true, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
     version: 1,
     createdAt: now,
@@ -183,6 +188,7 @@ export const MOCK_RECIPES: Recipe[] = [
     taxPercent: 21,
     nutritionPerPortion: { fatG: 28, carbsG: 32, proteinG: 5, vitAMg: 0.15, vitCMg: 0, calciumMg: 45, ironMg: 3.2, sodiumMg: 45, kcal: 400 },
     allergens: ["dairy", "gluten"],
+    preparation: EMPTY_PREPARATION,
     dietaryFlags: { glutenFree: false, dairyFree: false, vegetarian: true, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
     version: 1,
     createdAt: now,

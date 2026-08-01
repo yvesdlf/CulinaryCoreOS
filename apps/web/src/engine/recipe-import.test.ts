@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Product, SubRecipe, Recipe } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
 import { planRecipeImport } from "./recipe-import";
 
 /**
@@ -19,7 +20,8 @@ const product = (name: string, price = "1000"): Product =>
     yield_: { grossQty: 1, grossUnit: "KG", wasteQty: 0, wasteUnit: "KG", nettQty: 1, nettUnit: "KG", refPercent: 0, yieldPercent: 100 },
     status: "ACTIVE",
     nutrition: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
-    allergens: [], allergensNeedReview: false, allergenReviewNote: null,
+    allergens: [],
+    preparation: EMPTY_PREPARATION, allergensNeedReview: false, allergenReviewNote: null,
     createdAt: "", updatedAt: "",
   }) as Product;
 
@@ -29,7 +31,8 @@ const sub = (name: string, costPerUnit = "500"): SubRecipe =>
     batchYield: { qty: 1, unit: "KG" }, totalCost: "0", costPerUnit,
     wastePercent: 0, inflationPercent: 0, taxPercent: 21,
     nutritionPer100g: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
-    allergens: [], version: 1, createdAt: "", updatedAt: "",
+    allergens: [],
+    preparation: EMPTY_PREPARATION, version: 1, createdAt: "", updatedAt: "",
   }) as SubRecipe;
 
 const recipe = (name: string): Recipe =>
@@ -39,7 +42,8 @@ const recipe = (name: string): Recipe =>
     pricing: { menuPrice: "50000", priceInclTax: "0", totalCost: "0", wasteAmount: "0", inflationAmount: "0", totalCog: "0", grossProfit: "0", grossProfitPercent: 0, foodCostPercent: 0, currency: "IDR" },
     wastePercent: 0, inflationPercent: 4, taxPercent: 21,
     nutritionPerPortion: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
-    allergens: [], dietaryFlags: { glutenFree: true, dairyFree: true, vegetarian: false, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
+    allergens: [],
+    preparation: EMPTY_PREPARATION, dietaryFlags: { glutenFree: true, dairyFree: true, vegetarian: false, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
     version: 1, createdAt: "", updatedAt: "",
   }) as Recipe;
 

@@ -10,6 +10,7 @@ import { WhereUsed } from "@/components/shared/where-used";
 import { toast } from "sonner";
 import type { Product, NutritionPer100g, ProductStatus } from "@ccos/shared";
 
+import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
 import { PageHeader } from "@/components/layout/page-header";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -85,20 +86,24 @@ function emptyProduct(): Omit<Product, "id" | "createdAt" | "updatedAt"> {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function ProductDetailPage() {
+function ProductDetailForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useProductStore();
 
   const isNew = !id;
+  const loaded = useCatalogueLoaded();
   const existing = id ? store.getById(id) : undefined;
 
   // Redirect if editing a non-existent product
   useEffect(() => {
-    if (id && !existing) {
+    // Only once the catalogue has actually arrived. On a fresh page load the
+    // stores are empty for a moment, and redirecting then made every deep link
+    // bounce to the list.
+    if (id && !existing && loaded) {
       navigate("/products", { replace: true });
     }
-  }, [id, existing, navigate]);
+  }, [id, existing, loaded, navigate]);
 
   // ── Form state ─────────────────────────────────────────────────────────
 
@@ -889,4 +894,27 @@ function FormField({
       {children}
     </div>
   );
+}
+
+/**
+ * Waits for the catalogue before mounting the form.
+ *
+ * The form seeds its fields from the stored entity in `useState` initialisers,
+ * which run once. On a deep link those ran while the stores were still empty,
+ * so the editor opened blank on a recipe that exists — and saving it reported
+ * "name is required" over the top of real data. Remounting on `loaded` is what
+ * makes those initialisers see the entity.
+ */
+export function ProductDetailPage() {
+  const loaded = useCatalogueLoaded();
+  const { id } = useParams<{ id: string }>();
+
+  if (id && !loaded) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        Loading product...
+      </p>
+    );
+  }
+  return <ProductDetailForm key={id ?? "new"} />;
 }

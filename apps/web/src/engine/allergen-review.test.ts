@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Product, SubRecipe } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
 import { findUnverifiedAllergens } from "./allergen-review";
 
 /**
@@ -49,6 +50,7 @@ const sub = (id: string, lines: { productId?: string; subRecipeId?: string }[]):
     wastePercent: 0, inflationPercent: 0, taxPercent: 21,
     nutritionPer100g: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
     allergens: [],
+    preparation: EMPTY_PREPARATION,
     version: 1, createdAt: "", updatedAt: "",
   }) as SubRecipe;
 

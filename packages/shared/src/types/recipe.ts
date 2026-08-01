@@ -1,3 +1,19 @@
+
+/**
+ * How the thing is actually made.
+ *
+ * Steps rather than a paragraph: a step is the unit a cook works in, and a
+ * blob of prose cannot be numbered on a sheet or ticked off on a screen.
+ */
+export interface Preparation {
+  /** Ordered steps. Empty means nobody has written the method down yet. */
+  method: string[];
+  prepMinutes: number | null;
+  cookMinutes: number | null;
+  /** Never printed — kitchen-internal remarks, not for a guest or supplier. */
+  internalNotes: string | null;
+}
+
 import type { Decimal, NutritionPer100g } from "./product";
 
 export type RecipeStatus = "NEW" | "ACTUAL" | "PENDING" | "UPDATE" | "DISCONTINUED";
@@ -7,6 +23,14 @@ export type RecipeStatus = "NEW" | "ACTUAL" | "PENDING" | "UPDATE" | "DISCONTINU
  * Modeled from the ingredient-line columns shared by both the RECIPE and
  * SubRec template sheets: NETT QTY, U, REF %, GROSS QTY, U, COST/U, COST.
  */
+/** Nothing written down yet — the state a new recipe starts in. */
+export const EMPTY_PREPARATION: Preparation = {
+  method: [],
+  prepMinutes: null,
+  cookMinutes: null,
+  internalNotes: null,
+};
+
 export interface IngredientLine {
   id: string;
   lineNumber: number;
@@ -66,6 +90,8 @@ export interface SubRecipe {
 
   nutritionPer100g: NutritionPer100g;
   allergens: string[];
+
+  preparation: Preparation;
 
   version: number; // per SRS 4.16 Version Control & Audit
   createdAt: string;
@@ -133,6 +159,8 @@ export interface Recipe {
     soyFree: boolean;
     sulfitesFree: boolean;
   };
+
+  preparation: Preparation;
 
   version: number;
   createdAt: string;

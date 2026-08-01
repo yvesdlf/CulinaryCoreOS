@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { SubRecipe } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
 
 const now = new Date().toISOString();
 
@@ -26,6 +27,7 @@ export const MOCK_SUB_RECIPES: SubRecipe[] = [
     taxPercent: 21,
     nutritionPer100g: { fatG: 40, carbsG: 2.5, proteinG: 0.8, vitAMg: 0, vitCMg: 12, calciumMg: 8, ironMg: 0.4, sodiumMg: 3, kcal: 370 },
     allergens: [],
+    preparation: EMPTY_PREPARATION,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -50,6 +52,7 @@ export const MOCK_SUB_RECIPES: SubRecipe[] = [
     taxPercent: 21,
     nutritionPer100g: { fatG: 2.5, carbsG: 50, proteinG: 8, vitAMg: 0, vitCMg: 0, calciumMg: 12, ironMg: 3.2, sodiumMg: 380, kcal: 260 },
     allergens: ["gluten"],
+    preparation: EMPTY_PREPARATION,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -74,6 +77,7 @@ export const MOCK_SUB_RECIPES: SubRecipe[] = [
     taxPercent: 21,
     nutritionPer100g: { fatG: 8, carbsG: 15, proteinG: 2, vitAMg: 0.1, vitCMg: 8, calciumMg: 20, ironMg: 0.3, sodiumMg: 250, kcal: 140 },
     allergens: ["dairy"],
+    preparation: EMPTY_PREPARATION,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -98,6 +102,7 @@ export const MOCK_SUB_RECIPES: SubRecipe[] = [
     taxPercent: 21,
     nutritionPer100g: { fatG: 22, carbsG: 35, proteinG: 4, vitAMg: 0.05, vitCMg: 0, calciumMg: 40, ironMg: 2.5, sodiumMg: 15, kcal: 360 },
     allergens: ["dairy"],
+    preparation: EMPTY_PREPARATION,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -122,6 +127,7 @@ export const MOCK_SUB_RECIPES: SubRecipe[] = [
     taxPercent: 21,
     nutritionPer100g: { fatG: 18, carbsG: 12, proteinG: 1.5, vitAMg: 0, vitCMg: 4, calciumMg: 15, ironMg: 0.2, sodiumMg: 520, kcal: 220 },
     allergens: ["egg"],
+    preparation: EMPTY_PREPARATION,
     version: 1,
     createdAt: now,
     updatedAt: now,

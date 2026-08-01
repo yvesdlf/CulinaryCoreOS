@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Printer } from "lucide-react";
-import type { IngredientLine, RecipeStatus } from "@ccos/shared";
+import type { IngredientLine, RecipeStatus, Preparation } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
+import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
 import { PageHeader } from "@/components/layout/page-header";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { IngredientLinesTable } from "@/components/recipes/ingredient-lines-table";
+import { MethodEditor } from "@/components/recipes/method-editor";
 import { CostSummaryPanel } from "@/components/recipes/cost-summary-panel";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
 import { AllergenPanel } from "@/components/recipes/allergen-panel";
@@ -50,7 +53,7 @@ import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { createRecipe, saveRecipe } from "@/stores/persistence";
 
-export function RecipeDetailPage() {
+function RecipeDetailForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const getById = useRecipeStore((s) => s.getById);
@@ -58,14 +61,18 @@ export function RecipeDetailPage() {
   const getSubRecipe = useSubRecipeStore((s) => s.getById);
 
 
+  const loaded = useCatalogueLoaded();
   const existing = id ? getById(id) : undefined;
 
   // Redirect if an id was provided but recipe not found
   useEffect(() => {
-    if (id && !existing) {
+    // Only once the catalogue has actually arrived. On a fresh page load the
+    // stores are empty for a moment, and redirecting then made every deep link
+    // bounce to the list.
+    if (id && !existing && loaded) {
       navigate("/recipes", { replace: true });
     }
-  }, [id, existing, navigate]);
+  }, [id, existing, loaded, navigate]);
 
   // Local form state
   const [name, setName] = useState(existing?.name ?? "");
@@ -98,6 +105,10 @@ export function RecipeDetailPage() {
   // Recomputed as lines change rather than read from the saved recipe, so
   // adding an unverified ingredient warns immediately instead of after a save.
   const allergenReviews = useAllergenReviews(lines);
+
+  const [preparation, setPreparation] = useState<Preparation>(
+    existing?.preparation ?? EMPTY_PREPARATION,
+  );
 
   const isNew = !id;
 
@@ -146,6 +157,8 @@ export function RecipeDetailPage() {
       // nutrition panel showed live figures while the old ones were saved.
       nutritionPerPortion: derivedNutrition,
       allergens: derivedAllergens,
+      // Author-written, so it is carried rather than derived.
+      preparation,
       dietaryFlags: {
         ...deriveDietaryFlags(derivedAllergens),
         // Not inferable from allergens — beef carries none. Author-controlled.
@@ -347,6 +360,10 @@ export function RecipeDetailPage() {
           <div>
             <h2 className="mb-3 text-sm font-medium">Ingredients</h2>
             <IngredientLinesTable lines={lines} onChange={setLines} />
+
+          {/* Below the ingredients, because that is the order a sheet reads
+              and the order someone writes a recipe in. */}
+          <MethodEditor value={preparation} onChange={setPreparation} />
           </div>
         </div>
 
@@ -368,4 +385,27 @@ export function RecipeDetailPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Waits for the catalogue before mounting the form.
+ *
+ * The form seeds its fields from the stored entity in `useState` initialisers,
+ * which run once. On a deep link those ran while the stores were still empty,
+ * so the editor opened blank on a recipe that exists — and saving it reported
+ * "name is required" over the top of real data. Remounting on `loaded` is what
+ * makes those initialisers see the entity.
+ */
+export function RecipeDetailPage() {
+  const loaded = useCatalogueLoaded();
+  const { id } = useParams<{ id: string }>();
+
+  if (id && !loaded) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        Loading recipe...
+      </p>
+    );
+  }
+  return <RecipeDetailForm key={id ?? "new"} />;
 }

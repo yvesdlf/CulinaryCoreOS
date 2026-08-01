@@ -1,3 +1,4 @@
+import { EMPTY_PREPARATION } from "@ccos/shared";
 // ---------------------------------------------------------------------------
 // Recipe import
 // ---------------------------------------------------------------------------
@@ -130,6 +131,7 @@ export function RecipeImportDialog() {
           // Left empty on purpose: the cascade derives these from the lines,
           // and a guess written here would be overwritten by the truth anyway.
           allergens: [],
+          preparation: EMPTY_PREPARATION,
           dietaryFlags: {
             glutenFree: false, dairyFree: false, vegetarian: false,
             vegan: false, nutsFree: false, soyFree: false, sulfitesFree: false,

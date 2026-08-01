@@ -60,6 +60,8 @@ const STYLES = `
   .note { color: #555; font-size: .8rem; }
   footer { margin-top: 2rem; padding-top: .5rem; border-top: 1px solid #ddd;
            color: #555; font-size: .75rem; }
+  ol { padding-left: 1.25rem; font-size: .9rem; }
+  ol li { padding: .2rem 0; }
   ul.index { list-style: none; padding: 0; }
   ul.index li { padding: .35rem 0; border-bottom: 1px solid #ddd; }
   @media print {
@@ -188,7 +190,15 @@ ${index.links
     `<h1>${esc(recipe.name)}</h1>
 <p class="meta">${esc(recipe.category)} · ${esc(recipe.status)} · Yields ${esc(
       formatNumber(recipe.portion.yieldQty),
-    )} ${esc(recipe.portion.yieldUnit)}</p>
+    )} ${esc(recipe.portion.yieldUnit)}${
+      recipe.preparation.prepMinutes !== null
+        ? ` · Prep ${recipe.preparation.prepMinutes} min`
+        : ""
+    }${
+      recipe.preparation.cookMinutes !== null
+        ? ` · Cook ${recipe.preparation.cookMinutes} min`
+        : ""
+    }</p>
 
 <h2>Allergens</h2>
 ${allergenList}
@@ -223,6 +233,15 @@ ${
   recipe.ingredientLines.some((l) => l.subRecipeId)
     ? '<p class="note">* prepared in house — see its own sheet for the method.</p>'
     : ""
+}
+
+<h2>Method</h2>
+${
+  recipe.preparation.method.length === 0
+    ? '<p class="note">Not written yet.</p>'
+    : `<ol>${recipe.preparation.method
+        .map((step) => `<li>${esc(step)}</li>`)
+        .join("")}</ol>`
 }
 
 <h2>Cost</h2>

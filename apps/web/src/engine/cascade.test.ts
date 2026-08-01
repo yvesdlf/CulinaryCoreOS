@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Product, SubRecipe, Recipe, IngredientLine } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
 import { getDependents, cascadeFrom, recalculateAll } from "./cascade";
 
 /**
@@ -59,6 +60,7 @@ const sub = (id: string, lines: IngredientLine[], yieldQty = 1000): SubRecipe =>
   taxPercent: 21,
   nutritionPer100g: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
   allergens: [],
+  preparation: EMPTY_PREPARATION,
   version: 1,
   createdAt: "",
   updatedAt: "",
@@ -81,6 +83,7 @@ const recipe = (id: string, lines: IngredientLine[], menuPrice = "1000"): Recipe
   taxPercent: 21,
   nutritionPerPortion: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
   allergens: [],
+  preparation: EMPTY_PREPARATION,
   dietaryFlags: { glutenFree: true, dairyFree: true, vegetarian: false, vegan: false, nutsFree: true, soyFree: true, sulfitesFree: true },
   version: 1,
   createdAt: "",

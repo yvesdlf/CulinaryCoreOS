@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
-import type { IngredientLine, RecipeStatus } from "@ccos/shared";
+import type { IngredientLine, RecipeStatus, Preparation } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
+import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
 import { PageHeader } from "@/components/layout/page-header";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { IngredientLinesTable } from "@/components/recipes/ingredient-lines-table";
+import { MethodEditor } from "@/components/recipes/method-editor";
 import { BatchCostPanel } from "@/components/sub-recipes/batch-cost-panel";
 import { WhereUsed } from "@/components/shared/where-used";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
@@ -58,21 +61,25 @@ const SUB_RECIPE_CATEGORIES = [
   "Other",
 ];
 
-export function SubRecipeDetailPage() {
+function SubRecipeDetailForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const getById = useSubRecipeStore((s) => s.getById);
   const getProduct = useProductStore((s) => s.getById);
   const updateSubRecipe = useSubRecipeStore((s) => s.update);
 
+  const loaded = useCatalogueLoaded();
   const existing = id ? getById(id) : undefined;
 
   // Redirect if id provided but not found
   useEffect(() => {
-    if (id && !existing) {
+    // Only once the catalogue has actually arrived. On a fresh page load the
+    // stores are empty for a moment, and redirecting then made every deep link
+    // bounce to the list.
+    if (id && !existing && loaded) {
       navigate("/sub-recipes", { replace: true });
     }
-  }, [id, existing, navigate]);
+  }, [id, existing, loaded, navigate]);
 
   // Local form state
   const [name, setName] = useState(existing?.name ?? "");
@@ -102,6 +109,10 @@ export function SubRecipeDetailPage() {
   );
 
   const allergenReviews = useAllergenReviews(lines);
+
+  const [preparation, setPreparation] = useState<Preparation>(
+    existing?.preparation ?? EMPTY_PREPARATION,
+  );
 
   const isNew = !id;
 
@@ -143,6 +154,7 @@ export function SubRecipeDetailPage() {
       // showed live figures while the old ones were saved.
       nutritionPer100g: deriveSubRecipeNutrition(lines, batchYieldQty, sources),
       allergens: deriveAllergens(lines, sources),
+      preparation,
       version: existing ? existing.version + 1 : 1,
     };
 
@@ -308,6 +320,10 @@ export function SubRecipeDetailPage() {
           <div>
             <h2 className="mb-3 text-sm font-medium">Ingredients</h2>
             <IngredientLinesTable lines={lines} onChange={setLines} />
+
+          {/* Below the ingredients, because that is the order a sheet reads
+              and the order someone writes a recipe in. */}
+          <MethodEditor value={preparation} onChange={setPreparation} />
           </div>
         </div>
 
@@ -333,4 +349,27 @@ export function SubRecipeDetailPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Waits for the catalogue before mounting the form.
+ *
+ * The form seeds its fields from the stored entity in `useState` initialisers,
+ * which run once. On a deep link those ran while the stores were still empty,
+ * so the editor opened blank on a recipe that exists — and saving it reported
+ * "name is required" over the top of real data. Remounting on `loaded` is what
+ * makes those initialisers see the entity.
+ */
+export function SubRecipeDetailPage() {
+  const loaded = useCatalogueLoaded();
+  const { id } = useParams<{ id: string }>();
+
+  if (id && !loaded) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        Loading sub recipe...
+      </p>
+    );
+  }
+  return <SubRecipeDetailForm key={id ?? "new"} />;
 }

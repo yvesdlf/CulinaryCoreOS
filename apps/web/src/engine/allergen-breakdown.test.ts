@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Product, SubRecipe } from "@ccos/shared";
+import { EMPTY_PREPARATION } from "@ccos/shared";
 import { allergenBreakdown } from "./allergen-breakdown";
 
 /**
@@ -18,7 +19,8 @@ const product = (id: string, allergens: string[], review = false): Product =>
     yield_: { grossQty: 1, grossUnit: "KG", wasteQty: 0, wasteUnit: "KG", nettQty: 1, nettUnit: "KG", refPercent: 0, yieldPercent: 100 },
     status: "ACTIVE",
     nutrition: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
-    allergens, allergensNeedReview: review, allergenReviewNote: null,
+    allergens,
+    preparation: EMPTY_PREPARATION, allergensNeedReview: review, allergenReviewNote: null,
     createdAt: "", updatedAt: "",
   }) as Product;
 
@@ -34,7 +36,8 @@ const sub = (id: string, allergens: string[], inner: { productId?: string; subRe
     batchYield: { qty: 1, unit: "KG" }, totalCost: "0", costPerUnit: "0",
     wastePercent: 0, inflationPercent: 0, taxPercent: 21,
     nutritionPer100g: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
-    allergens, version: 1, createdAt: "", updatedAt: "",
+    allergens,
+    preparation: EMPTY_PREPARATION, version: 1, createdAt: "", updatedAt: "",
   }) as SubRecipe;
 
 const line = (l: { productId?: string; subRecipeId?: string }) => ({
