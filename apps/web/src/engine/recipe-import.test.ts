@@ -127,6 +127,25 @@ describe("refusing to invent", () => {
     expect(plan.problems).toEqual([]);
   });
 
+  it("carries a trim percentage the file states", () => {
+    // The venue's workbooks state ref% per line; discarding a 5% trim would
+    // undercost every line that has one.
+    const plan = planRecipeImport(
+      [[...H, "Ref %"], ["D", "Beef", "0.2", "KG", "20"]],
+      catalogue,
+    );
+    const line = plan.recipes[0].lines[0];
+    expect(line.refPercent).toBe(20);
+    // 0,2 nett at 20% trim is 0,25 gross, at 200.000 = 50.000.
+    expect(line.grossQty).toBeCloseTo(0.25, 5);
+    expect(line.lineCost).toBe("50000.00");
+  });
+
+  it("treats an absent trim column as zero rather than guessing", () => {
+    const plan = planRecipeImport([H, ["D", "Beef", "0.2", "KG"]], catalogue);
+    expect(plan.recipes[0].lines[0].refPercent).toBe(0);
+  });
+
   it("reads a quantity written in the venue's locale", () => {
     const plan = planRecipeImport([H, ["D", "Beef", "0,2", "KG"]], catalogue);
     expect(plan.recipes[0].lines[0].qty).toBe(0.2);

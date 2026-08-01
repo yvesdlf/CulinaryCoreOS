@@ -22,6 +22,9 @@ export interface ImportedLine {
   ingredient: string;
   qty: number;
   unit: string;
+  /** Trim percentage, when the file states one. */
+  refPercent: number;
+  grossQty: number;
   productId: string | null;
   subRecipeId: string | null;
   costPerUnit: string;
@@ -73,6 +76,7 @@ function findColumns(header: string[]) {
     qty: find("quantity", "qty", "amount"),
     unit: find("unit", "uom"),
     category: find("category", "section"),
+    ref: find("ref %", "ref%", "waste %", "trim"),
     price: find("menu price", "selling price", "price"),
   };
 }
@@ -190,14 +194,18 @@ export function planRecipeImport(
       (subMatch ? subMatch.batchYield.unit : productMatch!.packing.totalUnit);
 
     // The shipped engine, so an imported line costs exactly as a typed one
-    // would. Trim is zero here: a sheet gives nett quantities, and a ref% the
-    // file did not state is not one to invent.
-    const { lineCost } = calculateLineCost(qty, 0, costPerUnit);
+    // would. A ref% the file does not state is zero rather than guessed — but
+    // the venue's own workbooks do state it, and discarding a 5% trim would
+    // undercost every line that has one.
+    const refPercent = parseNumber(at(cols.ref)) ?? 0;
+    const { grossQty, lineCost } = calculateLineCost(qty, refPercent, costPerUnit);
 
     dish.lines.push({
       ingredient: ingredientName,
       qty,
       unit,
+      refPercent,
+      grossQty: grossQty.toNumber(),
       productId: subMatch ? null : productMatch!.id,
       subRecipeId: subMatch ? subMatch.id : null,
       costPerUnit: toDecimal(costPerUnit).toFixed(5),
