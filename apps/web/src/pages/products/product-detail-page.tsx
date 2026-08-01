@@ -2,7 +2,7 @@
 // Product detail / create page
 // ---------------------------------------------------------------------------
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Save, X, TriangleAlert } from "lucide-react";
 import { PriceImpact } from "@/components/products/price-impact";
@@ -27,6 +27,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useProductStore } from "@/stores/product-store";
+import { useSubRecipeStore } from "@/stores/sub-recipe-store";
+import { useRecipeStore } from "@/stores/recipe-store";
+import { DeleteEntity } from "@/components/shared/delete-entity";
+import { canDeleteIngredient } from "@/engine/deletion";
+import { removeProduct } from "@/stores/persistence";
 import {
   updateProductAndCascade,
   describeCascade,
@@ -90,6 +95,8 @@ function ProductDetailForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useProductStore();
+  const subRecipes = useSubRecipeStore((s) => s.subRecipes);
+  const recipes = useRecipeStore((s) => s.recipes);
 
   const isNew = !id;
   const loaded = useCatalogueLoaded();
@@ -222,6 +229,18 @@ function ProductDetailForm() {
 
   // ── Save handler ───────────────────────────────────────────────────────
 
+  const verdict = useMemo(
+    () => canDeleteIngredient(id ?? "", { subRecipes, recipes }),
+    [id, subRecipes, recipes],
+  );
+
+  const hrefFor = (kind: string, id: string) =>
+    kind === "recipe"
+      ? `/recipes/${id}`
+      : kind === "collection"
+        ? "/collections"
+        : `/sub-recipes/${id}`;
+
   const handleSave = useCallback(async () => {
     if (!form.name.trim()) {
       toast.error("Product name is required");
@@ -282,6 +301,28 @@ function ProductDetailForm() {
           <X className="mr-1 size-4" />
           Cancel
         </Button>
+        {!isNew && existing && (
+          <PermissionGate fallbackLabel="">
+            <DeleteEntity
+              entityLabel="ingredient"
+              name={existing.name}
+              verdict={verdict}
+              hrefFor={hrefFor}
+              archived={existing.status === "DISCONTINUED"}
+              onDelete={async () => {
+                await removeProduct(existing.id);
+                toast.success(`${existing.name} deleted`);
+                navigate("/products");
+              }}
+              onArchive={async () => {
+                // A status change, so every dish built on it keeps costing.
+                updateProductAndCascade(existing.id, { status: "DISCONTINUED" });
+                toast.success(`${existing.name} archived`);
+                navigate("/products");
+              }}
+            />
+          </PermissionGate>
+        )}
         <PermissionGate>
           <Button onClick={handleSave}>
             <Save className="mr-1 size-4" />

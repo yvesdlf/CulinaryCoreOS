@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Printer } from "lucide-react";
@@ -30,7 +30,10 @@ import {
   updateSubRecipeAndCascade,
   describeCascade,
 } from "@/stores/cascade-actions";
-import { createSubRecipe as persistSubRecipe } from "@/stores/persistence";
+import { createSubRecipe as persistSubRecipe, removeSubRecipe } from "@/stores/persistence";
+import { useRecipeStore } from "@/stores/recipe-store";
+import { DeleteEntity } from "@/components/shared/delete-entity";
+import { canDeleteIngredient } from "@/engine/deletion";
 import {
   RECIPE_STATUSES,
   UNITS,
@@ -119,6 +122,20 @@ function SubRecipeDetailForm() {
   // Lookups the nutrition/allergen derivation needs.
   const sources = { getProduct, getSubRecipe: getById };
 
+  const allSubRecipes = useSubRecipeStore((s) => s.subRecipes);
+  const allRecipes = useRecipeStore((s) => s.recipes);
+  const verdict = useMemo(
+    () => canDeleteIngredient(id ?? "", { subRecipes: allSubRecipes, recipes: allRecipes }),
+    [id, allSubRecipes, allRecipes],
+  );
+
+  const hrefFor = (kind: string, id: string) =>
+    kind === "recipe"
+      ? `/recipes/${id}`
+      : kind === "collection"
+        ? "/collections"
+        : `/sub-recipes/${id}`;
+
   async function handleSave() {
     if (!name.trim()) {
       toast.error("Sub recipe name is required");
@@ -203,6 +220,27 @@ function SubRecipeDetailForm() {
           <ArrowLeft className="mr-1 size-4" />
           Back
         </Button>
+        {!isNew && existing && (
+          <PermissionGate fallbackLabel="">
+            <DeleteEntity
+              entityLabel="preparation"
+              name={existing.name}
+              verdict={verdict}
+              hrefFor={hrefFor}
+              archived={existing.status === "DISCONTINUED"}
+              onDelete={async () => {
+                await removeSubRecipe(existing.id);
+                toast.success(`${existing.name} deleted`);
+                navigate("/sub-recipes");
+              }}
+              onArchive={async () => {
+                updateSubRecipeAndCascade(existing.id, { status: "DISCONTINUED" });
+                toast.success(`${existing.name} archived`);
+                navigate("/sub-recipes");
+              }}
+            />
+          </PermissionGate>
+        )}
         <PermissionGate>
           <Button onClick={handleSave}>
             <Save className="mr-1 size-4" />

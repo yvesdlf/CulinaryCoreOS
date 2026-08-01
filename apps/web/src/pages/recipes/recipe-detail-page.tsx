@@ -51,7 +51,12 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
-import { createRecipe, saveRecipe } from "@/stores/persistence";
+import { createRecipe, saveRecipe, removeRecipe } from "@/stores/persistence";
+import { DeleteEntity } from "@/components/shared/delete-entity";
+import { canDeleteRecipe } from "@/engine/deletion";
+import { fetchCollections } from "@/data/repository";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import type { Collection } from "@ccos/shared";
 
 function RecipeDetailForm() {
   const { id } = useParams();
@@ -111,6 +116,21 @@ function RecipeDetailForm() {
   );
 
   const isNew = !id;
+
+  // A dish is a leaf in the cost chain, so only a printed pack holds it.
+  const [collections, setCollections] = useState<Collection[]>([]);
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    fetchCollections().then(setCollections).catch(() => setCollections([]));
+  }, []);
+  const verdict = useMemo(() => canDeleteRecipe(id ?? "", collections), [id, collections]);
+
+  const hrefFor = (kind: string, id: string) =>
+    kind === "recipe"
+      ? `/recipes/${id}`
+      : kind === "collection"
+        ? "/collections"
+        : `/sub-recipes/${id}`;
 
   async function handleSave() {
     if (!name.trim()) {
@@ -205,6 +225,27 @@ function RecipeDetailForm() {
           <ArrowLeft className="mr-1 size-4" />
           Back
         </Button>
+        {!isNew && existing && (
+          <PermissionGate fallbackLabel="">
+            <DeleteEntity
+              entityLabel="dish"
+              name={existing.name}
+              verdict={verdict}
+              hrefFor={hrefFor}
+              archived={existing.status === "DISCONTINUED"}
+              onDelete={async () => {
+                await removeRecipe(existing.id);
+                toast.success(`${existing.name} deleted`);
+                navigate("/recipes");
+              }}
+              onArchive={async () => {
+                saveRecipe(existing.id, { status: "DISCONTINUED" });
+                toast.success(`${existing.name} archived`);
+                navigate("/recipes");
+              }}
+            />
+          </PermissionGate>
+        )}
         <PermissionGate>
           <Button onClick={handleSave}>
             <Save className="mr-1 size-4" />

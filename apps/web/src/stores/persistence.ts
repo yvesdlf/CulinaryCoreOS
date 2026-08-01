@@ -215,3 +215,26 @@ export function saveSubRecipe(
   }
   return affected;
 }
+
+// ── Removal ─────────────────────────────────────────────────────────────────
+// Awaited rather than fire-and-forget, unlike the saves above.
+//
+// A save that fails leaves the UI optimistic and the database behind, and the
+// next hydration corrects it. A delete that fails and was not awaited leaves
+// the row gone from the screen and present in the database — so the user is
+// told it worked, reloads, and finds it back. The caller needs the error.
+
+export async function removeProduct(id: string): Promise<void> {
+  if (isSupabaseConfigured) await repo.deleteProduct(id);
+  useProductStore.getState().remove(id);
+}
+
+export async function removeSubRecipe(id: string): Promise<void> {
+  if (isSupabaseConfigured) await repo.deleteSubRecipe(id);
+  useSubRecipeStore.getState().remove(id);
+}
+
+export async function removeRecipe(id: string): Promise<void> {
+  if (isSupabaseConfigured) await repo.deleteRecipe(id);
+  useRecipeStore.getState().remove(id);
+}
