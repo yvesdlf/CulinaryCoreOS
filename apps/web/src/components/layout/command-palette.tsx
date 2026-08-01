@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   Truck,
   CopyCheck,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -36,6 +37,7 @@ const navigationItems = [
   { label: "Go to Suppliers", to: "/suppliers", icon: Truck },
   { label: "Go to Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
   { label: "Go to Duplicates", to: "/duplicates", icon: CopyCheck },
+  { label: "Go to Collections", to: "/collections", icon: FolderOpen },
 ];
 
 /**

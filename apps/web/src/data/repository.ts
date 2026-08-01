@@ -7,7 +7,7 @@
 // reordering, which is not worth the complexity at this size.
 // ---------------------------------------------------------------------------
 
-import type { Product, SubRecipe, Recipe } from "@ccos/shared";
+import type { Product, SubRecipe, Recipe, Collection } from "@ccos/shared";
 import { requireSupabase } from "@/lib/supabase";
 import {
   productFromRow,
@@ -439,4 +439,80 @@ export async function mergeSupplierNames(
   });
   if (error) fail("mergeSupplierNames", error);
   return typeof data === "number" ? data : 0;
+}
+
+// ── Collections ─────────────────────────────────────────────────────────────
+
+const COLLECTION_SELECT = "*, collection_recipes(recipe_id, position)";
+
+function collectionFromRow(row: any): Collection {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? null,
+    // Sorted here rather than relying on the embed's order: a collection is
+    // read in the order the section works, and PostgREST does not promise one.
+    recipeIds: (row.collection_recipes ?? [])
+      .slice()
+      .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+      .map((r: any) => r.recipe_id),
+    createdAt: row.created_at ?? "",
+    updatedAt: row.updated_at ?? "",
+  };
+}
+
+export async function fetchCollections(): Promise<Collection[]> {
+  const { data, error } = await requireSupabase()
+    .from("collections")
+    .select(COLLECTION_SELECT)
+    .order("name");
+  if (error) fail("fetchCollections", error);
+  return (data ?? []).map(collectionFromRow);
+}
+
+export async function insertCollection(
+  name: string,
+  description: string | null,
+): Promise<Collection> {
+  const { data, error } = await requireSupabase()
+    .from("collections")
+    .insert({ name, description })
+    .select(COLLECTION_SELECT)
+    .single();
+  if (error) fail("insertCollection", error);
+  return collectionFromRow(data);
+}
+
+export async function deleteCollection(id: string): Promise<void> {
+  const { error } = await requireSupabase().from("collections").delete().eq("id", id);
+  if (error) fail("deleteCollection", error);
+}
+
+/**
+ * Replace a collection's membership wholesale.
+ *
+ * Delete-then-insert rather than diffing, for the same reason ingredient lines
+ * are written that way: order is significant and a collection holds a handful
+ * of dishes, so reconciling a reorder would be more code than it is worth.
+ */
+export async function setCollectionRecipes(
+  collectionId: string,
+  recipeIds: string[],
+): Promise<void> {
+  const db = requireSupabase();
+  const { error: delError } = await db
+    .from("collection_recipes")
+    .delete()
+    .eq("collection_id", collectionId);
+  if (delError) fail("setCollectionRecipes(delete)", delError);
+
+  if (recipeIds.length === 0) return;
+  const { error } = await db.from("collection_recipes").insert(
+    recipeIds.map((recipe_id, position) => ({
+      collection_id: collectionId,
+      recipe_id,
+      position,
+    })),
+  );
+  if (error) fail("setCollectionRecipes(insert)", error);
 }

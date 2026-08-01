@@ -6,6 +6,7 @@ import {
   Layers,
   ShieldAlert,
   CopyCheck,
+  FolderOpen,
   Truck,
   Warehouse,
   Factory,
@@ -31,6 +32,7 @@ const navItems = [
   { title: "Recipes", to: "/recipes", icon: ChefHat },
   { title: "Sub Recipes", to: "/sub-recipes", icon: Layers },
   { title: "Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
+  { title: "Collections", to: "/collections", icon: FolderOpen },
   { title: "Suppliers", to: "/suppliers", icon: Truck },
   { title: "Duplicates", to: "/duplicates", icon: CopyCheck },
 ];
