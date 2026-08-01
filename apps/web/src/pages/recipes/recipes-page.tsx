@@ -27,6 +27,7 @@ import { AllergenBadges } from "@/components/shared/allergen-badges";
 import { AllergenReviewFlag } from "@/components/shared/allergen-review-notice";
 import { findUnverifiedAllergens } from "@/engine/allergen-review";
 import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
+import { RecipeImportDialog } from "@/components/recipes/recipe-import-dialog";
 import { allergenNames } from "@/lib/allergens";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useProductStore } from "@/stores/product-store";
@@ -151,6 +152,7 @@ export function RecipesPage() {
           Export CSV
         </Button>
         <PermissionGate fallbackLabel="View only">
+          <RecipeImportDialog />
           <Button nativeButton={false} render={<Link to="/recipes/new" />}>
             <Plus className="mr-1 size-4" />
             New Recipe
