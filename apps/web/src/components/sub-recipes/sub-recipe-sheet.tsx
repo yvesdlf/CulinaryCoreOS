@@ -18,6 +18,7 @@ import type { SubRecipe } from "@ccos/shared";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { allergenBreakdown } from "@/engine/allergen-breakdown";
+import { RecipeAllergenMatrix } from "@/components/recipes/recipe-allergen-matrix";
 import { resolveAllergens } from "@/lib/allergens";
 import { getDependents } from "@/engine/cascade";
 import { useRecipeStore } from "@/stores/recipe-store";
@@ -99,6 +100,9 @@ export function SubRecipeSheet({ subRecipe }: { subRecipe: SubRecipe }) {
               </li>
             ))}
           </ul>
+          <div className="mt-4">
+            <RecipeAllergenMatrix entity={subRecipe} />
+          </div>
           {breakdown.some((b) => b.needsReview) && (
             <p className="mt-2 text-xs text-status-warning">
               Some of these are not verified against the product bought.

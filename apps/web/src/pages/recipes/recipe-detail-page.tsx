@@ -22,6 +22,8 @@ import { MethodEditor } from "@/components/recipes/method-editor";
 import { CostSummaryPanel } from "@/components/recipes/cost-summary-panel";
 import { NutritionPanel } from "@/components/recipes/nutrition-panel";
 import { AllergenPanel } from "@/components/recipes/allergen-panel";
+import { RecipeAllergenMatrix } from "@/components/recipes/recipe-allergen-matrix";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllergenReviewNotice } from "@/components/shared/allergen-review-notice";
 import { useAllergenReviews } from "@/hooks/use-allergen-reviews";
 import { useRecipeStore } from "@/stores/recipe-store";
@@ -454,6 +456,16 @@ function RecipeDetailForm() {
           />
           <NutritionPanel lines={lines} portions={yieldQty} />
           <AllergenPanel lines={lines} />
+          {lines.length > 0 && (
+            <Card size="sm">
+              <CardHeader>
+                <CardTitle>Allergens by ingredient</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RecipeAllergenMatrix entity={{ id: id ?? "new", ingredientLines: lines }} />
+              </CardContent>
+            </Card>
+          )}
           {/* Sits directly under the allergen list, because it is a caveat on
               that list rather than a separate concern. */}
           <AllergenReviewNotice reviews={allergenReviews} />

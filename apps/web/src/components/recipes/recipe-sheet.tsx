@@ -14,6 +14,7 @@ import type { Recipe } from "@ccos/shared";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { allergenBreakdown } from "@/engine/allergen-breakdown";
+import { RecipeAllergenMatrix } from "@/components/recipes/recipe-allergen-matrix";
 import { nutritionCoverage, deriveRecipeNutrition } from "@/engine/nutrition-engine";
 import { resolveAllergens } from "@/lib/allergens";
 import { formatCurrency, formatPercent, formatNumber } from "@/lib/format";
@@ -97,44 +98,11 @@ export function RecipeSheet({ recipe }: { recipe: Recipe }) {
         )}
 
         {breakdown.length > 0 && (
-          <table className="mt-4 w-full text-sm">
-            <caption className="sr-only">
-              Which ingredient contributes each allergen
-            </caption>
-            <thead>
-              <tr className="border-b text-left">
-                <th scope="col" className="py-1 font-medium">Ingredient</th>
-                <th scope="col" className="py-1 font-medium">Contributes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {breakdown.map((b) => (
-                <tr key={b.id} className="border-b align-top last:border-0">
-                  <td className="py-1.5">
-                    {b.name}
-                    {b.kind === "sub-recipe" && (
-                      <span className="text-muted-foreground"> (preparation)</span>
-                    )}
-                    {b.via.length > 0 && (
-                      <div className="text-xs text-muted-foreground">
-                        from {b.via.map((v) => v.name).join(", ")}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-1.5">
-                    {resolveAllergens(b.allergens)
-                      .map((r) => (r.known ? r.definition.name : r.raw))
-                      .join(", ") || "--"}
-                    {b.needsReview && (
-                      <span className="block text-xs text-status-warning">
-                        Not verified against the product — check before serving.
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="mt-4">
+            {/* A grid rather than a list: "contains crustaceans" says whether
+                the plate is safe, and a grid says which component to change. */}
+            <RecipeAllergenMatrix entity={recipe} />
+          </div>
         )}
 
         {unverified.length > 0 && (
