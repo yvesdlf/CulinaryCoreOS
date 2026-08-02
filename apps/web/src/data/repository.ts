@@ -1638,3 +1638,174 @@ export async function fetchBudgetPositions(): Promise<BudgetPosition[]> {
     hardStop: Boolean(r.hard_stop),
   }));
 }
+
+// ── People ──────────────────────────────────────────────────────────────────
+
+import type {
+  Employee, Certification, LeaveRequest, LeaveType,
+} from "@/engine/people";
+
+export interface Department { id: string; code: string; name: string }
+export interface JobRole {
+  id: string; title: string; departmentId: string | null;
+  level: number; requiredCertifications: string[];
+}
+
+export async function fetchDepartments(): Promise<Department[]> {
+  const { data, error } = await requireSupabase()
+    .from("departments").select("*").order("name");
+  if (error) fail("fetchDepartments", error);
+  return (data ?? []).map((r: any) => ({ id: r.id, code: r.code, name: r.name }));
+}
+
+export async function fetchJobRoles(): Promise<JobRole[]> {
+  const { data, error } = await requireSupabase()
+    .from("job_roles").select("*").order("title");
+  if (error) fail("fetchJobRoles", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, title: r.title, departmentId: r.department_id ?? null,
+    level: r.level ?? 1, requiredCertifications: r.required_certifications ?? [],
+  }));
+}
+
+export async function fetchEmployees(): Promise<Employee[]> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase().from("employees").select("*").order("last_name").range(from, to),
+    "fetchEmployees",
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    employeeNumber: r.employee_number,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    departmentId: r.department_id ?? null,
+    jobRoleId: r.job_role_id ?? null,
+    managerId: r.manager_id ?? null,
+    employmentStatus: r.employment_status,
+    employmentType: r.employment_type,
+    startedOn: r.started_on ?? null,
+    contractedHoursPerWeek:
+      r.contracted_hours_per_week === null || r.contracted_hours_per_week === undefined
+        ? null
+        : Number(r.contracted_hours_per_week),
+  }));
+}
+
+export async function upsertEmployee(input: {
+  id?: string;
+  employeeNumber: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string | null;
+  departmentId: string | null;
+  jobRoleId: string | null;
+  managerId: string | null;
+  employmentStatus: string;
+  employmentType: string;
+  startedOn: string | null;
+  contractedHoursPerWeek: number | null;
+}): Promise<void> {
+  const row = {
+    employee_number: input.employeeNumber,
+    first_name: input.firstName,
+    last_name: input.lastName,
+    work_email: input.workEmail,
+    department_id: input.departmentId,
+    job_role_id: input.jobRoleId,
+    manager_id: input.managerId,
+    employment_status: input.employmentStatus,
+    employment_type: input.employmentType,
+    started_on: input.startedOn,
+    contracted_hours_per_week: input.contractedHoursPerWeek,
+    updated_at: new Date().toISOString(),
+  };
+  const db = requireSupabase();
+  const { error } = input.id
+    ? await db.from("employees").update(row).eq("id", input.id)
+    : await db.from("employees").insert(row);
+  if (error) fail("upsertEmployee", error);
+}
+
+export async function fetchCertifications(): Promise<Certification[]> {
+  const { data, error } = await requireSupabase()
+    .from("employee_certifications").select("*").order("expires_on");
+  if (error) fail("fetchCertifications", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, employeeId: r.employee_id, kind: r.kind,
+    expiresOn: r.expires_on ?? null,
+  }));
+}
+
+export async function addCertification(input: {
+  employeeId: string; kind: string; reference: string | null;
+  issuedOn: string | null; expiresOn: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("employee_certifications").insert({
+    employee_id: input.employeeId, kind: input.kind, reference: input.reference,
+    issued_on: input.issuedOn, expires_on: input.expiresOn,
+  });
+  if (error) fail("addCertification", error);
+}
+
+export async function fetchLeaveTypes(): Promise<LeaveType[]> {
+  const { data, error } = await requireSupabase()
+    .from("leave_types").select("*").order("name");
+  if (error) fail("fetchLeaveTypes", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, code: r.code, name: r.name, paid: r.paid,
+    annualEntitlementDays:
+      r.annual_entitlement_days === null ? null : Number(r.annual_entitlement_days),
+    maxCarryoverDays:
+      r.max_carryover_days === null ? null : Number(r.max_carryover_days),
+  }));
+}
+
+export async function fetchLeaveRequests(): Promise<LeaveRequest[]> {
+  const { data, error } = await requireSupabase()
+    .from("leave_requests").select("*").order("starts_on", { ascending: false }).limit(1000);
+  if (error) fail("fetchLeaveRequests", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, employeeId: r.employee_id, leaveTypeId: r.leave_type_id,
+    startsOn: r.starts_on, endsOn: r.ends_on, days: Number(r.days), status: r.status,
+  }));
+}
+
+export async function requestLeave(input: {
+  employeeId: string; leaveTypeId: string;
+  startsOn: string; endsOn: string; days: number; note: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("leave_requests").insert({
+    employee_id: input.employeeId, leave_type_id: input.leaveTypeId,
+    starts_on: input.startsOn, ends_on: input.endsOn, days: input.days,
+    note: input.note, status: "REQUESTED",
+    requested_by: auth.user?.id ?? null,
+    requested_by_email: auth.user?.email ?? null,
+  });
+  if (error) fail("requestLeave", error);
+}
+
+/**
+ * Decide a leave request.
+ *
+ * The database refuses a decision by the person who asked, so a rejection
+ * here is the policy speaking and its message is worth showing verbatim.
+ */
+export async function decideLeave(
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  note: string | null,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("leave_requests").update({
+    status,
+    decided_by: auth.user?.id ?? null,
+    decided_by_email: auth.user?.email ?? null,
+    decision_note: note,
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) fail("decideLeave", error);
+}
