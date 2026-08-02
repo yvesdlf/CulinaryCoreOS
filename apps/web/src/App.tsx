@@ -1,24 +1,34 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { DashboardPage } from "@/pages/dashboard";
-import { AllergenMatrixPage } from "@/pages/allergen-matrix";
-import { SuppliersPage } from "@/pages/suppliers";
-import { DuplicatesPage } from "@/pages/duplicates";
-import { CollectionsPage } from "@/pages/collections";
-import { CollectionPrintPage } from "@/pages/collection-print-page";
-import { RecipePrintPage } from "@/pages/recipes/recipe-print-page";
-import { SubRecipePrintPage } from "@/pages/sub-recipes/sub-recipe-print-page";
 import { ProductsPage } from "@/pages/products/products-page";
-import { ProductDetailPage } from "@/pages/products/product-detail-page";
 import { RecipesPage } from "@/pages/recipes/recipes-page";
-import { RecipeDetailPage } from "@/pages/recipes/recipe-detail-page";
 import { SubRecipesPage } from "@/pages/sub-recipes/sub-recipes-page";
-import { SubRecipeDetailPage } from "@/pages/sub-recipes/sub-recipe-detail-page";
 import { NotFoundPage } from "@/pages/not-found";
 import { LoginPage } from "@/pages/login";
 import { useAuthStore, useIsAuthenticated } from "@/stores/auth-store";
+
+/*
+ * Secondary routes load on demand.
+ *
+ * The whole app was one 1 MB chunk, so opening the dashboard downloaded the
+ * allergen matrix, the print sheets, the ZIP writer and every editor. The four
+ * list pages stay eager — they are what a user lands on, and splitting those
+ * trades a spinner for bytes needed immediately.
+ */
+const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x) => ({ default: x.AllergenMatrixPage })));
+const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
+const DuplicatesPage = lazy(() => import("@/pages/duplicates").then((x) => ({ default: x.DuplicatesPage })));
+const CollectionsPage = lazy(() => import("@/pages/collections").then((x) => ({ default: x.CollectionsPage })));
+const CollectionPrintPage = lazy(() => import("@/pages/collection-print-page").then((x) => ({ default: x.CollectionPrintPage })));
+const RecipePrintPage = lazy(() => import("@/pages/recipes/recipe-print-page").then((x) => ({ default: x.RecipePrintPage })));
+const SubRecipePrintPage = lazy(() => import("@/pages/sub-recipes/sub-recipe-print-page").then((x) => ({ default: x.SubRecipePrintPage })));
+const ProductDetailPage = lazy(() => import("@/pages/products/product-detail-page").then((x) => ({ default: x.ProductDetailPage })));
+const RecipeDetailPage = lazy(() => import("@/pages/recipes/recipe-detail-page").then((x) => ({ default: x.RecipeDetailPage })));
+const SubRecipeDetailPage = lazy(() => import("@/pages/sub-recipes/sub-recipe-detail-page").then((x) => ({ default: x.SubRecipeDetailPage })));
+
 
 export function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -44,7 +54,18 @@ export function App() {
   }
 
   return (
-    <Routes>
+    // Every lazy route needs a boundary to suspend into. Without one React
+    // throws and the page renders blank — which is how this first shipped,
+    // and is worse than the bundle size it was meant to fix.
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <span className="sr-only">Loading</span>
+        </div>
+      }
+    >
+      <Routes>
       <Route element={<AppShell />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/products" element={<ProductsPage />} />
@@ -65,6 +86,7 @@ export function App() {
         <Route path="/allergen-matrix" element={<AllergenMatrixPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }

@@ -92,6 +92,36 @@ export async function hydrateFromSupabase(): Promise<void> {
   return inFlight;
 }
 
+/**
+ * Re-read the catalogue without blanking the screen.
+ *
+ * A background refresh must not put the status back to "loading": the detail
+ * pages treat that as "not arrived yet" and would unmount a form somebody is
+ * typing into. So a refresh swaps the data underneath and leaves the status
+ * alone, and a failure is left to the next attempt rather than turning the
+ * whole app red over one missed poll.
+ */
+export async function refreshCatalogue(): Promise<void> {
+  if (!isSupabaseConfigured || inFlight) return;
+  try {
+    const { products, subRecipes, recipes } = await repo.fetchAll();
+    useProductStore.setState({ products });
+    useSubRecipeStore.setState({ subRecipes });
+    useRecipeStore.setState({ recipes });
+    lastRefreshed = Date.now();
+  } catch {
+    // Deliberately silent. A refresh is a courtesy; the user did not ask for
+    // it, and a toast for a failed one they never requested is noise.
+  }
+}
+
+let lastRefreshed = 0;
+
+/** When the catalogue was last read, for the UI to show. */
+export function getLastRefreshed(): number {
+  return lastRefreshed;
+}
+
 async function doHydrate(): Promise<void> {
   setStatus("loading");
   try {
@@ -99,6 +129,7 @@ async function doHydrate(): Promise<void> {
     useProductStore.setState({ products });
     useSubRecipeStore.setState({ subRecipes });
     useRecipeStore.setState({ recipes });
+    lastRefreshed = Date.now();
     setStatus("ready");
   } catch (err) {
     reportWriteFailure("hydrate", err);

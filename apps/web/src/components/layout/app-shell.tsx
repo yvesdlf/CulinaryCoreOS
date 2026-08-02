@@ -2,8 +2,13 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { AppHeader } from "./app-header";
 import { Outlet } from "react-router-dom";
+import { useCatalogueRefresh } from "@/hooks/use-catalogue-refresh";
 
 export function AppShell() {
+  // Mounted once, at the shell, so every page benefits without each one
+  // remembering to ask.
+  useCatalogueRefresh();
+
   return (
     <SidebarProvider>
       <AppSidebar />
