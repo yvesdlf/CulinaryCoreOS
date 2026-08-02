@@ -6,7 +6,7 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `85d7733` · CI green (typecheck/unit/build · a11y+keyboard+screen-reader
+**Head:** `ec2c054` · CI green (typecheck/unit/build · a11y+keyboard+screen-reader
 against a live database · costing reconciliation) · 179 unit tests · 89 browser
 tests.
 
@@ -106,23 +106,26 @@ reporting, and the wider platform modules in DOC1.
       Defects found and fixed include unlabelled selects, a scroll region no
       keyboard could reach, and tokens tuned against one background only.
 - [x] Dark mode that survives a reload.
+- [x] Catalogue re-reads when the tab regains focus, so a colleague's price
+      change does not stay invisible until someone reloads.
+- [x] Route-level code splitting and vendor chunks — app chunk 39 kB gzipped,
+      down from 298 kB.
 - [x] Command-K searching the whole catalogue, not four page links.
 - [x] Dashboard as the food cost summary: blended cost weighted by money,
       dishes off target with suggested prices, and food cost by menu section.
 
-## Known flake
+## A red CI run that was not a regression
 
-One CI run (`3234f0f`) failed in the browser job and the next passed
-unchanged. That job talks to a live database and has been de-flaked twice
-already; treat a single red run there as suspect before treating it as a
-regression.
+Two of three browser-job runs went red, including one whose only change was
+a markdown file. The failing step was `supabase/setup-cli@v1`, not a test:
+`version: latest` resolves the newest release on every run, and that network
+lookup can simply fail. Pinned to 2.109.1. Worth remembering that a job dying
+before any test executes looks identical to a test regression.
 
 ## In progress / next up
-- [ ] Reads are hydrate-once. No realtime subscription and no refetch, so a
-      second user's edits are not seen until reload. Writes are guarded by
-      version checks, so the damage is bounded to staleness.
-- [ ] The production bundle is one chunk over 500 kB. No user-visible effect
-      yet; worth splitting before it grows.
+- [ ] No realtime subscription. The catalogue re-reads when the tab regains
+      focus, which covers the common case; a second user's edit made while you
+      are watching the same screen still needs a focus change to appear.
 - [ ] A Playwright session token is present in git history at `3bbcc97`.
       Removing it needs a force-push, which is the repository owner's call.
 
