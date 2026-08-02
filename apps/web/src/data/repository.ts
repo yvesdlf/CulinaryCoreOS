@@ -579,3 +579,85 @@ export async function fetchStatusHistory(recipeId: string): Promise<StatusEvent[
     createdAt: r.created_at ?? "",
   }));
 }
+
+// ── Inventory ───────────────────────────────────────────────────────────────
+
+import type { StockMovement, MovementKind } from "@/engine/inventory";
+
+/** Current level per product, summed by the database rather than the browser. */
+export async function fetchStockLevels(): Promise<
+  Map<string, { onHand: number; lastMovementAt: string | null }>
+> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase().from("product_stock").select("*").range(from, to),
+    "fetchStockLevels",
+  );
+  return new Map(
+    rows.map((r) => [
+      r.product_id,
+      { onHand: Number(r.on_hand ?? 0), lastMovementAt: r.last_movement_at ?? null },
+    ]),
+  );
+}
+
+export async function fetchMovements(productId?: string): Promise<StockMovement[]> {
+  let q = requireSupabase()
+    .from("stock_movements")
+    .select("*")
+    .order("occurred_at", { ascending: false })
+    .limit(500);
+  if (productId) q = q.eq("product_id", productId);
+  const { data, error } = await q;
+  if (error) fail("fetchMovements", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    productId: r.product_id,
+    kind: r.kind,
+    quantity: Number(r.quantity),
+    unit: r.unit ?? "",
+    unitCost: r.unit_cost === null || r.unit_cost === undefined ? null : String(r.unit_cost),
+    reason: r.reason ?? null,
+    note: r.note ?? null,
+    occurredAt: r.occurred_at ?? "",
+    actorEmail: r.actor_email ?? null,
+  }));
+}
+
+export interface NewMovement {
+  productId: string;
+  kind: MovementKind;
+  /** Signed. The caller decides direction; the ledger records what it is told. */
+  quantity: number;
+  unit: string;
+  unitCost: string | null;
+  reason?: string | null;
+  note?: string | null;
+}
+
+/**
+ * Record movements.
+ *
+ * Inserted in one call so a count sheet lands whole: half a count applied is
+ * worse than none, because the books then disagree with both the shelf and
+ * the sheet somebody signed.
+ */
+export async function recordMovements(movements: NewMovement[]): Promise<void> {
+  if (movements.length === 0) return;
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("stock_movements").insert(
+    movements.map((m) => ({
+      product_id: m.productId,
+      kind: m.kind,
+      quantity: m.quantity,
+      unit: m.unit,
+      unit_cost: m.unitCost,
+      reason: m.reason ?? null,
+      note: m.note ?? null,
+      actor_id: auth.user?.id ?? null,
+      actor_email: auth.user?.email ?? null,
+    })),
+  );
+  if (error) fail("recordMovements", error);
+}

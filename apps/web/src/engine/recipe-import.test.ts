@@ -22,6 +22,7 @@ const product = (name: string, price = "1000"): Product =>
     nutrition: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
     allergens: [],
     preparation: EMPTY_PREPARATION, allergensNeedReview: false, version: 1, allergenReviewNote: null,
+    parLevel: null, reorderPoint: null, stockUnit: null,
     createdAt: "", updatedAt: "",
   }) as Product;
 

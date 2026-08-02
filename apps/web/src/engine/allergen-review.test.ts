@@ -26,6 +26,9 @@ const product = (id: string, review = false, note: string | null = null): Produc
     nutrition: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
     allergens: [],
     allergensNeedReview: review,
+    parLevel: null,
+    reorderPoint: null,
+    stockUnit: null,
     version: 1,
     allergenReviewNote: note,
     createdAt: "",
@@ -52,6 +55,9 @@ const sub = (id: string, lines: { productId?: string; subRecipeId?: string }[]):
     nutritionPer100g: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
     allergens: [],
     preparation: EMPTY_PREPARATION,
+    parLevel: null,
+    reorderPoint: null,
+    stockUnit: null,
     version: 1, createdAt: "", updatedAt: "",
   }) as SubRecipe;
 

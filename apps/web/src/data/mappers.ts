@@ -143,6 +143,9 @@ export function productFromRow(row: any): Product {
     status: (row.status ?? "ACTIVE") as ProductStatus,
     nutrition: nutritionFromRow(row),
     allergens: row.allergens ?? [],
+    parLevel: row.par_level === null || row.par_level === undefined ? null : num(row.par_level),
+    reorderPoint: row.reorder_point === null || row.reorder_point === undefined ? null : num(row.reorder_point),
+    stockUnit: row.stock_unit ?? null,
     version: num(row.version, 1),
     allergensNeedReview: row.allergens_need_review === true,
     allergenReviewNote: row.allergen_review_note ?? null,
@@ -159,6 +162,9 @@ export function productToRow(p: Partial<Product>): Record<string, unknown> {
   if (p.brand !== undefined) row.brand = p.brand;
   if (p.status !== undefined) row.status = p.status;
   if (p.allergens !== undefined) row.allergens = p.allergens;
+  if (p.parLevel !== undefined) row.par_level = p.parLevel;
+  if (p.reorderPoint !== undefined) row.reorder_point = p.reorderPoint;
+  if (p.stockUnit !== undefined) row.stock_unit = p.stockUnit;
   if (p.allergensNeedReview !== undefined)
     row.allergens_need_review = p.allergensNeedReview;
   if (p.allergenReviewNote !== undefined)

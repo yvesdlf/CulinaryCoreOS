@@ -51,6 +51,9 @@ function emptyProduct(): Omit<Product, "id" | "createdAt" | "updatedAt"> {
     allergens: [],
     allergensNeedReview: false,
     allergenReviewNote: null,
+    parLevel: null,
+    reorderPoint: null,
+    stockUnit: null,
     version: 1,
     packing: {
       packQty: 1,
@@ -128,6 +131,9 @@ function ProductDetailForm() {
           version: existing.version,
           allergensNeedReview: existing.allergensNeedReview,
           allergenReviewNote: existing.allergenReviewNote,
+          parLevel: existing.parLevel,
+          reorderPoint: existing.reorderPoint,
+          stockUnit: existing.stockUnit,
           packing: { ...existing.packing },
           cost: { ...existing.cost },
           yield_: { ...existing.yield_ },
@@ -769,6 +775,79 @@ function ProductDetailForm() {
                         )
                       }
                     />
+                  </FormField>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stock section — what makes a product appear on Inventory. */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Stock</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Leave the par level blank for anything bought to order. Only
+                  products with a par level are counted and reordered on the
+                  Inventory page.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <FormField label="Par Level">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.parLevel ?? ""}
+                      placeholder="Not tracked"
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          // Blank means untracked, which is different from a
+                          // par of zero — hence null rather than 0.
+                          parLevel:
+                            e.target.value === ""
+                              ? null
+                              : parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </FormField>
+
+                  <FormField label="Reorder Point">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.reorderPoint ?? ""}
+                      placeholder="Half of par"
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          reorderPoint:
+                            e.target.value === ""
+                              ? null
+                              : parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </FormField>
+
+                  <FormField label="Stock Unit">
+                    <Select
+                      value={form.stockUnit ?? form.packing.totalUnit}
+                      onValueChange={(val) => {
+                        if (val) setForm((f) => ({ ...f, stockUnit: val }));
+                      }}
+                    >
+                      <SelectTrigger aria-label="Stock Unit" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNITS.map((u) => (
+                          <SelectItem key={u} value={u}>
+                            {u}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormField>
                 </div>
               </CardContent>

@@ -72,6 +72,13 @@ export interface Product {
   /** What to check and why, e.g. "verify the brand for shrimp paste". */
   allergenReviewNote: string | null;
 
+  /** Target stock to hold, in stock units. Null means not stock-managed. */
+  parLevel: number | null;
+  /** Level that triggers a reorder suggestion. Null falls back to half of par. */
+  reorderPoint: number | null;
+  /** Unit stock is counted in. Defaults to the purchase unit. */
+  stockUnit: string | null;
+
   /**
    * Incremented by the database on every update. A save that names a stale
    * value is refused, so a price import and a chef editing the same row do not

@@ -18,8 +18,11 @@ decimal places, cascades a price change through everything built on it,
 declares allergens, enforces a recipe approval workflow, and produces the
 printed sheets a kitchen actually uses.
 
-Not started: inventory, production planning, procurement, AI import,
-reporting, and the wider platform modules in DOC1.
+Stock is now tracked against par levels, with receipts, waste and counts
+recorded on an append-only ledger.
+
+Not started: production planning, procurement, AI import, reporting, and the
+wider platform modules in DOC1.
 
 ## Done
 
@@ -91,9 +94,39 @@ reporting, and the wider platform modules in DOC1.
 - [x] Nutrition distinguishes "no calories" from "nobody entered any", and
       labels partial coverage a minimum rather than a total.
 
+### Inventory (SRS 4.10)
+- [x] Stock held as an append-only ledger of movements, not a mutable number,
+      so "why is this four kilos short" stays answerable a week later. The
+      `authenticated` role has INSERT and SELECT on it and nothing else.
+- [x] Par levels and reorder points per ingredient, editable on the product
+      page. No par means "not stock-tracked" rather than "out of stock" —
+      most of a 1.100-line catalogue is bought to order.
+- [x] Stock list graded out / reorder / low / in stock, sorted by what needs
+      attention, with the shortfall to par as a suggested order quantity.
+      Untracked ingredients are hidden until searched for.
+- [x] Receive stock and record waste against a reason, capturing the price at
+      the time — so last month's waste stays valued at last month's price.
+- [x] Count sheet with variance (INV-FUNC-002): expected quantities are hidden
+      during entry, lines that agree are dropped from the review, and applying
+      a count writes the correction it implies rather than overwriting history.
+- [x] Movement history with who recorded what, and when.
+- [x] Verified in the browser end to end against the local database: a receipt
+      moved Shallot 3 -> 15 KG and re-graded it, a count of 9 against books of
+      11 wrote a -2 COUNT movement and persisted across a reload.
+
+Not built, and deliberately: multiple storage locations and transfers
+(INV-FUNC-006), barcode scanning, photo documentation of waste, scheduled
+count reminders, purchase-order integration, and theoretical-vs-actual usage
+(INV-FUNC-005) — that last one needs production records the app does not yet
+capture.
+
 ### Platform
 - [x] Supabase with multi-tenancy and RLS; anon revoked, cross-tenant reads and
       writes verified blocked.
+- [x] TRUNCATE, TRIGGER and REFERENCES revoked from `anon` and `authenticated`
+      on every table. TRUNCATE is not subject to row-level security, so the
+      inherited platform grant would have let any signed-in user empty every
+      tenant's data regardless of the policies.
 - [x] Atomic cascade RPC — the fan-out commits or does not.
 - [x] Optimistic concurrency on recipes, preparations and products.
 - [x] Recipe status history shown in the editor.
@@ -155,7 +188,6 @@ before any test executes looks identical to a test regression.
       suggested prices on the dashboard. Sales-mix weighting still needs
       POS data the app does not yet receive.
 - [ ] Supplier & procurement module
-- [ ] Inventory management
 - [ ] Production planning / prep lists
 - [ ] AI recipe import (from the two source workbooks, as first real dataset)
 - [ ] AI conversational assistant

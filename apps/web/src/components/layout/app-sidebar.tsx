@@ -35,10 +35,10 @@ const navItems = [
   { title: "Collections", to: "/collections", icon: FolderOpen },
   { title: "Suppliers", to: "/suppliers", icon: Truck },
   { title: "Duplicates", to: "/duplicates", icon: CopyCheck },
+  { title: "Inventory", to: "/inventory", icon: Warehouse },
 ];
 
 const managementItems = [
-  { title: "Inventory", icon: Warehouse },
   { title: "Production", icon: Factory },
 ];
 

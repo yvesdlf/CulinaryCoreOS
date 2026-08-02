@@ -21,6 +21,7 @@ const product = (id: string, allergens: string[], review = false): Product =>
     nutrition: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
     allergens,
     preparation: EMPTY_PREPARATION, allergensNeedReview: review, version: 1, allergenReviewNote: null,
+    parLevel: null, reorderPoint: null, stockUnit: null,
     createdAt: "", updatedAt: "",
   }) as Product;
 
