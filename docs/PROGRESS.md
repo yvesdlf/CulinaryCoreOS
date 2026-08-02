@@ -24,6 +24,9 @@ recorded on an append-only ledger.
 Expected covers now turn into a prep list and a pull list, with what is
 already on the shelf subtracted.
 
+Sales can be imported from a POS export and the menu classified into Stars,
+Plowhorses, Puzzles and Dogs.
+
 Not started: procurement, AI import, reporting, and the wider platform
 modules in DOC1.
 
@@ -122,6 +125,38 @@ Not built, and deliberately: multiple storage locations and transfers
 count reminders, purchase-order integration, and theoretical-vs-actual usage
 (INV-FUNC-005) — that last one needs production records the app does not yet
 capture.
+
+### Menu engineering (SRS 4.8)
+- [x] Sales mix imported from a POS item-sales export. Verified against a real
+      April export from another venue: 721 rows, 10 dishes matched, zero rows
+      misread.
+- [x] Finds the item table among the dozen summary tables a POS report stacks
+      above it. Several of those also carry a "Name" column beside a "Count"
+      column, so the header is chosen by how specific its quantity column is
+      rather than by being first — taking the first read a table of cheque
+      counts as a sales mix.
+- [x] Stops at the blank row that ends the table, so the payment breakdown
+      below it does not bury the skipped-rows list.
+- [x] Category rows are filtered by not being the name of anything the kitchen
+      cooks. These reports are hierarchical — a category row carries the total
+      of the dishes beneath it — and importing one would count those sales
+      twice. Every unmatched row is listed, biggest first, which is the only
+      check that a real dish was not missed.
+- [x] Refuses ambiguous names, duplicate rows, negative and unreadable
+      quantities rather than guessing.
+- [x] Classification crosses popularity against contribution in money, not
+      food cost percentage: a dish at 36% food cost on a high price can
+      contribute more per plate than one at 24% on a low price, and it is the
+      money that pays the rent.
+- [x] Popularity uses the Kasavana & Smith 70% rule rather than a plain
+      average, which would put half of any menu below the line by construction.
+- [x] Each quadrant states what to do about it.
+
+Not built: the imported sales live in the browser, not the database. The
+analysis is reproducible from the same file but is not shared and does not
+survive a different machine. Persisting a sales period is a schema change
+worth doing on its own. The rest of Phase 6 — menus with sections, menu-level
+costing, menu allergen and nutrition summaries — is also still open.
 
 ### Production planning (SRS 4.11)
 - [x] Prep list from expected covers (PRO-FUNC-001 AC1, AC3): dishes explode

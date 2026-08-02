@@ -10,6 +10,7 @@ import {
   Truck,
   Warehouse,
   Factory,
+  ChartNoAxesCombined,
   UtensilsCrossed,
 } from "lucide-react";
 import {
@@ -37,6 +38,7 @@ const navItems = [
   { title: "Duplicates", to: "/duplicates", icon: CopyCheck },
   { title: "Inventory", to: "/inventory", icon: Warehouse },
   { title: "Production", to: "/production", icon: Factory },
+  { title: "Menu Engineering", to: "/menu-engineering", icon: ChartNoAxesCombined },
 ];
 
 export function AppSidebar() {

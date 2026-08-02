@@ -25,6 +25,7 @@ const routeLabels: Record<string, string> = {
   "allergen-matrix": "Allergen Matrix",
   inventory: "Inventory",
   production: "Production",
+  "menu-engineering": "Menu Engineering",
   suppliers: "Suppliers",
   duplicates: "Duplicates",
   collections: "Collections",
