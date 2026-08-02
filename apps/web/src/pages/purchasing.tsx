@@ -76,6 +76,20 @@ import {
 import type { ApprovalPolicy, OrgRole } from "@/engine/purchasing";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { DEFAULT_TAX_PERCENT } from "@/lib/constants";
+import {
+  ReceivingTab,
+  InvoicesTab,
+  BudgetsTab,
+} from "@/components/purchasing/finance-tabs";
+import {
+  fetchGoodsReceipts,
+  fetchSupplierInvoices,
+  fetchBudgetPositions,
+  fetchTolerances,
+  type GoodsReceiptRow,
+  type SupplierInvoice,
+} from "@/data/repository";
+import type { BudgetPosition, Tolerances } from "@/engine/invoice-matching";
 
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
@@ -106,6 +120,10 @@ export function PurchasingPage() {
   const [costCentres, setCostCentres] = useState<CostCentre[]>([]);
   const [policies, setPolicies] = useState<ApprovalPolicy[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [receipts, setReceipts] = useState<GoodsReceiptRow[]>([]);
+  const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
+  const [budgets, setBudgets] = useState<BudgetPosition[]>([]);
+  const [tolerances, setTolerances] = useState<Tolerances | null>(null);
   const [me, setMe] = useState<{ email: string | null; role: OrgRole } | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -119,19 +137,27 @@ export function PurchasingPage() {
     }
     setLoading(true);
     try {
-      const [r, o, c, p, s, role] = await Promise.all([
+      const [r, o, c, p, s, role, gr, inv, bud, tol] = await Promise.all([
         fetchRequisitions(),
         fetchPurchaseOrders(),
         fetchCostCentres(),
         fetchApprovalPolicies(),
         fetchSuppliers(),
         fetchMyRole(),
+        fetchGoodsReceipts(),
+        fetchSupplierInvoices(),
+        fetchBudgetPositions(),
+        fetchTolerances(),
       ]);
       setRequisitions(r);
       setOrders(o);
       setCostCentres(c);
       setPolicies(p);
       setSuppliers(s);
+      setReceipts(gr);
+      setInvoices(inv);
+      setBudgets(bud);
+      setTolerances(tol);
       const { data } = await (
         await import("@/lib/supabase")
       ).supabase!.auth.getUser();
@@ -184,6 +210,13 @@ export function PurchasingPage() {
             <FileText className="size-4" />
             Purchase orders ({orders.length})
           </TabsTrigger>
+          <TabsTrigger value="receiving">
+            Receiving ({receipts.length})
+          </TabsTrigger>
+          <TabsTrigger value="invoices">
+            Invoices ({invoices.length})
+          </TabsTrigger>
+          <TabsTrigger value="budgets">Budgets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requisitions" className="mt-4">
@@ -373,6 +406,24 @@ export function PurchasingPage() {
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="receiving" className="mt-4">
+          <ReceivingTab orders={orders} receipts={receipts} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="invoices" className="mt-4">
+          <InvoicesTab
+            invoices={invoices}
+            orders={orders}
+            suppliers={suppliers}
+            tolerances={tolerances}
+            onDone={load}
+          />
+        </TabsContent>
+
+        <TabsContent value="budgets" className="mt-4">
+          <BudgetsTab positions={budgets} />
         </TabsContent>
       </Tabs>
 

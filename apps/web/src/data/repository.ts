@@ -1368,3 +1368,273 @@ export async function fetchMyRole(): Promise<OrgRole | null> {
   if (error) fail("fetchMyRole", error);
   return (data?.role as OrgRole) ?? null;
 }
+
+// ── Receiving, invoices, budgets ────────────────────────────────────────────
+
+import type { MatchException, Tolerances, BudgetPosition } from "@/engine/invoice-matching";
+
+export interface GoodsReceiptLineInput {
+  purchaseOrderLineId: string | null;
+  productId: string | null;
+  quantityReceived: number;
+  unit: string;
+  quantityRejected: number;
+  rejectionReason: string | null;
+  conditionNote: string | null;
+  /** Delivery details, when the line creates a traceable lot. */
+  lot: NewLot | null;
+}
+
+/**
+ * Book in a delivery.
+ *
+ * One act creates the receipt, the lots, and the stock movements. Splitting
+ * them would let a delivery exist with no stock behind it, or stock with no
+ * delivery — and the second of those is what Article 18 forbids.
+ */
+export async function recordGoodsReceipt(input: {
+  reference: string;
+  purchaseOrderId: string | null;
+  supplierId: string | null;
+  deliveryNote: string | null;
+  vehicleTemperatureC: number | null;
+  lines: GoodsReceiptLineInput[];
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+
+  const { data, error } = await db
+    .from("goods_receipts")
+    .insert({
+      reference: input.reference,
+      purchase_order_id: input.purchaseOrderId,
+      supplier_id: input.supplierId,
+      delivery_note: input.deliveryNote,
+      vehicle_temperature_c: input.vehicleTemperatureC,
+      received_by: auth.user?.id ?? null,
+      received_by_email: auth.user?.email ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) fail("recordGoodsReceipt", error);
+
+  const movements: NewMovement[] = [];
+  const lineRows: Record<string, unknown>[] = [];
+
+  for (const [i, l] of input.lines.entries()) {
+    let lotId: string | null = null;
+    if (l.lot) {
+      const lot = await createLot(l.lot);
+      lotId = lot.id;
+    }
+    lineRows.push({
+      goods_receipt_id: data.id,
+      purchase_order_line_id: l.purchaseOrderLineId,
+      product_id: l.productId,
+      quantity_received: l.quantityReceived,
+      unit: l.unit,
+      lot_id: lotId,
+      quantity_rejected: l.quantityRejected,
+      rejection_reason: l.rejectionReason,
+      condition_note: l.conditionNote,
+      line_number: i + 1,
+    });
+    // Only what was accepted becomes stock. Rejected goods went back on the van.
+    const accepted = l.quantityReceived - l.quantityRejected;
+    if (l.productId && accepted > 0) {
+      movements.push({
+        productId: l.productId,
+        kind: "RECEIPT",
+        quantity: accepted,
+        unit: l.unit,
+        unitCost: l.lot ? null : null,
+        reason: null,
+        note: `Receipt ${input.reference}`,
+        lotId,
+      });
+    }
+  }
+
+  const { error: lineError } = await db.from("goods_receipt_lines").insert(lineRows);
+  if (lineError) {
+    await db.from("goods_receipts").delete().eq("id", data.id);
+    fail("recordGoodsReceipt(lines)", lineError);
+  }
+  if (movements.length > 0) await recordMovements(movements);
+}
+
+export interface GoodsReceiptRow {
+  id: string;
+  reference: string;
+  purchaseOrderId: string | null;
+  receivedOn: string;
+  deliveryNote: string | null;
+  receivedByEmail: string | null;
+  lineCount: number;
+  rejectedCount: number;
+}
+
+export async function fetchGoodsReceipts(): Promise<GoodsReceiptRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("goods_receipts")
+    .select("*, goods_receipt_lines(quantity_rejected)")
+    .order("received_on", { ascending: false })
+    .limit(500);
+  if (error) fail("fetchGoodsReceipts", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    reference: r.reference,
+    purchaseOrderId: r.purchase_order_id ?? null,
+    receivedOn: r.received_on,
+    deliveryNote: r.delivery_note ?? null,
+    receivedByEmail: r.received_by_email ?? null,
+    lineCount: (r.goods_receipt_lines ?? []).length,
+    rejectedCount: (r.goods_receipt_lines ?? []).filter(
+      (l: any) => Number(l.quantity_rejected) > 0,
+    ).length,
+  }));
+}
+
+export interface SupplierInvoice {
+  id: string;
+  invoiceNumber: string;
+  supplierId: string;
+  supplierName: string | null;
+  purchaseOrderId: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  subtotal: string;
+  taxAmount: string;
+  totalAmount: string;
+  status: string;
+  exceptions: MatchException[];
+}
+
+export async function fetchSupplierInvoices(): Promise<SupplierInvoice[]> {
+  const { data, error } = await requireSupabase()
+    .from("supplier_invoices")
+    .select("*, suppliers(name)")
+    .order("invoice_date", { ascending: false })
+    .limit(500);
+  if (error) fail("fetchSupplierInvoices", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    invoiceNumber: r.invoice_number,
+    supplierId: r.supplier_id,
+    supplierName: r.suppliers?.name ?? null,
+    purchaseOrderId: r.purchase_order_id ?? null,
+    invoiceDate: r.invoice_date,
+    dueDate: r.due_date ?? null,
+    subtotal: String(r.subtotal ?? 0),
+    taxAmount: String(r.tax_amount ?? 0),
+    totalAmount: String(r.total_amount ?? 0),
+    status: r.status,
+    exceptions: (r.exceptions ?? []) as MatchException[],
+  }));
+}
+
+export async function createSupplierInvoice(input: {
+  invoiceNumber: string;
+  supplierId: string;
+  purchaseOrderId: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  paymentTermsDays: number | null;
+  status: string;
+  exceptions: MatchException[];
+  lines: {
+    purchaseOrderLineId: string | null;
+    productId: string | null;
+    description: string | null;
+    quantity: number;
+    unit: string;
+    unitPrice: string;
+    taxPercent: number;
+  }[];
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { data, error } = await db
+    .from("supplier_invoices")
+    .insert({
+      invoice_number: input.invoiceNumber,
+      supplier_id: input.supplierId,
+      purchase_order_id: input.purchaseOrderId,
+      invoice_date: input.invoiceDate,
+      due_date: input.dueDate,
+      payment_terms_days: input.paymentTermsDays,
+      status: input.status,
+      exceptions: input.exceptions,
+      entered_by: auth.user?.id ?? null,
+      entered_by_email: auth.user?.email ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) fail("createSupplierInvoice", error);
+
+  const { error: lineError } = await db.from("supplier_invoice_lines").insert(
+    input.lines.map((l, i) => ({
+      invoice_id: data.id,
+      purchase_order_line_id: l.purchaseOrderLineId,
+      product_id: l.productId,
+      description: l.description,
+      quantity: l.quantity,
+      unit: l.unit,
+      unit_price: l.unitPrice,
+      tax_percent: l.taxPercent,
+      line_total: Number(l.unitPrice) * l.quantity,
+      line_number: i + 1,
+    })),
+  );
+  if (lineError) {
+    await db.from("supplier_invoices").delete().eq("id", data.id);
+    fail("createSupplierInvoice(lines)", lineError);
+  }
+}
+
+export async function setInvoiceStatus(
+  id: string,
+  status: string,
+  exceptions?: MatchException[],
+): Promise<void> {
+  const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (exceptions) patch.exceptions = exceptions;
+  const { error } = await requireSupabase()
+    .from("supplier_invoices")
+    .update(patch)
+    .eq("id", id);
+  if (error) fail("setInvoiceStatus", error);
+}
+
+export async function fetchTolerances(): Promise<Tolerances | null> {
+  const { data, error } = await requireSupabase()
+    .from("matching_tolerances")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+  if (error) fail("fetchTolerances", error);
+  if (!data) return null;
+  return {
+    pricePercent: Number(data.price_percent),
+    priceAbsolute: String(data.price_absolute),
+    quantityPercent: Number(data.quantity_percent),
+    quantityAbsolute: Number(data.quantity_absolute),
+  };
+}
+
+export async function fetchBudgetPositions(): Promise<BudgetPosition[]> {
+  const { data, error } = await requireSupabase()
+    .from("budget_positions")
+    .select("*")
+    .order("name");
+  if (error) fail("fetchBudgetPositions", error);
+  return (data ?? []).map((r: any) => ({
+    budgetId: r.budget_id,
+    costCentreId: r.cost_centre_id,
+    name: r.name,
+    amount: String(r.amount ?? 0),
+    committed: String(r.committed ?? 0),
+    actual: String(r.actual ?? 0),
+    hardStop: Boolean(r.hard_stop),
+  }));
+}
