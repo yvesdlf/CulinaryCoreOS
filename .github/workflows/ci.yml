@@ -72,9 +72,13 @@ jobs:
       # `continue-on-error`, so this job would sail past a missing Postgres and
       # run the suites against an app with nothing to show. A scan of an empty
       # page passes while proving nothing, which is worse than not scanning.
+      # Pinned, not "latest". With `latest` the action resolves the newest
+      # release on every run, and that lookup failed on two of the last three
+      # — the job went red at the install step before a single test executed,
+      # which reads exactly like a test regression and is not one.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Start Supabase and apply migrations
         run: |
