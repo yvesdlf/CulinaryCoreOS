@@ -6,8 +6,8 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `66dd0e0` · CI green (typecheck/unit/build · a11y+keyboard+screen-reader
-against a live database · costing reconciliation) · 175 unit tests · 89 browser
+**Head:** `85d7733` · CI green (typecheck/unit/build · a11y+keyboard+screen-reader
+against a live database · costing reconciliation) · 179 unit tests · 89 browser
 tests.
 
 ## Where the app stands
@@ -95,7 +95,11 @@ reporting, and the wider platform modules in DOC1.
 - [x] Supabase with multi-tenancy and RLS; anon revoked, cross-tenant reads and
       writes verified blocked.
 - [x] Atomic cascade RPC — the fan-out commits or does not.
-- [x] Optimistic concurrency on recipes and preparations.
+- [x] Optimistic concurrency on recipes, preparations and products.
+- [x] Recipe status history shown in the editor.
+- [x] Nutrition can arrive by import — optional columns on the product import,
+      merged rather than replacing, so a file carrying only kcal does not blank
+      macros entered by hand.
 - [x] CI: three jobs, green. It failed on all seven of its first runs while
       reporting nothing, because it died at pnpm setup before a test ran.
 - [x] WCAG 2.2 AA: axe, keyboard and screen-reader suites in both themes.
@@ -106,17 +110,17 @@ reporting, and the wider platform modules in DOC1.
 - [x] Dashboard as the food cost summary: blended cost weighted by money,
       dishes off target with suggested prices, and food cost by menu section.
 
+## Known flake
+
+One CI run (`3234f0f`) failed in the browser job and the next passed
+unchanged. That job talks to a live database and has been de-flaked twice
+already; treat a single red run there as suspect before treating it as a
+regression.
+
 ## In progress / next up
-- [ ] Status history is recorded but not yet shown in the UI — the data is
-      there, the panel is not.
-- [ ] Nutrition data entry. Every imported ingredient has none, so the panel
-      correctly reports nothing for every dish; the figures have to come from
-      somewhere.
 - [ ] Reads are hydrate-once. No realtime subscription and no refetch, so a
       second user's edits are not seen until reload. Writes are guarded by
       version checks, so the damage is bounded to staleness.
-- [ ] Products have no `version` column, so they lack the lost-update
-      protection recipes and preparations have.
 - [ ] The production bundle is one chunk over 500 kB. No user-visible effect
       yet; worth splitting before it grows.
 - [ ] A Playwright session token is present in git history at `3bbcc97`.
