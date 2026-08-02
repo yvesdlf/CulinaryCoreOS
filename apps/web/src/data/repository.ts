@@ -661,3 +661,120 @@ export async function recordMovements(movements: NewMovement[]): Promise<void> {
   );
   if (error) fail("recordMovements", error);
 }
+
+// ── Sales periods ───────────────────────────────────────────────────────────
+
+export interface SalesPeriod {
+  id: string;
+  name: string;
+  startsOn: string;
+  endsOn: string;
+  source: string;
+  sourceFile: string | null;
+  createdAt: string;
+}
+
+export async function fetchSalesPeriods(): Promise<SalesPeriod[]> {
+  const { data, error } = await requireSupabase()
+    .from("sales_periods")
+    .select("*")
+    .order("starts_on", { ascending: false });
+  if (error) fail("fetchSalesPeriods", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    startsOn: r.starts_on,
+    endsOn: r.ends_on,
+    source: r.source,
+    sourceFile: r.source_file ?? null,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function fetchSalesLines(
+  periodId: string,
+): Promise<{ recipeId: string; unitsSold: number; netSales: number | null }[]> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase()
+        .from("sales_lines")
+        .select("*")
+        .eq("period_id", periodId)
+        .range(from, to),
+    "fetchSalesLines",
+  );
+  return rows.map((r) => ({
+    recipeId: r.recipe_id,
+    unitsSold: Number(r.units_sold),
+    netSales: r.net_sales === null ? null : Number(r.net_sales),
+  }));
+}
+
+/**
+ * Save an imported period.
+ *
+ * The period row is written first because the lines take their organization
+ * from it. If the lines fail the period is removed again rather than left as
+ * an empty month that reads as "nothing sold".
+ */
+export async function saveSalesPeriod(
+  period: {
+    name: string;
+    startsOn: string;
+    endsOn: string;
+    source?: string;
+    sourceFile?: string | null;
+  },
+  lines: { recipeId: string; unitsSold: number; netSales: number | null }[],
+): Promise<SalesPeriod> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+
+  const { data, error } = await db
+    .from("sales_periods")
+    .insert({
+      name: period.name,
+      starts_on: period.startsOn,
+      ends_on: period.endsOn,
+      source: period.source ?? "IMPORT",
+      source_file: period.sourceFile ?? null,
+      actor_id: auth.user?.id ?? null,
+      actor_email: auth.user?.email ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) fail("saveSalesPeriod", error);
+
+  if (lines.length > 0) {
+    const { error: lineError } = await db.from("sales_lines").insert(
+      lines.map((l) => ({
+        period_id: data.id,
+        recipe_id: l.recipeId,
+        units_sold: l.unitsSold,
+        net_sales: l.netSales,
+      })),
+    );
+    if (lineError) {
+      await db.from("sales_periods").delete().eq("id", data.id);
+      fail("saveSalesPeriod(lines)", lineError);
+    }
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    startsOn: data.starts_on,
+    endsOn: data.ends_on,
+    source: data.source,
+    sourceFile: data.source_file ?? null,
+    createdAt: data.created_at,
+  };
+}
+
+export async function deleteSalesPeriod(id: string): Promise<void> {
+  const { error } = await requireSupabase()
+    .from("sales_periods")
+    .delete()
+    .eq("id", id);
+  if (error) fail("deleteSalesPeriod", error);
+}

@@ -152,11 +152,18 @@ capture.
       average, which would put half of any menu below the line by construction.
 - [x] Each quadrant states what to do about it.
 
-Not built: the imported sales live in the browser, not the database. The
-analysis is reproducible from the same file but is not shared and does not
-survive a different machine. Persisting a sales period is a schema change
-worth doing on its own. The rest of Phase 6 — menus with sections, menu-level
-costing, menu allergen and nutrition summaries — is also still open.
+- [x] An import is saved as a named period with dates, not held in the tab.
+      A menu decision gets argued about, so everyone has to be able to open
+      the same numbers. Periods can be switched between and removed.
+- [x] Sample sales for three months, because Manuza is not trading yet and
+      the analysis cannot be seen working without units sold. Every period
+      carries a SAMPLE flag and the page states in as many words that the
+      figures are invented — so the day a real export arrives nobody has to
+      wonder which months were real. Re-runnable from
+      `supabase/seed_sample_sales.sql`, which leaves real imports alone.
+
+Not built: the rest of Phase 6 — menus with sections, menu-level costing, and
+menu allergen and nutrition summaries.
 
 ### Production planning (SRS 4.11)
 - [x] Prep list from expected covers (PRO-FUNC-001 AC1, AC3): dishes explode
