@@ -25,6 +25,17 @@ export interface PriceChange {
   newPrice: string;
   /** Signed percentage move, for sorting and for spotting a 1.000x typo. */
   percentChange: number;
+  /**
+   * Nutrition the file supplied, when it carried any.
+   *
+   * Every imported ingredient arrived without nutrition, so every dish reports
+   * none — correctly, but uselessly. Nobody is going to type it into 1.097
+   * forms, so it comes in the same way prices do.
+   */
+  nutrition?: Partial<{
+    fatG: number; carbsG: number; proteinG: number; kcal: number;
+    vitAMg: number; vitCMg: number; calciumMg: number; ironMg: number; sodiumMg: number;
+  }>;
 }
 
 export interface ImportProblem {
@@ -56,6 +67,19 @@ function key(s: string): string {
  * found the import refuses rather than guessing at column positions — reading
  * the wrong column would write plausible numbers into every product.
  */
+/** Nutrition columns, all optional — a price list rarely carries them. */
+const NUTRIENTS: { key: keyof NonNullable<PriceChange["nutrition"]>; names: string[] }[] = [
+  { key: "kcal", names: ["kcal", "calories", "energy"] },
+  { key: "fatG", names: ["fat"] },
+  { key: "carbsG", names: ["carb", "carbohydrate"] },
+  { key: "proteinG", names: ["protein"] },
+  { key: "vitAMg", names: ["vitamin a", "vit a"] },
+  { key: "vitCMg", names: ["vitamin c", "vit c"] },
+  { key: "calciumMg", names: ["calcium"] },
+  { key: "ironMg", names: ["iron"] },
+  { key: "sodiumMg", names: ["sodium", "salt"] },
+];
+
 function findColumns(header: string[]): { name: number; price: number } | null {
   const norm = header.map(key);
   const name = norm.findIndex((h) => h === "name" || h === "product" || h === "ingredient");
@@ -64,6 +88,18 @@ function findColumns(header: string[]): { name: number; price: number } | null {
       h.includes("price") || h.includes("cost") || h === "unit cost" || h === "rate",
   );
   return name === -1 || price === -1 ? null : { name, price };
+}
+
+function findNutritionColumns(header: string[]) {
+  const norm = header.map(key);
+  const found: { key: string; index: number }[] = [];
+  for (const n of NUTRIENTS) {
+    // First header that contains the term. Names are listed most specific
+    // first above, so "vitamin c" is tried before a bare nutrient word.
+    const index = norm.findIndex((h) => n.names.some((name) => h.includes(name)));
+    if (index !== -1) found.push({ key: n.key, index });
+  }
+  return found;
 }
 
 /**
@@ -115,6 +151,7 @@ export function planPriceImport(rows: string[][], products: Product[]): ImportPl
   }
 
   const seen = new Set<string>();
+  const nutritionCols = findNutritionColumns(header);
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -177,7 +214,16 @@ export function planPriceImport(rows: string[][], products: Product[]): ImportPl
     const oldPrice = toDecimal(product.cost.grossPricePerUnit);
     const newPrice = toDecimal(parsed);
 
-    if (oldPrice.equals(newPrice)) {
+    const nutrition: Record<string, number> = {};
+    for (const col of nutritionCols) {
+      const v = parseNumber((row[col.index] ?? "").trim());
+      if (v !== null) nutrition[col.key] = v;
+    }
+    const hasNutrition = Object.keys(nutrition).length > 0;
+
+    // A row that changes neither is genuinely unchanged; one carrying new
+    // nutrition is a change even at the same price.
+    if (oldPrice.equals(newPrice) && !hasNutrition) {
       unchanged++;
       continue;
     }
@@ -191,6 +237,7 @@ export function planPriceImport(rows: string[][], products: Product[]): ImportPl
       percentChange: oldPrice.greaterThan(0)
         ? newPrice.minus(oldPrice).dividedBy(oldPrice).times(100).toNumber()
         : 0,
+      ...(hasNutrition ? { nutrition } : {}),
     });
   }
 

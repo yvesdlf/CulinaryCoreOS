@@ -147,7 +147,10 @@ export function ProductsPage() {
       datedFilename("ccos-products"),
       toCsv(
         ["Name", "Brand", "Category", "Supplier", "Unit", "Unit cost",
-         "Yield %", "Status", "Allergens", "Allergens to verify"],
+         "Yield %", "Status", "Allergens", "Allergens to verify",
+         // Exported so the round trip can bring nutrition back in: nobody is
+         // going to type it into a thousand forms.
+         "Kcal", "Fat g", "Carbs g", "Protein g", "Sodium mg"],
         filtered.map((p) => [
           p.name,
           p.brand,
@@ -159,6 +162,11 @@ export function ProductsPage() {
           p.status,
           p.allergens.join("; "),
           p.allergensNeedReview ? "Yes" : "",
+          p.nutrition.kcal,
+          p.nutrition.fatG,
+          p.nutrition.carbsG,
+          p.nutrition.proteinG,
+          p.nutrition.sodiumMg,
         ]),
       ),
     );

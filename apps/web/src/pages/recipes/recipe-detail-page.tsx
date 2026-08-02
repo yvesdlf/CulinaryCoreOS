@@ -53,6 +53,7 @@ import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { createRecipe, saveRecipe, removeRecipe } from "@/stores/persistence";
 import { StatusControl } from "@/components/recipes/status-control";
+import { StatusHistory } from "@/components/recipes/status-history";
 import { label as statusLabel } from "@/engine/status-workflow";
 import { logStatusChange } from "@/data/repository";
 import { DeleteEntity } from "@/components/shared/delete-entity";
@@ -456,6 +457,7 @@ function RecipeDetailForm() {
           {/* Sits directly under the allergen list, because it is a caveat on
               that list rather than a separate concern. */}
           <AllergenReviewNotice reviews={allergenReviews} />
+          {!isNew && id && <StatusHistory recipeId={id} />}
         </div>
       </div>
     </div>

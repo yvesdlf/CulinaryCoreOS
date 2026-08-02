@@ -71,6 +71,16 @@ export function PriceImportDialog() {
             grossPricePerUnit: change.newPrice,
             nettPricePerUnit: change.newPrice,
           },
+          // Merged, not replaced: a file carrying only kcal must not blank the
+          // macros somebody entered by hand.
+          ...(change.nutrition
+            ? {
+                nutrition: {
+                  ...change.product.nutrition,
+                  ...change.nutrition,
+                },
+              }
+            : {}),
         });
         dishes += affected.recipeIds.length;
       }

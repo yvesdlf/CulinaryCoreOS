@@ -123,6 +123,46 @@ describe("reading prices", () => {
   });
 });
 
+describe("nutrition", () => {
+  it("carries nutrition columns when the file has them", () => {
+    const plan = planPriceImport(
+      [
+        ["Name", "Unit cost", "Kcal", "Fat g", "Protein g"],
+        ["Guanciale", "590000", "655", "69", "9"],
+      ],
+      catalogue,
+    );
+    expect(plan.changes[0].nutrition).toEqual({ kcal: 655, fatG: 69, proteinG: 9 });
+  });
+
+  it("treats new nutrition as a change even at an unchanged price", () => {
+    // Otherwise a nutrition-only file would report "everything already
+    // current" and apply nothing.
+    const plan = planPriceImport(
+      [["Name", "Unit cost", "Kcal"], ["Salt", "5000", "0"]],
+      catalogue,
+    );
+    expect(plan.unchanged).toBe(0);
+    expect(plan.changes).toHaveLength(1);
+  });
+
+  it("omits nutrition entirely when the file carries none", () => {
+    const plan = planPriceImport(
+      [["Name", "Unit cost"], ["Guanciale", "650000"]],
+      catalogue,
+    );
+    expect(plan.changes[0].nutrition).toBeUndefined();
+  });
+
+  it("ignores an unreadable nutrient rather than writing zero", () => {
+    const plan = planPriceImport(
+      [["Name", "Unit cost", "Kcal", "Fat g"], ["Guanciale", "650000", "n/a", "69"]],
+      catalogue,
+    );
+    expect(plan.changes[0].nutrition).toEqual({ fatG: 69 });
+  });
+});
+
 describe("file shape", () => {
   it("refuses a file whose columns it cannot identify", () => {
     const plan = planPriceImport([["Foo", "Bar"], ["Guanciale", "1"]], catalogue);
