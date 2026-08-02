@@ -213,6 +213,34 @@ and alcohol on the standard rate, so 21% is right for a drinks list and too
 high for a food menu. Which reduced rate applies depends on the member state,
 and guessing it would overstate tax on every food line.
 
+### Purchasing (requisitions, approvals, orders)
+- [x] Requisitions with cost centre, needed-by date, justification and lines,
+      numbered per year from the highest existing reference rather than a
+      count, so deleting one never causes a number to be reused.
+- [x] Segregation of duties enforced by the database. An approval by the
+      person who raised the document is refused by trigger, matched on both
+      user id and email so a document raised before somebody had an account is
+      still caught. Verified in SQL, not through a disabled button.
+- [x] Approval authority by amount, held as policy data finance can change
+      without a deployment. Seeded at: anyone with write access below 5
+      million, ADMIN at or above it, OWNER at or above 25 million. Also
+      enforced by trigger.
+- [x] The screen states the rule before the button is pressed — who has to
+      approve this amount, and whether you are disqualified for having raised
+      it. A system that only reports refusals afterwards teaches people it is
+      arbitrary.
+- [x] Approvals are an append-only ledger capturing actor, role and the amount
+      the decision was made against, so a later edit cannot re-describe what
+      was approved. No update or delete grant.
+- [x] Approved requisitions split into one purchase order per supplier, since
+      an order is a contract with one company. Lines with no supplier are held
+      back and named rather than guessed at.
+- [x] Order totals, VAT and line totals maintained by trigger.
+
+Not built yet: goods receipts matched against an order, invoices, three-way
+matching and tolerances, budgets and committed spend, and sending an order to
+a supplier — marking one "ordered" does not transmit anything.
+
 ### Traceability and food safety (EU)
 - [x] Suppliers as records rather than a name typed on each product: legal
       name, VAT number, establishment approval number for products of animal

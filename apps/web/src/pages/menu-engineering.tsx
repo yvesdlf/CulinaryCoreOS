@@ -458,7 +458,7 @@ function SavePeriodDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Save this sales period</DialogTitle>
           <DialogDescription>

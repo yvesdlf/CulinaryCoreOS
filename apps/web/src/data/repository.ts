@@ -977,3 +977,394 @@ export async function setLotStatus(
     .eq("id", id);
   if (error) fail("setLotStatus", error);
 }
+
+// ── Purchasing ──────────────────────────────────────────────────────────────
+
+import type {
+  PurchaseStatus,
+  ApprovalPolicy,
+  OrgRole,
+} from "@/engine/purchasing";
+
+export interface CostCentre {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export async function fetchCostCentres(): Promise<CostCentre[]> {
+  const { data, error } = await requireSupabase()
+    .from("cost_centres")
+    .select("*")
+    .eq("active", true)
+    .order("name");
+  if (error) fail("fetchCostCentres", error);
+  return (data ?? []).map((r: any) => ({ id: r.id, code: r.code, name: r.name }));
+}
+
+export async function fetchApprovalPolicies(): Promise<ApprovalPolicy[]> {
+  const { data, error } = await requireSupabase()
+    .from("approval_policies")
+    .select("*")
+    .order("min_amount");
+  if (error) fail("fetchApprovalPolicies", error);
+  return (data ?? []).map((r: any) => ({
+    documentType: r.document_type,
+    minAmount: String(r.min_amount),
+    requiredRole: r.required_role as OrgRole,
+  }));
+}
+
+export interface RequisitionLineRow {
+  id: string;
+  productId: string | null;
+  description: string | null;
+  quantity: number;
+  unit: string;
+  estimatedUnitPrice: string;
+  lineTotal: string;
+  suggestedSupplierId: string | null;
+  lineNumber: number;
+}
+
+export interface Requisition {
+  id: string;
+  reference: string;
+  costCentreId: string | null;
+  neededBy: string | null;
+  justification: string | null;
+  status: PurchaseStatus;
+  totalAmount: string;
+  requestedById: string | null;
+  requestedByEmail: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  lines: RequisitionLineRow[];
+}
+
+function requisitionFromRow(r: any): Requisition {
+  return {
+    id: r.id,
+    reference: r.reference,
+    costCentreId: r.cost_centre_id ?? null,
+    neededBy: r.needed_by ?? null,
+    justification: r.justification ?? null,
+    status: r.status,
+    totalAmount: String(r.total_amount ?? 0),
+    requestedById: r.requested_by ?? null,
+    requestedByEmail: r.requested_by_email ?? null,
+    submittedAt: r.submitted_at ?? null,
+    createdAt: r.created_at,
+    lines: (r.requisition_lines ?? [])
+      .map((l: any) => ({
+        id: l.id,
+        productId: l.product_id ?? null,
+        description: l.description ?? null,
+        quantity: Number(l.quantity),
+        unit: l.unit,
+        estimatedUnitPrice: String(l.estimated_unit_price ?? 0),
+        lineTotal: String(l.line_total ?? 0),
+        suggestedSupplierId: l.suggested_supplier_id ?? null,
+        lineNumber: l.line_number ?? 1,
+      }))
+      .sort((a: RequisitionLineRow, b: RequisitionLineRow) => a.lineNumber - b.lineNumber),
+  };
+}
+
+export async function fetchRequisitions(): Promise<Requisition[]> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase()
+        .from("requisitions")
+        .select("*, requisition_lines(*)")
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    "fetchRequisitions",
+  );
+  return rows.map(requisitionFromRow);
+}
+
+export async function createRequisition(input: {
+  reference: string;
+  costCentreId: string | null;
+  neededBy: string | null;
+  justification: string | null;
+  lines: Omit<RequisitionLineRow, "id" | "lineTotal">[];
+}): Promise<Requisition> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { data, error } = await db
+    .from("requisitions")
+    .insert({
+      reference: input.reference,
+      cost_centre_id: input.costCentreId,
+      needed_by: input.neededBy,
+      justification: input.justification,
+      status: "DRAFT",
+      requested_by: auth.user?.id ?? null,
+      requested_by_email: auth.user?.email ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) fail("createRequisition", error);
+
+  if (input.lines.length > 0) {
+    const { error: lineError } = await db.from("requisition_lines").insert(
+      input.lines.map((l, i) => ({
+        requisition_id: data.id,
+        product_id: l.productId,
+        description: l.description,
+        quantity: l.quantity,
+        unit: l.unit,
+        estimated_unit_price: l.estimatedUnitPrice,
+        // The database keeps the header total; the line total is ours.
+        line_total: Number(l.estimatedUnitPrice) * l.quantity,
+        suggested_supplier_id: l.suggestedSupplierId,
+        line_number: i + 1,
+      })),
+    );
+    if (lineError) {
+      await db.from("requisitions").delete().eq("id", data.id);
+      fail("createRequisition(lines)", lineError);
+    }
+  }
+  return fetchRequisition(data.id);
+}
+
+export async function fetchRequisition(id: string): Promise<Requisition> {
+  const { data, error } = await requireSupabase()
+    .from("requisitions")
+    .select("*, requisition_lines(*)")
+    .eq("id", id)
+    .single();
+  if (error) fail("fetchRequisition", error);
+  return requisitionFromRow(data);
+}
+
+export async function setRequisitionStatus(
+  id: string,
+  status: PurchaseStatus,
+): Promise<void> {
+  const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (status === "SUBMITTED") patch.submitted_at = new Date().toISOString();
+  const { error } = await requireSupabase().from("requisitions").update(patch).eq("id", id);
+  if (error) fail("setRequisitionStatus", error);
+}
+
+export interface ApprovalEvent {
+  id: string;
+  documentType: string;
+  documentId: string;
+  action: "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED" | "REOPENED";
+  actorEmail: string | null;
+  actorRole: OrgRole | null;
+  amount: string | null;
+  comment: string | null;
+  occurredAt: string;
+}
+
+export async function fetchApprovalEvents(
+  documentId?: string,
+): Promise<ApprovalEvent[]> {
+  let q = requireSupabase()
+    .from("approval_events")
+    .select("*")
+    .order("occurred_at", { ascending: false })
+    .limit(500);
+  if (documentId) q = q.eq("document_id", documentId);
+  const { data, error } = await q;
+  if (error) fail("fetchApprovalEvents", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    documentType: r.document_type,
+    documentId: r.document_id,
+    action: r.action,
+    actorEmail: r.actor_email ?? null,
+    actorRole: r.actor_role ?? null,
+    amount: r.amount === null || r.amount === undefined ? null : String(r.amount),
+    comment: r.comment ?? null,
+    occurredAt: r.occurred_at,
+  }));
+}
+
+/**
+ * Record a decision.
+ *
+ * The database refuses a self-approval or an approval above the actor's
+ * authority, so a rejection here is the policy speaking, not a bug — the
+ * message is worth showing verbatim.
+ */
+export async function recordApproval(
+  documentType: "REQUISITION" | "PURCHASE_ORDER",
+  documentId: string,
+  action: ApprovalEvent["action"],
+  comment: string | null,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("approval_events").insert({
+    document_type: documentType,
+    document_id: documentId,
+    action,
+    actor_id: auth.user?.id ?? null,
+    actor_email: auth.user?.email ?? null,
+    comment,
+  });
+  if (error) fail("recordApproval", error);
+}
+
+export interface PurchaseOrderLineRow {
+  id: string;
+  productId: string | null;
+  description: string | null;
+  quantity: number;
+  unit: string;
+  unitPrice: string;
+  taxPercent: number;
+  lineTotal: string;
+  quantityReceived: number;
+  lineNumber: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  reference: string;
+  supplierId: string;
+  supplierName: string | null;
+  requisitionId: string | null;
+  costCentreId: string | null;
+  status: PurchaseStatus;
+  orderedOn: string | null;
+  expectedOn: string | null;
+  subtotal: string;
+  taxAmount: string;
+  totalAmount: string;
+  createdById: string | null;
+  createdByEmail: string | null;
+  notes: string | null;
+  lines: PurchaseOrderLineRow[];
+}
+
+function purchaseOrderFromRow(r: any): PurchaseOrder {
+  return {
+    id: r.id,
+    reference: r.reference,
+    supplierId: r.supplier_id,
+    supplierName: r.suppliers?.name ?? null,
+    requisitionId: r.requisition_id ?? null,
+    costCentreId: r.cost_centre_id ?? null,
+    status: r.status,
+    orderedOn: r.ordered_on ?? null,
+    expectedOn: r.expected_on ?? null,
+    subtotal: String(r.subtotal ?? 0),
+    taxAmount: String(r.tax_amount ?? 0),
+    totalAmount: String(r.total_amount ?? 0),
+    createdById: r.created_by ?? null,
+    createdByEmail: r.created_by_email ?? null,
+    notes: r.notes ?? null,
+    lines: (r.purchase_order_lines ?? [])
+      .map((l: any) => ({
+        id: l.id,
+        productId: l.product_id ?? null,
+        description: l.description ?? null,
+        quantity: Number(l.quantity),
+        unit: l.unit,
+        unitPrice: String(l.unit_price ?? 0),
+        taxPercent: Number(l.tax_percent ?? 0),
+        lineTotal: String(l.line_total ?? 0),
+        quantityReceived: Number(l.quantity_received ?? 0),
+        lineNumber: l.line_number ?? 1,
+      }))
+      .sort((a: PurchaseOrderLineRow, b: PurchaseOrderLineRow) => a.lineNumber - b.lineNumber),
+  };
+}
+
+export async function fetchPurchaseOrders(): Promise<PurchaseOrder[]> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase()
+        .from("purchase_orders")
+        .select("*, suppliers(name), purchase_order_lines(*)")
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    "fetchPurchaseOrders",
+  );
+  return rows.map(purchaseOrderFromRow);
+}
+
+export async function createPurchaseOrder(input: {
+  reference: string;
+  supplierId: string;
+  requisitionId: string | null;
+  costCentreId: string | null;
+  expectedOn: string | null;
+  taxPercent: number;
+  lines: {
+    productId: string | null;
+    description: string | null;
+    quantity: number;
+    unit: string;
+    unitPrice: string;
+  }[];
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { data, error } = await db
+    .from("purchase_orders")
+    .insert({
+      reference: input.reference,
+      supplier_id: input.supplierId,
+      requisition_id: input.requisitionId,
+      cost_centre_id: input.costCentreId,
+      expected_on: input.expectedOn,
+      status: "DRAFT",
+      created_by: auth.user?.id ?? null,
+      created_by_email: auth.user?.email ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) fail("createPurchaseOrder", error);
+
+  const { error: lineError } = await db.from("purchase_order_lines").insert(
+    input.lines.map((l, i) => ({
+      purchase_order_id: data.id,
+      product_id: l.productId,
+      description: l.description,
+      quantity: l.quantity,
+      unit: l.unit,
+      unit_price: l.unitPrice,
+      tax_percent: input.taxPercent,
+      line_total: Number(l.unitPrice) * l.quantity,
+      line_number: i + 1,
+    })),
+  );
+  if (lineError) {
+    await db.from("purchase_orders").delete().eq("id", data.id);
+    fail("createPurchaseOrder(lines)", lineError);
+  }
+}
+
+export async function setPurchaseOrderStatus(
+  id: string,
+  status: PurchaseStatus,
+): Promise<void> {
+  const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (status === "ORDERED") patch.ordered_on = new Date().toISOString().slice(0, 10);
+  const { error } = await requireSupabase().from("purchase_orders").update(patch).eq("id", id);
+  if (error) fail("setPurchaseOrderStatus", error);
+}
+
+/** The signed-in user's role in the current organisation. */
+export async function fetchMyRole(): Promise<OrgRole | null> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  if (!auth.user) return null;
+  const { data, error } = await db
+    .from("organization_members")
+    .select("role")
+    .eq("user_id", auth.user.id)
+    .limit(1)
+    .maybeSingle();
+  if (error) fail("fetchMyRole", error);
+  return (data?.role as OrgRole) ?? null;
+}

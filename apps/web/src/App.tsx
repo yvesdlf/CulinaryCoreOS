@@ -20,6 +20,7 @@ import { useAuthStore, useIsAuthenticated } from "@/stores/auth-store";
  */
 const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x) => ({ default: x.AllergenMatrixPage })));
 const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
+const PurchasingPage = lazy(() => import("@/pages/purchasing").then((x) => ({ default: x.PurchasingPage })));
 const TraceabilityPage = lazy(() => import("@/pages/traceability").then((x) => ({ default: x.TraceabilityPage })));
 const MenuEngineeringPage = lazy(() => import("@/pages/menu-engineering").then((x) => ({ default: x.MenuEngineeringPage })));
 const ProductionPage = lazy(() => import("@/pages/production").then((x) => ({ default: x.ProductionPage })));
@@ -89,6 +90,7 @@ export function App() {
         <Route path="/production" element={<ProductionPage />} />
         <Route path="/menu-engineering" element={<MenuEngineeringPage />} />
         <Route path="/traceability" element={<TraceabilityPage />} />
+        <Route path="/purchasing" element={<PurchasingPage />} />
         <Route path="/duplicates" element={<DuplicatesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/allergen-matrix" element={<AllergenMatrixPage />} />
