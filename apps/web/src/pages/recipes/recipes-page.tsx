@@ -81,6 +81,8 @@ export function RecipesPage() {
     () => params.get("category") ?? "all",
   );
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  // SRS RCP-FUNC-006 AC5: hidden by default, reachable on request.
+  const [showArchived, setShowArchived] = useState(false);
 
   const filtered = useMemo(() => {
     return recipes.filter((r) => {
@@ -92,9 +94,11 @@ export function RecipesPage() {
       const matchesCategory =
         categoryFilter === "all" || r.category === categoryFilter;
       const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-      return matchesSearch && matchesCategory && matchesStatus;
+      const visible =
+        showArchived || statusFilter === "DISCONTINUED" || r.status !== "DISCONTINUED";
+      return matchesSearch && matchesCategory && matchesStatus && visible;
     });
-  }, [recipes, searchQuery, categoryFilter, statusFilter]);
+  }, [recipes, searchQuery, categoryFilter, statusFilter, showArchived]);
 
   const pagination = usePagination(filtered);
 
@@ -205,6 +209,15 @@ export function RecipesPage() {
             ))}
           </SelectContent>
         </Select>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          Show archived
+        </label>
       </div>
 
       {/* Recipe table */}

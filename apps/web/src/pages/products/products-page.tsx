@@ -36,6 +36,7 @@ import {
 } from "@/components/shared/table-pagination";
 import { PriceImportDialog } from "@/components/products/price-import-dialog";
 import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
+import { activeOnly } from "@/lib/archive";
 import { useProductStore } from "@/stores/product-store";
 import { PRODUCT_CATEGORIES, PRODUCT_STATUSES } from "@/lib/constants";
 import { formatPercent } from "@/lib/format";
@@ -93,6 +94,10 @@ export function ProductsPage() {
   // links to, and adding it to the status dropdown would conflate "is this
   // ingredient in use" with "has anyone read its label".
   const [reviewOnly, setReviewOnly] = useState(() => params.get("review") === "1");
+  // SRS RCP-FUNC-006 AC5: hidden by default, reachable on request.
+  const [showArchived, setShowArchived] = useState(
+    () => params.get("archived") === "1",
+  );
 
   // Filtered list
   const filtered = useMemo(() => {
@@ -120,8 +125,14 @@ export function ProductsPage() {
       result = result.filter((p) => p.allergensNeedReview);
     }
 
+    // Unless explicitly asked for, or unless the status filter is already
+    // pointed at them — otherwise picking DISCONTINUED would return nothing.
+    if (!showArchived && status !== "DISCONTINUED") {
+      result = activeOnly(result);
+    }
+
     return result;
-  }, [products, search, category, status, reviewOnly]);
+  }, [products, search, category, status, reviewOnly, showArchived]);
 
   const pagination = usePagination(filtered);
 
@@ -239,6 +250,16 @@ export function ProductsPage() {
             onChange={(e) => setReviewOnly(e.target.checked)}
           />
           Allergens to verify
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          Show archived
         </label>
 
         {/* Count */}

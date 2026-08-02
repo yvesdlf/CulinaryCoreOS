@@ -1,3 +1,4 @@
+import { activeOnly } from "@/lib/archive";
 import { useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -38,13 +39,18 @@ export function IngredientAutocomplete({
 
   const query = search.toLowerCase();
 
+  /*
+   * Archived lines are not offered. Costing an existing dish from something
+   * discontinued is fine and must keep working; building a new one from it is
+   * a mistake the app can simply decline to help with.
+   */
   const filteredProducts = query
-    ? products.filter((p) => p.name.toLowerCase().includes(query))
-    : products;
+    ? activeOnly(products).filter((p) => p.name.toLowerCase().includes(query))
+    : activeOnly(products);
 
   const filteredSubRecipes = query
-    ? subRecipes.filter((s) => s.name.toLowerCase().includes(query))
-    : subRecipes;
+    ? activeOnly(subRecipes).filter((s) => s.name.toLowerCase().includes(query))
+    : activeOnly(subRecipes);
 
   function handleSelect(item: IngredientSelection) {
     onSelect(item);
