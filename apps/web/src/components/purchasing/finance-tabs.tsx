@@ -777,3 +777,220 @@ export function BudgetsTab({ positions }: { positions: BudgetPosition[] }) {
     </div>
   );
 }
+
+// ── Analytics ───────────────────────────────────────────────────────────────
+
+import {
+  spendBySupplier, invoiceAgeing, matchRate, deliveryPerformance,
+} from "@/engine/procurement-analytics";
+
+/**
+ * What purchasing already knows, aggregated.
+ *
+ * Nothing here is a new fact: every figure traces to an order, a receipt or
+ * an invoice, which is what makes it arguable with rather than impressive.
+ */
+export function AnalyticsTab({
+  orders, invoices,
+}: {
+  orders: PurchaseOrder[];
+  invoices: SupplierInvoice[];
+}) {
+  const today = useMemo(() => new Date(), []);
+
+  const summaries = useMemo(
+    () =>
+      orders.map((o) => ({
+        id: o.id, reference: o.reference, supplierId: o.supplierId,
+        supplierName: o.supplierName, costCentreId: o.costCentreId,
+        status: o.status, orderedOn: o.orderedOn, expectedOn: o.expectedOn,
+        totalAmount: o.totalAmount,
+        // Fully received orders are treated as delivered on their last update.
+        receivedOn: o.status === "RECEIVED" ? o.orderedOn : null,
+      })),
+    [orders],
+  );
+
+  const invoiceSummaries = useMemo(
+    () =>
+      invoices.map((i) => ({
+        id: i.id, supplierId: i.supplierId, supplierName: i.supplierName,
+        invoiceDate: i.invoiceDate, dueDate: i.dueDate,
+        totalAmount: i.totalAmount, status: i.status,
+        exceptionCount: i.exceptions.length,
+      })),
+    [invoices],
+  );
+
+  const bySupplier = spendBySupplier(summaries);
+  const ageing = invoiceAgeing(invoiceSummaries, today);
+  const match = matchRate(invoiceSummaries);
+  const delivery = deliveryPerformance(summaries);
+  const concentrated = bySupplier[0];
+
+  if (orders.length === 0 && invoices.length === 0) {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        Nothing to report yet. These figures come from orders, deliveries and
+        invoices as they are recorded.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Invoices matched cleanly
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">
+              {match.total === 0 ? "—" : `${match.straightThroughPercent.toFixed(0)}%`}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {match.held} held, <CurrencyDisplay value={match.valueHeld} /> at risk
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Largest supplier share
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">
+              {concentrated ? `${concentrated.sharePercent.toFixed(0)}%` : "—"}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {concentrated?.supplierName ?? "No committed spend yet"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Overdue invoices
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">
+              {ageing.slice(1).reduce((n, b) => n + b.count, 0)}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Past their due date</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div>
+          <h2 className="mb-2 text-sm font-medium">Committed spend by supplier</h2>
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead className="text-right">Orders</TableHead>
+                  <TableHead className="text-right">Committed</TableHead>
+                  <TableHead className="text-right">Share</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bySupplier.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      No committed spend yet.
+                    </TableCell>
+                  </TableRow>
+                ) : bySupplier.map((s) => (
+                  <TableRow key={s.supplierId}>
+                    <TableCell className="font-medium">{s.supplierName}</TableCell>
+                    <TableCell className="text-right tabular-nums">{s.orders}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <CurrencyDisplay value={s.committed} />
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {s.sharePercent.toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {concentrated && concentrated.sharePercent > 50 && (
+            <p className="mt-2 flex gap-2 text-xs text-status-warning">
+              <FileWarning className="size-4 shrink-0" />
+              {concentrated.sharePercent.toFixed(0)}% of committed spend goes
+              through {concentrated.supplierName}. That is a service risk the
+              day they have one.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <h2 className="mb-2 text-sm font-medium">Invoice ageing</h2>
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bucket</TableHead>
+                    <TableHead className="text-right">Count</TableHead>
+                    <TableHead className="text-right">Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ageing.map((b) => (
+                    <TableRow key={b.label}>
+                      <TableCell>{b.label}</TableCell>
+                      <TableCell className="text-right tabular-nums">{b.count}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <CurrencyDisplay value={b.amount} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="mb-2 text-sm font-medium">On-time delivery</h2>
+            {delivery.length === 0 ? (
+              <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+                No order has both an expected and a received date yet. Scoring
+                undated orders would flatter the figure.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead className="text-right">Scored</TableHead>
+                      <TableHead className="text-right">On time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {delivery.map((d) => (
+                      <TableRow key={d.supplierName}>
+                        <TableCell className="font-medium">{d.supplierName}</TableCell>
+                        <TableCell className="text-right tabular-nums">{d.ordersScored}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {d.onTimePercent.toFixed(0)}%
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

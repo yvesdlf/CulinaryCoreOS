@@ -80,6 +80,7 @@ import {
   ReceivingTab,
   InvoicesTab,
   BudgetsTab,
+  AnalyticsTab,
 } from "@/components/purchasing/finance-tabs";
 import {
   fetchGoodsReceipts,
@@ -217,6 +218,7 @@ export function PurchasingPage() {
             Invoices ({invoices.length})
           </TabsTrigger>
           <TabsTrigger value="budgets">Budgets</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requisitions" className="mt-4">
@@ -424,6 +426,10 @@ export function PurchasingPage() {
 
         <TabsContent value="budgets" className="mt-4">
           <BudgetsTab positions={budgets} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-4">
+          <AnalyticsTab orders={orders} invoices={invoices} />
         </TabsContent>
       </Tabs>
 
