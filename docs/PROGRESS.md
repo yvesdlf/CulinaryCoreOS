@@ -193,6 +193,31 @@ Not built: production scheduling with dates, cooks and equipment conflicts
 would dwarf the module. Theoretical-vs-actual usage (INV-FUNC-005) still
 needs completion logging, which is PRO-FUNC-002 AC6.
 
+### Jurisdiction and tax
+- [x] Compliance profile per organisation: country, food-information regime,
+      currency, standard and reduced VAT, and service charge — configurable
+      rather than compiled in, so a second venue in another member state does
+      not need a code change.
+- [x] Set to EU food law (Regulation 1169/2011) at the EU standard VAT rate of
+      21%.
+- [x] Tax and service charge separated. The old 21% was documented as "11%
+      Indonesian PPN + 10% service charge": identical arithmetic, different
+      legal meaning. A service charge is the venue's revenue and is itself
+      taxable; VAT is collected for the state. Folding them together works
+      until somebody files a return or reclaims input tax.
+- [x] Allergens already conform — the registry is EU FIC 1169/2011 Annex II.
+
+Open, and needing a decision rather than a default: the reduced VAT rate is
+deliberately null. Most EU member states put restaurant food on a reduced rate
+and alcohol on the standard rate, so 21% is right for a drinks list and too
+high for a food menu. Which reduced rate applies depends on the member state,
+and guessing it would overstate tax on every food line.
+
+Not built, and required by EU food law rather than optional: traceability one
+step back and one step forward (Regulation 178/2002 Article 18), lot marking,
+and date marking. These need lots and real supplier records, neither of which
+exists yet.
+
 ### Platform
 - [x] Supabase with multi-tenancy and RLS; anon revoked, cross-tenant reads and
       writes verified blocked.

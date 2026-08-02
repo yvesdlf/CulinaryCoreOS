@@ -68,10 +68,23 @@ export const UNITS = [
 // for a newly created record.
 
 /**
- * Tax and service charge applied on top of the menu price, as a percentage.
+ * VAT applied on top of the menu price, as a percentage.
  *
- * 21% = 11% Indonesian PPN + 10% service. The menu price is held EXCLUDING
- * this; the guest-facing price is derived as menuPrice * (1 + tax/100).
+ * 21% is the EU standard rate. The menu price is held EXCLUDING it; the
+ * guest-facing price is derived as menuPrice * (1 + tax/100).
+ *
+ * This used to read "11% Indonesian PPN + 10% service charge". The arithmetic
+ * is the same and the meaning is not: a service charge is the venue's own
+ * revenue and is itself taxable, while VAT is collected for the state. The two
+ * are now separate fields on the organisation, and only the tax part belongs
+ * here.
+ *
+ * Note that most EU member states put restaurant food on a REDUCED rate and
+ * alcohol on the standard rate, so 21% is right for a drinks list and usually
+ * too high for a food menu. The per-recipe `taxPercent` exists for exactly
+ * that: set the food categories to the member state's reduced rate once it is
+ * known. See `organizations.reduced_vat_percent`, deliberately left null until
+ * the member state is chosen.
  */
 export const DEFAULT_TAX_PERCENT = 21;
 
@@ -113,7 +126,22 @@ export const DEFAULT_SECURITY_MARGIN = 5;
 /** @deprecated Use the per-entity `taxPercent` instead. */
 export const DEFAULT_VAT_RATE = 21;
 
-/** Default currency code — Indonesian Rupiah. */
+/**
+ * Food information law followed for allergens and labelling.
+ *
+ * EU Regulation 1169/2011 — the fourteen declarable allergens already in the
+ * registry, and the rule that a code or icon never replaces the written name.
+ */
+export const FOOD_REGIME = "EU_1169_2011";
+
+/**
+ * Default currency code.
+ *
+ * Still Rupiah while the catalogue is priced in it. The jurisdiction is set to
+ * the EU for tax and food law, which does not by itself change what the venue
+ * invoices in — moving to euro means repricing 1.100 ingredients, not editing
+ * this line.
+ */
 export const DEFAULT_CURRENCY = "IDR";
 
 /** Locale for money/number formatting: "Rp 795.000" (dot groups, comma decimal). */
