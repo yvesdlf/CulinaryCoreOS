@@ -633,6 +633,8 @@ export interface NewMovement {
   unitCost: string | null;
   reason?: string | null;
   note?: string | null;
+  /** The delivery this came from. Required for a receipt; null otherwise. */
+  lotId?: string | null;
 }
 
 /**
@@ -655,6 +657,7 @@ export async function recordMovements(movements: NewMovement[]): Promise<void> {
       unit_cost: m.unitCost,
       reason: m.reason ?? null,
       note: m.note ?? null,
+      lot_id: m.lotId ?? null,
       actor_id: auth.user?.id ?? null,
       actor_email: auth.user?.email ?? null,
     })),
@@ -777,4 +780,200 @@ export async function deleteSalesPeriod(id: string): Promise<void> {
     .delete()
     .eq("id", id);
   if (error) fail("deleteSalesPeriod", error);
+}
+
+// ── Suppliers ───────────────────────────────────────────────────────────────
+
+import type { StockLot } from "@/engine/traceability";
+
+export interface Supplier {
+  id: string;
+  name: string;
+  legalName: string | null;
+  vatNumber: string | null;
+  approvalNumber: string | null;
+  countryCode: string | null;
+  address: string | null;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  paymentTermsDays: number | null;
+  leadTimeDays: number | null;
+  minimumOrderValue: string | null;
+  status: "ACTIVE" | "BLOCKED" | "ARCHIVED";
+  notes: string | null;
+}
+
+function supplierFromRow(r: any): Supplier {
+  return {
+    id: r.id,
+    name: r.name,
+    legalName: r.legal_name ?? null,
+    vatNumber: r.vat_number ?? null,
+    approvalNumber: r.approval_number ?? null,
+    countryCode: r.country_code ?? null,
+    address: r.address ?? null,
+    contactName: r.contact_name ?? null,
+    email: r.email ?? null,
+    phone: r.phone ?? null,
+    paymentTermsDays: r.payment_terms_days ?? null,
+    leadTimeDays: r.lead_time_days ?? null,
+    minimumOrderValue: r.minimum_order_value === null || r.minimum_order_value === undefined
+      ? null
+      : String(r.minimum_order_value),
+    status: r.status,
+    notes: r.notes ?? null,
+  };
+}
+
+export async function fetchSuppliers(): Promise<Supplier[]> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase().from("suppliers").select("*").order("name").range(from, to),
+    "fetchSuppliers",
+  );
+  return rows.map(supplierFromRow);
+}
+
+export async function upsertSupplier(
+  supplier: Partial<Supplier> & { name: string },
+): Promise<Supplier> {
+  const row = {
+    name: supplier.name,
+    legal_name: supplier.legalName ?? null,
+    vat_number: supplier.vatNumber ?? null,
+    approval_number: supplier.approvalNumber ?? null,
+    country_code: supplier.countryCode ?? null,
+    address: supplier.address ?? null,
+    contact_name: supplier.contactName ?? null,
+    email: supplier.email ?? null,
+    phone: supplier.phone ?? null,
+    payment_terms_days: supplier.paymentTermsDays ?? null,
+    lead_time_days: supplier.leadTimeDays ?? null,
+    minimum_order_value: supplier.minimumOrderValue ?? null,
+    status: supplier.status ?? "ACTIVE",
+    notes: supplier.notes ?? null,
+  };
+  const db = requireSupabase();
+  const { data, error } = supplier.id
+    ? await db.from("suppliers").update(row).eq("id", supplier.id).select("*").single()
+    : await db.from("suppliers").insert(row).select("*").single();
+  if (error) fail("upsertSupplier", error);
+  return supplierFromRow(data);
+}
+
+export interface SupplierCertificate {
+  id: string;
+  supplierId: string;
+  kind: string;
+  reference: string | null;
+  issuedOn: string | null;
+  expiresOn: string | null;
+}
+
+export async function fetchSupplierCertificates(): Promise<SupplierCertificate[]> {
+  const { data, error } = await requireSupabase()
+    .from("supplier_certificates")
+    .select("*")
+    .order("expires_on");
+  if (error) fail("fetchSupplierCertificates", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    supplierId: r.supplier_id,
+    kind: r.kind,
+    reference: r.reference ?? null,
+    issuedOn: r.issued_on ?? null,
+    expiresOn: r.expires_on ?? null,
+  }));
+}
+
+// ── Stock lots ──────────────────────────────────────────────────────────────
+
+function lotFromRow(r: any): StockLot {
+  return {
+    id: r.id,
+    productId: r.product_id,
+    lotCode: r.lot_code,
+    supplierId: r.supplier_id ?? null,
+    supplierName: r.suppliers?.name ?? null,
+    deliveryReference: r.delivery_reference ?? null,
+    receivedOn: r.received_on,
+    expiresOn: r.expires_on ?? null,
+    expiryKind: r.expiry_kind ?? null,
+    receiptTemperatureC:
+      r.receipt_temperature_c === null || r.receipt_temperature_c === undefined
+        ? null
+        : Number(r.receipt_temperature_c),
+    status: r.status,
+    statusReason: r.status_reason ?? null,
+  };
+}
+
+export async function fetchStockLots(): Promise<StockLot[]> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase()
+        .from("stock_lots")
+        .select("*, suppliers(name)")
+        .order("received_on", { ascending: false })
+        .range(from, to),
+    "fetchStockLots",
+  );
+  return rows.map(lotFromRow);
+}
+
+export interface NewLot {
+  productId: string;
+  lotCode: string;
+  supplierId: string | null;
+  deliveryReference: string | null;
+  receivedOn: string;
+  expiresOn: string | null;
+  expiryKind: "USE_BY" | "BEST_BEFORE" | null;
+  receiptTemperatureC: number | null;
+}
+
+export async function createLot(lot: NewLot): Promise<StockLot> {
+  const { data, error } = await requireSupabase()
+    .from("stock_lots")
+    .insert({
+      product_id: lot.productId,
+      lot_code: lot.lotCode,
+      supplier_id: lot.supplierId,
+      delivery_reference: lot.deliveryReference,
+      received_on: lot.receivedOn,
+      expires_on: lot.expiresOn,
+      expiry_kind: lot.expiryKind,
+      receipt_temperature_c: lot.receiptTemperatureC,
+    })
+    .select("*, suppliers(name)")
+    .single();
+  if (error) fail("createLot", error);
+  return lotFromRow(data);
+}
+
+/**
+ * Block, recall, withdraw or release a lot.
+ *
+ * The database refuses to consume anything not OK, so this is the whole of a
+ * withdrawal as far as the system is concerned — it does not depend on any
+ * screen honouring it.
+ */
+export async function setLotStatus(
+  id: string,
+  status: StockLot["status"],
+  reason: string | null,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db
+    .from("stock_lots")
+    .update({
+      status,
+      status_reason: reason,
+      status_changed_at: new Date().toISOString(),
+      status_changed_by: auth.user?.email ?? null,
+    })
+    .eq("id", id);
+  if (error) fail("setLotStatus", error);
 }

@@ -114,6 +114,7 @@ export function productFromRow(row: any): Product {
     id: row.id,
     category: row.category ?? "",
     supplier: row.supplier ?? null,
+    supplierId: row.supplier_id ?? null,
     name: row.name,
     brand: row.brand ?? null,
     packing: {
@@ -158,6 +159,7 @@ export function productToRow(p: Partial<Product>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
   if (p.category !== undefined) row.category = p.category;
   if (p.supplier !== undefined) row.supplier = p.supplier;
+  if (p.supplierId !== undefined) row.supplier_id = p.supplierId;
   if (p.name !== undefined) row.name = p.name;
   if (p.brand !== undefined) row.brand = p.brand;
   if (p.status !== undefined) row.status = p.status;

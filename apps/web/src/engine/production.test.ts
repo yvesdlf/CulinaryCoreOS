@@ -21,7 +21,7 @@ const line = (over: Partial<IngredientLine> = {}): IngredientLine => ({
 
 const product = (id: string, price = "10"): Product =>
   ({
-    id, name: id, category: "T", supplier: null, brand: null,
+    id, name: id, category: "T", supplier: null, supplierId: null, brand: null,
     packing: { packQty: 1, packUnit: "g", unitsPerPack: 1, unitsPerPackUnit: "g", totalQty: 1, totalUnit: "g" },
     cost: { buyingPricePerPack: price, buyingPricePerUnit: price, grossPricePerUnit: price, nettPricePerUnit: price },
     yield_: { grossQty: 1, grossUnit: "g", wasteQty: 0, wasteUnit: "g", nettQty: 1, nettUnit: "g", refPercent: 0, yieldPercent: 100 },

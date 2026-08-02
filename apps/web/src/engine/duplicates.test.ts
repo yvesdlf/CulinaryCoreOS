@@ -23,7 +23,7 @@ const product = (
     id: `id-${name}`,
     name,
     category: "Test",
-    supplier: over.supplier ?? null,
+    supplier: over.supplier ?? null, supplierId: null,
     brand: over.brand ?? null,
     packing: {
       packQty: 1, packUnit: over.unit ?? "KG", unitsPerPack: 1,

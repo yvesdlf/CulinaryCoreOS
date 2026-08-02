@@ -47,6 +47,7 @@ function emptyProduct(): Omit<Product, "id" | "createdAt" | "updatedAt"> {
     brand: null,
     category: PRODUCT_CATEGORIES[0],
     supplier: null,
+    supplierId: null,
     status: "ACTIVE" as ProductStatus,
     allergens: [],
     allergensNeedReview: false,
@@ -125,6 +126,7 @@ function ProductDetailForm() {
           brand: existing.brand,
           category: existing.category,
           supplier: existing.supplier,
+          supplierId: existing.supplierId,
           status: existing.status,
           allergens: existing.allergens,
           // Carried so a save can name the version it was loaded at.

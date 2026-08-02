@@ -18,6 +18,7 @@ const product = (name: string, price: string): Product =>
     name,
     category: "Test",
     supplier: null,
+    supplierId: null,
     brand: null,
     packing: { packQty: 1, packUnit: "kg", unitsPerPack: 1, unitsPerPackUnit: "kg", totalQty: 1, totalUnit: "kg" },
     cost: {

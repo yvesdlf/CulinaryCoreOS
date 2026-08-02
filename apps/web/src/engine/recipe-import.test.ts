@@ -14,7 +14,7 @@ import { planRecipeImport } from "./recipe-import";
 
 const product = (name: string, price = "1000"): Product =>
   ({
-    id: `p-${name}`, name, category: "T", supplier: null, brand: null,
+    id: `p-${name}`, name, category: "T", supplier: null, supplierId: null, brand: null,
     packing: { packQty: 1, packUnit: "KG", unitsPerPack: 1, unitsPerPackUnit: "KG", totalQty: 1, totalUnit: "KG" },
     cost: { buyingPricePerPack: price, buyingPricePerUnit: price, grossPricePerUnit: price, nettPricePerUnit: price },
     yield_: { grossQty: 1, grossUnit: "KG", wasteQty: 0, wasteUnit: "KG", nettQty: 1, nettUnit: "KG", refPercent: 0, yieldPercent: 100 },

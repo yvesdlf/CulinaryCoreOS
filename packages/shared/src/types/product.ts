@@ -16,7 +16,10 @@ export type ProductStatus = "ACTIVE" | "INACTIVE" | "PENDING" | "DISCONTINUED";
 export interface Product {
   id: string;
   category: string; // e.g. "Dairy" — workbook: Category
+  /** @deprecated Legacy free-text name. `supplierId` is authoritative. */
   supplier: string | null;
+  /** The supplier record. Null where none is linked. */
+  supplierId: string | null;
   name: string; // workbook: Product
   brand: string | null;
 

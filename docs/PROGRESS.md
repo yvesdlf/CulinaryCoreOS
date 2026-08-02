@@ -213,10 +213,35 @@ and alcohol on the standard rate, so 21% is right for a drinks list and too
 high for a food menu. Which reduced rate applies depends on the member state,
 and guessing it would overstate tax on every food line.
 
-Not built, and required by EU food law rather than optional: traceability one
-step back and one step forward (Regulation 178/2002 Article 18), lot marking,
-and date marking. These need lots and real supplier records, neither of which
-exists yet.
+### Traceability and food safety (EU)
+- [x] Suppliers as records rather than a name typed on each product: legal
+      name, VAT number, establishment approval number for products of animal
+      origin under Regulation 853/2004, contact, terms and lead time. The 81
+      free-text names became 74 suppliers — six spellings were one company
+      typed twice, and 177 products were consolidated onto the largest.
+- [x] Stock lots: lot code as printed, supplier, delivery reference, received
+      date, expiry, and temperature on arrival as cold-chain evidence under
+      Regulation 852/2004. Created as part of receiving, so the record exists
+      because the delivery was booked in rather than as a separate chore.
+- [x] Use-by and best-before are never conflated. Past a use-by date food is
+      deemed unsafe under Article 14 and the system refuses it; past a
+      best-before it says the food is still legal to use. A date with no kind
+      stated is reported as unjudgeable rather than guessed — guessing one way
+      throws away good food, the other way serves unsafe food.
+- [x] One step back (Article 18): supplier, lot, delivery note, date and
+      arrival temperature for any lot, with anything missing named as missing
+      rather than left blank. A gap in a traceability record is the finding.
+- [x] Blocking, recall and withdrawal (Article 19) enforced by the database.
+      A lot that is not OK cannot be consumed or transferred by any client —
+      verified by SQL, not by a disabled button. Waste and returns stay
+      allowed, because getting recalled stock off the shelf is the point.
+- [x] Supplier certificates with expiry, surfaced 30 days ahead. An expired
+      HACCP certificate is the same shape of problem as an expired ingredient.
+
+Not built: one step forward beyond the kitchen — which service or batch a lot
+was consumed by — needs production records the app does not yet capture.
+Recall notification to the competent authority is stated on screen as the
+operator's job, not automated.
 
 ### Platform
 - [x] Supabase with multi-tenancy and RLS; anon revoked, cross-tenant reads and

@@ -32,6 +32,7 @@ const product = (id: string, gross: string): Product => ({
   id,
   category: "Test",
   supplier: null,
+  supplierId: null,
   name: id,
   brand: null,
   packing: { packQty: 1, packUnit: "kg", unitsPerPack: 1000, unitsPerPackUnit: "g", totalQty: 1000, totalUnit: "g" },

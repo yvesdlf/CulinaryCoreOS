@@ -18,6 +18,7 @@ const product = (id: string, review = false, note: string | null = null): Produc
     name: id,
     category: "Test",
     supplier: null,
+    supplierId: null,
     brand: null,
     packing: { packQty: 1, packUnit: "kg", unitsPerPack: 1, unitsPerPackUnit: "kg", totalQty: 1, totalUnit: "kg" },
     cost: { buyingPricePerPack: "1", buyingPricePerUnit: "1", grossPricePerUnit: "1", nettPricePerUnit: "1" },

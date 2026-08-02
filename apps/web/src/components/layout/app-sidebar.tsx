@@ -9,6 +9,7 @@ import {
   FolderOpen,
   Truck,
   Warehouse,
+  ShieldCheck,
   Factory,
   ChartNoAxesCombined,
   UtensilsCrossed,
@@ -37,6 +38,7 @@ const navItems = [
   { title: "Suppliers", to: "/suppliers", icon: Truck },
   { title: "Duplicates", to: "/duplicates", icon: CopyCheck },
   { title: "Inventory", to: "/inventory", icon: Warehouse },
+  { title: "Traceability", to: "/traceability", icon: ShieldCheck },
   { title: "Production", to: "/production", icon: Factory },
   { title: "Menu Engineering", to: "/menu-engineering", icon: ChartNoAxesCombined },
 ];

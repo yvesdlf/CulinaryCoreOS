@@ -13,7 +13,7 @@ import { allergenBreakdown } from "./allergen-breakdown";
 
 const product = (id: string, allergens: string[], review = false): Product =>
   ({
-    id, name: id, category: "T", supplier: null, brand: null,
+    id, name: id, category: "T", supplier: null, supplierId: null, brand: null,
     packing: { packQty: 1, packUnit: "KG", unitsPerPack: 1, unitsPerPackUnit: "KG", totalQty: 1, totalUnit: "KG" },
     cost: { buyingPricePerPack: "1", buyingPricePerUnit: "1", grossPricePerUnit: "1", nettPricePerUnit: "1" },
     yield_: { grossQty: 1, grossUnit: "KG", wasteQty: 0, wasteUnit: "KG", nettQty: 1, nettUnit: "KG", refPercent: 0, yieldPercent: 100 },

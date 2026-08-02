@@ -62,7 +62,10 @@ import {
   fetchStockLevels,
   fetchMovements,
   recordMovements,
+  fetchSuppliers,
+  createLot,
   type NewMovement,
+  type Supplier,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
@@ -95,6 +98,7 @@ export function InventoryPage() {
     Map<string, { onHand: number; lastMovementAt: string | null }>
   >(new Map());
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
@@ -105,9 +109,14 @@ export function InventoryPage() {
     }
     setLoading(true);
     try {
-      const [lv, mv] = await Promise.all([fetchStockLevels(), fetchMovements()]);
+      const [lv, mv, sup] = await Promise.all([
+        fetchStockLevels(),
+        fetchMovements(),
+        fetchSuppliers(),
+      ]);
       setLevels(lv);
       setMovements(mv);
+      setSuppliers(sup);
     } catch (err) {
       toast.error("Could not load stock", {
         description: err instanceof Error ? err.message : String(err),
@@ -233,6 +242,7 @@ export function InventoryPage() {
           <StockTable
             lines={visible}
             loading={loading}
+            suppliers={suppliers}
             emptyMessage={
               query.trim()
                 ? "No ingredients match that search."
@@ -293,11 +303,13 @@ function StockTable({
   lines,
   loading,
   emptyMessage,
+  suppliers,
   onWrite,
 }: {
   lines: StockLine[];
   loading: boolean;
   emptyMessage: string;
+  suppliers: Supplier[];
   onWrite: (items: NewMovement[], message: string) => Promise<void>;
 }) {
   const [movement, setMovement] = useState<{
@@ -393,6 +405,7 @@ function StockTable({
         <MovementDialog
           line={movement.line}
           kind={movement.kind}
+          suppliers={suppliers}
           onClose={() => setMovement(null)}
           onWrite={onWrite}
         />
@@ -404,11 +417,13 @@ function StockTable({
 function MovementDialog({
   line,
   kind,
+  suppliers,
   onClose,
   onWrite,
 }: {
   line: StockLine;
   kind: MovementKind;
+  suppliers: Supplier[];
   onClose: () => void;
   onWrite: (items: NewMovement[], message: string) => Promise<void>;
 }) {
@@ -418,13 +433,56 @@ function MovementDialog({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
+  /*
+   * Delivery details, for a receipt only.
+   *
+   * A lot code is what a recall notice quotes and what Article 18 traceability
+   * is answered with, so a delivery recorded without one is a gap in the
+   * record rather than a tidier form.
+   */
+  const [lotCode, setLotCode] = useState("");
+  const [supplierId, setSupplierId] = useState(line.product.supplierId ?? "");
+  const [deliveryRef, setDeliveryRef] = useState("");
+  const [expiresOn, setExpiresOn] = useState("");
+  const [expiryKind, setExpiryKind] = useState<"USE_BY" | "BEST_BEFORE" | "">("");
+  const [temperature, setTemperature] = useState("");
+
   const amount = Number(qty);
-  const valid = qty.trim() !== "" && Number.isFinite(amount) && amount > 0;
+  const quantityValid = qty.trim() !== "" && Number.isFinite(amount) && amount > 0;
+  // A date without a kind cannot be judged later, so the pair goes together.
+  const dateValid = expiresOn === "" || expiryKind !== "";
+  const valid = quantityValid && (!receipt || (lotCode.trim() !== "" && dateValid));
   const unit = stockUnitOf(line);
 
   async function submit() {
     if (!valid) return;
     setBusy(true);
+    let lotId: string | null = null;
+    if (receipt) {
+      try {
+        const lot = await createLot({
+          productId: line.product.id,
+          lotCode: lotCode.trim(),
+          supplierId: supplierId || null,
+          deliveryReference: deliveryRef.trim() || null,
+          receivedOn: new Date().toISOString().slice(0, 10),
+          expiresOn: expiresOn || null,
+          expiryKind: expiryKind || null,
+          receiptTemperatureC:
+            temperature.trim() === "" ? null : Number(temperature),
+        });
+        lotId = lot.id;
+      } catch (err) {
+        // The movement is not written without its lot: stock that appears with
+        // no traceable delivery behind it is exactly what Article 18 forbids.
+        toast.error("Could not record the delivery", {
+          description: err instanceof Error ? err.message : String(err),
+        });
+        setBusy(false);
+        return;
+      }
+    }
+
     await onWrite(
       [
         {
@@ -437,10 +495,11 @@ function MovementDialog({
           unitCost: line.product.cost.grossPricePerUnit,
           reason: receipt ? null : reason,
           note: note.trim() || null,
+          lotId,
         },
       ],
       receipt
-        ? `Received ${amount} ${unit} of ${line.product.name}`
+        ? `Received ${amount} ${unit} of ${line.product.name}, lot ${lotCode.trim()}`
         : `Recorded ${amount} ${unit} of ${line.product.name} as waste`,
     );
     setBusy(false);
@@ -475,6 +534,88 @@ function MovementDialog({
               onChange={(e) => setQty(e.target.value)}
             />
           </div>
+
+          {receipt && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="lot-code">Lot / batch code</Label>
+                  <Input
+                    id="lot-code"
+                    value={lotCode}
+                    onChange={(e) => setLotCode(e.target.value)}
+                    placeholder="As printed on the box"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lot-supplier">Supplier</Label>
+                  <select
+                    id="lot-supplier"
+                    className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                    value={supplierId}
+                    onChange={(e) => setSupplierId(e.target.value)}
+                  >
+                    <option value="">Not recorded</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lot-delivery">Delivery note</Label>
+                  <Input
+                    id="lot-delivery"
+                    value={deliveryRef}
+                    onChange={(e) => setDeliveryRef(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lot-temp">Temperature on arrival (°C)</Label>
+                  <Input
+                    id="lot-temp"
+                    type="number"
+                    step="any"
+                    value={temperature}
+                    onChange={(e) => setTemperature(e.target.value)}
+                    placeholder="Chilled and frozen goods"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lot-expiry">Date on the pack</Label>
+                  <Input
+                    id="lot-expiry"
+                    type="date"
+                    value={expiresOn}
+                    onChange={(e) => setExpiresOn(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lot-expiry-kind">Which date is it?</Label>
+                  <select
+                    id="lot-expiry-kind"
+                    className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                    value={expiryKind}
+                    onChange={(e) =>
+                      setExpiryKind(e.target.value as "USE_BY" | "BEST_BEFORE" | "")
+                    }
+                  >
+                    <option value="">—</option>
+                    <option value="USE_BY">Use by (safety)</option>
+                    <option value="BEST_BEFORE">Best before (quality)</option>
+                  </select>
+                </div>
+              </div>
+              {expiresOn !== "" && expiryKind === "" && (
+                <p className="text-sm text-status-danger">
+                  Say which date this is. Past a use-by date the food is unsafe
+                  and must be thrown away; past a best-before it is still legal
+                  to use. Guessing later costs either safety or good food.
+                </p>
+              )}
+            </>
+          )}
 
           {!receipt && (
             <div className="space-y-2">
