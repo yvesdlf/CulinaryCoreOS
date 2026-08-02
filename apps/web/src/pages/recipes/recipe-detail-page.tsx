@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Printer } from "lucide-react";
-import type { IngredientLine, RecipeStatus, Preparation } from "@ccos/shared";
+import type { IngredientLine, RecipeStatus, Preparation, Recipe } from "@ccos/shared";
 import { EMPTY_PREPARATION } from "@ccos/shared";
 import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
 import { PageHeader } from "@/components/layout/page-header";
@@ -52,6 +52,9 @@ import { formatCurrency } from "@/lib/format";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { createRecipe, saveRecipe, removeRecipe } from "@/stores/persistence";
+import { StatusControl } from "@/components/recipes/status-control";
+import { label as statusLabel } from "@/engine/status-workflow";
+import { logStatusChange } from "@/data/repository";
 import { DeleteEntity } from "@/components/shared/delete-entity";
 import { canDeleteRecipe } from "@/engine/deletion";
 import { fetchCollections } from "@/data/repository";
@@ -131,6 +134,35 @@ function RecipeDetailForm() {
       : kind === "collection"
         ? "/collections"
         : `/sub-recipes/${id}`;
+
+  /*
+   * The recipe as currently edited, so the workflow checks the price and
+   * method in the form rather than the ones last written. Someone who has just
+   * typed a price should not be told the dish has none.
+   */
+  const liveRecipe = {
+    name,
+    status,
+    ingredientLines: lines,
+    preparation,
+    pricing: { ...(existing?.pricing ?? {}), menuPrice: String(menuPrice) },
+  } as Partial<Recipe>;
+
+  async function handleStatusChange(to: RecipeStatus) {
+    const from = status;
+    setStatus(to);
+    if (!id) return;
+    saveRecipe(id, { status: to });
+    if (isSupabaseConfigured) {
+      // Awaited-ish: a failed log must not claim the change was recorded.
+      void logStatusChange(id, from, to).catch((err) =>
+        toast.error("Status changed, but not logged", {
+          description: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    toast.success(`Status: ${statusLabel(to)}`);
+  }
 
   async function handleSave() {
     if (!name.trim()) {
@@ -283,23 +315,25 @@ function RecipeDetailForm() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label>Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as RecipeStatus)}
-              >
-                <SelectTrigger className="w-full" aria-label="Status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RECIPE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="col-span-2 space-y-1">
+              {/*
+                Not a dropdown of every status. The workflow decides what is
+                reachable, and a blocked step says why — SRS RCP-FUNC-006 and
+                RCP-BR-009/010.
+              */}
+              {isNew ? (
+                <>
+                  <Label>Status</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Draft — a new recipe starts here.
+                  </p>
+                </>
+              ) : (
+                <StatusControl
+                  recipe={{ ...existing!, ...liveRecipe }}
+                  onChange={handleStatusChange}
+                />
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="yield-qty">Yield</Label>

@@ -516,3 +516,57 @@ export async function setCollectionRecipes(
   );
   if (error) fail("setCollectionRecipes(insert)", error);
 }
+
+// ── Status audit ────────────────────────────────────────────────────────────
+
+export interface StatusEvent {
+  id: string;
+  fromStatus: string | null;
+  toStatus: string;
+  actorEmail: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+/**
+ * Record a status transition. SRS RCP-FUNC-006 AC6.
+ *
+ * The actor is captured here rather than read from a trigger, because the
+ * question this table answers is "who did this" and the database only knows
+ * the role the request arrived under.
+ */
+export async function logStatusChange(
+  recipeId: string,
+  fromStatus: string | null,
+  toStatus: string,
+  note?: string,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("recipe_status_events").insert({
+    recipe_id: recipeId,
+    from_status: fromStatus,
+    to_status: toStatus,
+    actor_id: auth.user?.id ?? null,
+    actor_email: auth.user?.email ?? null,
+    note: note ?? null,
+  });
+  if (error) fail("logStatusChange", error);
+}
+
+export async function fetchStatusHistory(recipeId: string): Promise<StatusEvent[]> {
+  const { data, error } = await requireSupabase()
+    .from("recipe_status_events")
+    .select("*")
+    .eq("recipe_id", recipeId)
+    .order("created_at", { ascending: false });
+  if (error) fail("fetchStatusHistory", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    fromStatus: r.from_status ?? null,
+    toStatus: r.to_status,
+    actorEmail: r.actor_email ?? null,
+    note: r.note ?? null,
+    createdAt: r.created_at ?? "",
+  }));
+}
