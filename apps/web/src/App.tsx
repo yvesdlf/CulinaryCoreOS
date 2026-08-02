@@ -20,6 +20,7 @@ import { useAuthStore, useIsAuthenticated } from "@/stores/auth-store";
  */
 const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x) => ({ default: x.AllergenMatrixPage })));
 const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
+const ProductionPage = lazy(() => import("@/pages/production").then((x) => ({ default: x.ProductionPage })));
 const InventoryPage = lazy(() => import("@/pages/inventory").then((x) => ({ default: x.InventoryPage })));
 const DuplicatesPage = lazy(() => import("@/pages/duplicates").then((x) => ({ default: x.DuplicatesPage })));
 const CollectionsPage = lazy(() => import("@/pages/collections").then((x) => ({ default: x.CollectionsPage })));
@@ -83,6 +84,7 @@ export function App() {
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id/print" element={<CollectionPrintPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/production" element={<ProductionPage />} />
         <Route path="/duplicates" element={<DuplicatesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/allergen-matrix" element={<AllergenMatrixPage />} />

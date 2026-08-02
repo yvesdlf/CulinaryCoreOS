@@ -36,10 +36,7 @@ const navItems = [
   { title: "Suppliers", to: "/suppliers", icon: Truck },
   { title: "Duplicates", to: "/duplicates", icon: CopyCheck },
   { title: "Inventory", to: "/inventory", icon: Warehouse },
-];
-
-const managementItems = [
-  { title: "Production", icon: Factory },
+  { title: "Production", to: "/production", icon: Factory },
 ];
 
 export function AppSidebar() {
@@ -81,26 +78,6 @@ export function AppSidebar() {
                     tooltip={item.title}
                     isActive={isActive(item.to)}
                     render={<NavLink to={item.to} />}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {managementItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    tooltip={item.title}
-                    disabled
-                    className="opacity-50"
                   >
                     <item.icon />
                     <span>{item.title}</span>

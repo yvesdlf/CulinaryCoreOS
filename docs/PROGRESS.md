@@ -21,8 +21,11 @@ printed sheets a kitchen actually uses.
 Stock is now tracked against par levels, with receipts, waste and counts
 recorded on an append-only ledger.
 
-Not started: production planning, procurement, AI import, reporting, and the
-wider platform modules in DOC1.
+Expected covers now turn into a prep list and a pull list, with what is
+already on the shelf subtracted.
+
+Not started: procurement, AI import, reporting, and the wider platform
+modules in DOC1.
 
 ## Done
 
@@ -120,6 +123,34 @@ count reminders, purchase-order integration, and theoretical-vs-actual usage
 (INV-FUNC-005) — that last one needs production records the app does not yet
 capture.
 
+### Production planning (SRS 4.11)
+- [x] Prep list from expected covers (PRO-FUNC-001 AC1, AC3): dishes explode
+      through every level of preparation into what must be made, ordered so
+      that anything a later preparation is built on comes first.
+- [x] Whole-batch scaling. A preparation yielding 1 kg cannot be made 0,9
+      times, so the sheet shows what is needed, how many batches, and what
+      that actually makes — and the pull list covers the batches, not the
+      exact need, which is what stops a prep cook running out mid-service.
+- [x] Pull list with current stock subtracted (AC4), sorted so what is missing
+      sits above what is merely needed, priced at current cost.
+- [x] Refuses to add quantities in different units for the same ingredient,
+      and reports it. Adding grams to kilograms would understate an order by a
+      factor of a thousand and nobody would notice until delivery.
+- [x] Missing ingredients, missing preparations, a preparation with no batch
+      yield, and preparations used inside themselves are all reported rather
+      than silently dropped.
+- [x] Covers persist across a reload, and the sheets print apart — the prep
+      cook and whoever opens the store are different people.
+- [x] Verified in the browser against the local database: 10 covers of Beef
+      burger and 10 of Squid & Guanciale produced 21 pull lines, of which
+      Guanciale alone showed no shortfall because 22,5 kg was on the shelf.
+
+Not built: production scheduling with dates, cooks and equipment conflicts
+(PRO-FUNC-002), and kitchen display integration (PRO-FUNC-003) — both are
+"Could Have" in the SRS and need a calendar and realtime infrastructure that
+would dwarf the module. Theoretical-vs-actual usage (INV-FUNC-005) still
+needs completion logging, which is PRO-FUNC-002 AC6.
+
 ### Platform
 - [x] Supabase with multi-tenancy and RLS; anon revoked, cross-tenant reads and
       writes verified blocked.
@@ -188,7 +219,6 @@ before any test executes looks identical to a test regression.
       suggested prices on the dashboard. Sales-mix weighting still needs
       POS data the app does not yet receive.
 - [ ] Supplier & procurement module
-- [ ] Production planning / prep lists
 - [ ] AI recipe import (from the two source workbooks, as first real dataset)
 - [ ] AI conversational assistant
 - [ ] Reporting & analytics
