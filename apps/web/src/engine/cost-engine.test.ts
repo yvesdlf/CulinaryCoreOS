@@ -107,7 +107,7 @@ describe("COG chain", () => {
 
 describe("tax and service", () => {
   it("derives the guest price from the menu price", () => {
-    // Menu price is held EXCLUDING tax; 21% = 11% PPN + 10% service.
+    // Menu price is held EXCLUDING tax; 21% is the EU standard rate.
     expect(calculatePriceInclTax(251802, 21).toFixed(2)).toBe("304680.42");
   });
 

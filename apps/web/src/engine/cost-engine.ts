@@ -128,7 +128,7 @@ export function calculateSubRecipeCostPerUnit(
 // Modelled on the venue's costing workbook, verified against its own figures:
 //   inflation = cost * inflation%          (4% of cost of sales at dish level)
 //   COG       = cost + waste + inflation
-//   guest price = menuPrice * (1 + tax%)   (21% = 11% PPN + 10% service)
+//   guest price = menuPrice * (1 + tax%)   (21% = EU standard VAT)
 //   food cost % = COG / menuPrice          (menu price EXCLUDES tax)
 //
 // Menu price is held excluding tax because that is the number a chef sets and
