@@ -91,15 +91,24 @@ export async function insertProduct(
 export async function updateProduct(
   id: string,
   changes: Partial<Product>,
+  /** Version the editor loaded; a mismatch means somebody else wrote first. */
+  expectedVersion?: number,
 ): Promise<Product> {
-  const { data, error } = await requireSupabase()
+  let query = requireSupabase()
     .from("products")
     .update(productToRow(changes))
-    .eq("id", id)
-    .select("*")
-    .single();
+    .eq("id", id);
+  if (expectedVersion !== undefined) {
+    query = query.eq("version", expectedVersion);
+  }
+  const { data, error } = await query.select("*");
   if (error) fail("updateProduct", error);
-  return productFromRow(data);
+  // Zero rows with a version predicate means the row moved on. RLS would have
+  // raised rather than returned nothing.
+  if (expectedVersion !== undefined && (data ?? []).length === 0) {
+    throw new ConflictError("product");
+  }
+  return productFromRow((data ?? [])[0]);
 }
 
 export async function deleteProduct(id: string): Promise<void> {

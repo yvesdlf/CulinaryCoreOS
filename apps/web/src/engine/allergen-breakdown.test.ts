@@ -20,7 +20,7 @@ const product = (id: string, allergens: string[], review = false): Product =>
     status: "ACTIVE",
     nutrition: { fatG: 0, carbsG: 0, proteinG: 0, vitAMg: 0, vitCMg: 0, calciumMg: 0, ironMg: 0, sodiumMg: 0, kcal: 0 },
     allergens,
-    preparation: EMPTY_PREPARATION, allergensNeedReview: review, allergenReviewNote: null,
+    preparation: EMPTY_PREPARATION, allergensNeedReview: review, version: 1, allergenReviewNote: null,
     createdAt: "", updatedAt: "",
   }) as Product;
 

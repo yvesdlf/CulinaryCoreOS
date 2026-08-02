@@ -51,6 +51,7 @@ function emptyProduct(): Omit<Product, "id" | "createdAt" | "updatedAt"> {
     allergens: [],
     allergensNeedReview: false,
     allergenReviewNote: null,
+    version: 1,
     packing: {
       packQty: 1,
       packUnit: "pc",
@@ -123,6 +124,10 @@ function ProductDetailForm() {
           supplier: existing.supplier,
           status: existing.status,
           allergens: existing.allergens,
+          // Carried so a save can name the version it was loaded at.
+          version: existing.version,
+          allergensNeedReview: existing.allergensNeedReview,
+          allergenReviewNote: existing.allergenReviewNote,
           packing: { ...existing.packing },
           cost: { ...existing.cost },
           yield_: { ...existing.yield_ },

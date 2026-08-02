@@ -72,6 +72,13 @@ export interface Product {
   /** What to check and why, e.g. "verify the brand for shrimp paste". */
   allergenReviewNote: string | null;
 
+  /**
+   * Incremented by the database on every update. A save that names a stale
+   * value is refused, so a price import and a chef editing the same row do not
+   * silently overwrite each other.
+   */
+  version: number;
+
   createdAt: string;
   updatedAt: string;
 }

@@ -143,6 +143,7 @@ export function productFromRow(row: any): Product {
     status: (row.status ?? "ACTIVE") as ProductStatus,
     nutrition: nutritionFromRow(row),
     allergens: row.allergens ?? [],
+    version: num(row.version, 1),
     allergensNeedReview: row.allergens_need_review === true,
     allergenReviewNote: row.allergen_review_note ?? null,
     createdAt: row.created_at ?? "",
