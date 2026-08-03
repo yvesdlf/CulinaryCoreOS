@@ -7,13 +7,14 @@
 // money, not just invoiced money.
 // ---------------------------------------------------------------------------
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PackageCheck, FileWarning, Wallet, TriangleAlert, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { PermissionGate } from "@/components/shared/permission-gate";
@@ -1347,6 +1348,377 @@ function ContractPricesDialog({ contract, products, onClose }: {
             </div>
           </PermissionGate>
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Sourcing ────────────────────────────────────────────────────────────────
+
+import { Gavel, Send as SendIcon } from "lucide-react";
+import {
+  fetchRfqComparison, createRfq, sendRfq, awardQuote,
+  type Rfq, type QuoteRow,
+} from "@/data/repository";
+
+/**
+ * Requests for quotation.
+ *
+ * The comparison is the point. Quotes are sealed until they arrive — a
+ * supplier never sees another's — and then a buyer sees them side by side and
+ * has to say why they chose one, because the cheapest is not automatically
+ * the right one.
+ */
+export function SourcingTab({
+  rfqs, suppliers, products, onDone,
+}: {
+  rfqs: Rfq[];
+  suppliers: Supplier[];
+  products: { id: string; name: string; packing: { totalUnit: string } }[];
+  onDone: () => void | Promise<void>;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [comparing, setComparing] = useState<Rfq | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {rfqs.length} request{rfqs.length === 1 ? "" : "s"}. Suppliers quote
+          through the portal and never see each other's prices.
+        </p>
+        <PermissionGate>
+          <Button size="sm" onClick={() => setCreating(true)}>New request</Button>
+        </PermissionGate>
+      </div>
+
+      {rfqs.length === 0 ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          Nothing out for quotation. A request asks several suppliers the same
+          question so the answers can be compared.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reference</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Needed by</TableHead>
+                <TableHead>Closes</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-px" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rfqs.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-mono text-xs">{r.reference}</TableCell>
+                  <TableCell className="font-medium">{r.title}</TableCell>
+                  <TableCell className="text-muted-foreground">{r.neededBy ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.closesAt ? r.closesAt.slice(0, 10) : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm">{r.status.toLowerCase()}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      {r.status === "DRAFT" && (
+                        <PermissionGate>
+                          <Button size="sm" variant="ghost" onClick={async () => {
+                            await sendRfq(r.id);
+                            toast.success(`${r.reference} sent`, {
+                              description: "Suppliers can now quote in the portal.",
+                            });
+                            await onDone();
+                          }}>
+                            <SendIcon className="size-4" />Send
+                          </Button>
+                        </PermissionGate>
+                      )}
+                      {r.status !== "DRAFT" && (
+                        <Button size="sm" variant="ghost" onClick={() => setComparing(r)}>
+                          <Gavel className="size-4" />Compare
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {creating && (
+        <NewRfqDialog suppliers={suppliers} products={products}
+          existing={rfqs.map((r) => r.reference)}
+          onClose={() => setCreating(false)}
+          onDone={async () => { setCreating(false); await onDone(); }} />
+      )}
+      {comparing && (
+        <CompareDialog rfq={comparing} onClose={() => setComparing(null)}
+          onDone={async () => { await onDone(); }} />
+      )}
+    </div>
+  );
+}
+
+function NewRfqDialog({ suppliers, products, existing, onClose, onDone }: {
+  suppliers: Supplier[];
+  products: { id: string; name: string; packing: { totalUnit: string } }[];
+  existing: string[]; onClose: () => void; onDone: () => void | Promise<void>;
+}) {
+  const reference = useMemo(() => nextReference("RFQ", existing), [existing]);
+  const [title, setTitle] = useState("");
+  const [neededBy, setNeededBy] = useState("");
+  const [closesAt, setClosesAt] = useState("");
+  const [rows, setRows] = useState([{ productId: "", quantity: "", unit: "KG" }]);
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const valid = title.trim() && rows.some((r) => r.productId && Number(r.quantity) > 0)
+    && chosen.length > 0;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>New request {reference}</DialogTitle>
+          <DialogDescription>
+            The same question to several suppliers. They answer in the portal
+            and cannot see each other's prices.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2 sm:col-span-3">
+              <Label htmlFor="rfq-title">Title</Label>
+              <Input id="rfq-title" value={title} placeholder="Charcuterie for Q4"
+                onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rfq-needed">Needed by</Label>
+              <Input id="rfq-needed" type="date" value={neededBy}
+                onChange={(e) => setNeededBy(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rfq-closes">Quotes close</Label>
+              <Input id="rfq-closes" type="date" value={closesAt}
+                onChange={(e) => setClosesAt(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>What you need</Label>
+            {rows.map((r, i) => (
+              <div key={i} className="grid grid-cols-[1fr_6rem_5rem_2rem] gap-2">
+                <select className="h-9 rounded-md border bg-transparent px-2 text-sm"
+                  aria-label={`Ingredient on line ${i + 1}`}
+                  value={r.productId}
+                  onChange={(e) => {
+                    const p = products.find((x) => x.id === e.target.value);
+                    setRows((rs) => rs.map((x, j) => j === i
+                      ? { ...x, productId: e.target.value, unit: p?.packing.totalUnit ?? x.unit }
+                      : x));
+                  }}>
+                  <option value="">Choose an ingredient</option>
+                  {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <Input type="number" min="0" step="any" placeholder="Qty"
+                  aria-label={`Quantity on line ${i + 1}`} value={r.quantity}
+                  onChange={(e) => setRows((rs) => rs.map((x, j) =>
+                    j === i ? { ...x, quantity: e.target.value } : x))} />
+                <Input aria-label={`Unit on line ${i + 1}`} value={r.unit}
+                  onChange={(e) => setRows((rs) => rs.map((x, j) =>
+                    j === i ? { ...x, unit: e.target.value } : x))} />
+                <Button size="sm" variant="ghost" aria-label={`Remove line ${i + 1}`}
+                  onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}>×</Button>
+              </div>
+            ))}
+            <Button size="sm" variant="outline"
+              onClick={() => setRows((rs) => [...rs, { productId: "", quantity: "", unit: "KG" }])}>
+              Add a line
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Ask which suppliers</Label>
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-2">
+              {suppliers.slice(0, 60).map((s) => (
+                <label key={s.id} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={chosen.includes(s.id)}
+                    onChange={(e) => setChosen((c) =>
+                      e.target.checked ? [...c, s.id] : c.filter((x) => x !== s.id))} />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button disabled={!valid || busy} onClick={async () => {
+            setBusy(true);
+            try {
+              await createRfq({
+                reference, title: title.trim(),
+                neededBy: neededBy || null,
+                closesAt: closesAt ? `${closesAt}T23:59:59Z` : null,
+                lines: rows.filter((r) => r.productId && Number(r.quantity) > 0)
+                  .map((r) => ({
+                    productId: r.productId,
+                    description: products.find((p) => p.id === r.productId)?.name ?? null,
+                    quantity: Number(r.quantity), unit: r.unit,
+                  })),
+                supplierIds: chosen,
+              });
+              toast.success(`${reference} created as a draft`);
+              await onDone();
+            } catch (err) {
+              toast.error("Could not create it", {
+                description: err instanceof Error ? err.message : String(err),
+              });
+            } finally { setBusy(false); }
+          }}>Create draft</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CompareDialog({ rfq, onClose, onDone }: {
+  rfq: Rfq; onClose: () => void; onDone: () => void | Promise<void>;
+}) {
+  const [rows, setRows] = useState<QuoteRow[]>([]);
+  const [awarding, setAwarding] = useState<QuoteRow | null>(null);
+  const [rationale, setRationale] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = () => void fetchRfqComparison(rfq.id).then(setRows).catch(() => setRows([]));
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [rfq.id]);
+
+  // Grouped by line, cheapest first — which is the order a buyer reads them in.
+  const byLine = useMemo(() => {
+    const m = new Map<string, QuoteRow[]>();
+    for (const r of rows) m.set(r.rfqLineId, [...(m.get(r.rfqLineId) ?? []), r]);
+    for (const [, list] of m) {
+      list.sort((a, b) => Number(a.unitPrice ?? Infinity) - Number(b.unitPrice ?? Infinity));
+    }
+    return m;
+  }, [rows]);
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{rfq.reference} — {rfq.title}</DialogTitle>
+          <DialogDescription>
+            Quotes side by side. Awarding asks why, because the cheapest is not
+            automatically the right one.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-96 space-y-4 overflow-y-auto">
+          {[...byLine.entries()].map(([lineId, list]) => {
+            const first = list[0];
+            const quotes = list.filter((q) => q.quoteId);
+            return (
+              <div key={lineId} className="rounded-lg border p-3">
+                <div className="mb-2 text-sm font-medium">
+                  {first.description} — {first.quantity} {first.unit}
+                </div>
+                {quotes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No quotes yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Supplier</TableHead>
+                        <TableHead className="text-right">Unit</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Lead</TableHead>
+                        <TableHead className="w-px" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quotes.map((q, i) => (
+                        <TableRow key={q.quoteId}>
+                          <TableCell className="font-medium">
+                            {q.supplierName}
+                            {i === 0 && (
+                              <span className="ml-2 text-xs text-status-success">cheapest</span>
+                            )}
+                            {q.isLate && (
+                              <span className="ml-2 text-xs text-status-warning">late</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            <CurrencyDisplay value={q.unitPrice ?? "0"} />
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            <CurrencyDisplay value={q.lineTotal ?? "0"} />
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">
+                            {q.leadTimeDays === null ? "—" : `${q.leadTimeDays}d`}
+                          </TableCell>
+                          <TableCell>
+                            {q.awarded ? (
+                              <span className="text-xs text-status-success">awarded</span>
+                            ) : (
+                              <PermissionGate>
+                                <Button size="sm" variant="ghost"
+                                  onClick={() => { setAwarding(q); setRationale(""); }}>
+                                  Award
+                                </Button>
+                              </PermissionGate>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {awarding && (
+          <div className="space-y-2 rounded-lg border border-status-info bg-status-info-soft p-3">
+            <Label htmlFor="award-why">
+              Why {awarding.supplierName}?
+            </Label>
+            <Textarea id="award-why" rows={2} value={rationale}
+              onChange={(e) => setRationale(e.target.value)}
+              placeholder="Cheapest, or: shorter lead time, better record, minimum order suits us" />
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setAwarding(null)}>
+                Cancel
+              </Button>
+              <Button size="sm" disabled={busy || rationale.trim() === ""}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await awardQuote({
+                      rfqId: rfq.id, rfqLineId: awarding.rfqLineId,
+                      supplierId: awarding.supplierId!, quoteId: awarding.quoteId,
+                      rationale: rationale.trim(),
+                    });
+                    toast.success(`Awarded to ${awarding.supplierName}`);
+                    setAwarding(null); load(); await onDone();
+                  } catch (err) {
+                    toast.error("Could not award", {
+                      description: err instanceof Error ? err.message : String(err),
+                    });
+                  } finally { setBusy(false); }
+                }}>Confirm award</Button>
+            </div>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>

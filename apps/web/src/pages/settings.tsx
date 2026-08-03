@@ -30,9 +30,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchOrgPeople, fetchInvitations, fetchMyInvitations, inviteToOrg,
   revokeInvitation, acceptInvitation, setMemberRole, removeMember, fetchMyRole,
-  fetchApprovalPolicies,
-  type OrgPerson, type Invitation,
+  fetchApprovalPolicies, fetchTaxRates, saveTaxRate, setDefaultTaxRate,
+  fetchCategoryTaxRates, setCategoryTaxRate, fetchMessageChannels,
+  saveMessageChannel, fetchDeliveryHealth,
+  type OrgPerson, type Invitation, type TaxRate, type CategoryTaxRate,
+  type MessageChannel,
 } from "@/data/repository";
+import { useRecipeStore } from "@/stores/recipe-store";
+import { Percent, MessageSquare } from "lucide-react";
 import type { OrgRole, ApprovalPolicy } from "@/engine/purchasing";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
@@ -51,6 +56,11 @@ export function SettingsPage() {
   const [myRole, setMyRole] = useState<OrgRole | null>(null);
   const [myEmail, setMyEmail] = useState<string | null>(null);
   const [policies, setPolicies] = useState<ApprovalPolicy[]>([]);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [categoryRates, setCategoryRates] = useState<CategoryTaxRate[]>([]);
+  const [channels, setChannels] = useState<MessageChannel[]>([]);
+  const [health, setHealth] = useState<{ status: string; count: number }[]>([]);
+  const recipes = useRecipeStore((s) => s.recipes);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
 
@@ -63,6 +73,11 @@ export function SettingsPage() {
         fetchMyRole(), fetchApprovalPolicies(),
       ]);
       setPeople(p); setInvitations(i); setMine(m); setMyRole(r); setPolicies(pol);
+      const [tr, cr, ch, dh] = await Promise.all([
+        fetchTaxRates(), fetchCategoryTaxRates(), fetchMessageChannels(),
+        fetchDeliveryHealth(),
+      ]);
+      setTaxRates(tr); setCategoryRates(cr); setChannels(ch); setHealth(dh);
       const { data } = await supabase!.auth.getUser();
       setMyEmail(data.user?.email ?? null);
     } catch (err) {
@@ -143,6 +158,8 @@ export function SettingsPage() {
             <ShieldCheck className="size-4" />People ({people.length})
           </TabsTrigger>
           <TabsTrigger value="invitations">Invitations ({pending.length})</TabsTrigger>
+          <TabsTrigger value="tax"><Percent className="size-4" />Tax</TabsTrigger>
+          <TabsTrigger value="messaging"><MessageSquare className="size-4" />Messaging</TabsTrigger>
           <TabsTrigger value="rules">Rules</TabsTrigger>
         </TabsList>
 
@@ -296,6 +313,17 @@ export function SettingsPage() {
           )}
         </TabsContent>
 
+        <TabsContent value="tax" className="mt-4">
+          <TaxTab rates={taxRates} categoryRates={categoryRates}
+            categories={[...new Set(recipes.map((r) => r.category))].sort()}
+            canManage={canManage} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="messaging" className="mt-4">
+          <MessagingTab channels={channels} health={health}
+            canManage={canManage} onDone={load} />
+        </TabsContent>
+
         <TabsContent value="rules" className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             {ROLES.map((r) => (
@@ -411,6 +439,326 @@ function InviteDialog({ myRole, onClose, onDone }: {
               });
             } finally { setBusy(false); }
           }}>Invite</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Tax ─────────────────────────────────────────────────────────────────────
+
+/**
+ * VAT rates a venue charges.
+ *
+ * Nothing here assumes a country. A venue sets what its member state charges,
+ * and a second venue elsewhere sets something else. Categories point at a
+ * rate because that is how a menu divides — every cocktail standard-rated and
+ * every starter perhaps not — and setting it per dish across a hundred is how
+ * it ends up wrong on three.
+ */
+function TaxTab({ rates, categoryRates, categories, canManage, onDone }: {
+  rates: TaxRate[]; categoryRates: CategoryTaxRate[]; categories: string[];
+  canManage: boolean; onDone: () => void | Promise<void>;
+}) {
+  const [editing, setEditing] = useState<TaxRate | "new" | null>(null);
+  const byCategory = useMemo(
+    () => new Map(categoryRates.map((c) => [c.category, c.taxRateId])), [categoryRates],
+  );
+  const def = rates.find((r) => r.isDefault);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {rates.length} rate{rates.length === 1 ? "" : "s"}
+          {def && `, defaulting to ${def.name} at ${def.percent}%`}
+        </p>
+        {canManage && (
+          <Button size="sm" onClick={() => setEditing("new")}>Add a rate</Button>
+        )}
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Rate</TableHead>
+              <TableHead className="text-right">Percent</TableHead>
+              <TableHead>Note</TableHead>
+              <TableHead>Default</TableHead>
+              <TableHead className="w-px" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rates.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="font-medium">{r.name}</TableCell>
+                <TableCell className="text-right tabular-nums">{r.percent}%</TableCell>
+                <TableCell className="max-w-md whitespace-normal text-sm text-muted-foreground">
+                  {r.note ?? "—"}
+                </TableCell>
+                <TableCell>
+                  {r.isDefault ? (
+                    <span className="text-sm text-status-success">default</span>
+                  ) : canManage ? (
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      await setDefaultTaxRate(r.id);
+                      toast.success(`${r.name} is now the default`);
+                      await onDone();
+                    }}>Make default</Button>
+                  ) : null}
+                </TableCell>
+                <TableCell>
+                  {canManage && (
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(r)}>
+                      Edit
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Which rate each menu category attracts</h2>
+        <p className="mb-2 text-sm text-muted-foreground">
+          Anything not set here uses the default. Most EU member states reduce
+          restaurant food and keep alcohol at the standard rate.
+        </p>
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Category</TableHead>
+                <TableHead>Rate</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categories.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center text-muted-foreground">
+                    No recipe categories yet.
+                  </TableCell>
+                </TableRow>
+              ) : categories.map((c) => (
+                <TableRow key={c}>
+                  <TableCell className="font-medium">{c}</TableCell>
+                  <TableCell>
+                    <select className="h-8 rounded-md border bg-transparent px-2 text-sm"
+                      aria-label={`Tax rate for ${c}`}
+                      disabled={!canManage}
+                      value={byCategory.get(c) ?? ""}
+                      onChange={async (e) => {
+                        await setCategoryTaxRate(c, e.target.value || null);
+                        toast.success(`${c} updated`);
+                        await onDone();
+                      }}>
+                      <option value="">Use the default</option>
+                      {rates.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name} — {r.percent}%</option>
+                      ))}
+                    </select>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {editing && (
+        <TaxRateDialog rate={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onDone={async () => { setEditing(null); await onDone(); }} />
+      )}
+    </div>
+  );
+}
+
+function TaxRateDialog({ rate, onClose, onDone }: {
+  rate: TaxRate | null; onClose: () => void; onDone: () => void | Promise<void>;
+}) {
+  const [name, setName] = useState(rate?.name ?? "");
+  const [percent, setPercent] = useState(String(rate?.percent ?? ""));
+  const [note, setNote] = useState(rate?.note ?? "");
+  const [busy, setBusy] = useState(false);
+  const value = Number(percent);
+  const valid = name.trim() !== "" && Number.isFinite(value) && value >= 0 && value <= 100;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{rate ? `Edit ${rate.name}` : "New tax rate"}</DialogTitle>
+          <DialogDescription>
+            Set what your member state charges. Changing a rate affects prices
+            calculated from now on; figures already recorded keep the rate they
+            were worked out with.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="tr-name">Name</Label>
+            <Input id="tr-name" value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Reduced" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tr-pct">Percent</Label>
+            <Input id="tr-pct" type="number" min="0" max="100" step="0.001"
+              value={percent} onChange={(e) => setPercent(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tr-note">Note</Label>
+            <Input id="tr-note" value={note} onChange={(e) => setNote(e.target.value)}
+              placeholder="Restaurant services, Netherlands" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button disabled={!valid || busy} onClick={async () => {
+            setBusy(true);
+            try {
+              await saveTaxRate({ id: rate?.id, name: name.trim(), percent: value,
+                                  note: note.trim() || null });
+              toast.success("Saved");
+              await onDone();
+            } catch (err) {
+              toast.error("Could not save", {
+                description: err instanceof Error ? err.message : String(err),
+              });
+            } finally { setBusy(false); }
+          }}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Messaging ───────────────────────────────────────────────────────────────
+
+/**
+ * Where notifications go besides the app.
+ *
+ * The access token is not entered here and is not stored in the database. It
+ * belongs in the platform's secret store, read by the adapter process — a
+ * secret in a table half the organisation can read would undo every access
+ * control in the system.
+ */
+function MessagingTab({ channels, health, canManage, onDone }: {
+  channels: MessageChannel[]; health: { status: string; count: number }[];
+  canManage: boolean; onDone: () => void | Promise<void>;
+}) {
+  const [editing, setEditing] = useState<MessageChannel | null>(null);
+  const failed = health.find((h) => h.status === "FAILED")?.count ?? 0;
+  const pending = health.find((h) => h.status === "PENDING")?.count ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-x-6 text-sm text-muted-foreground">
+        <span>{pending} queued</span>
+        <span className={failed > 0 ? "text-status-danger" : ""}>{failed} failed</span>
+        <span>{health.find((h) => h.status === "SENT")?.count ?? 0} sent</span>
+        <span>{health.find((h) => h.status === "SKIPPED")?.count ?? 0} skipped</span>
+      </div>
+
+      <div className="space-y-3">
+        {channels.map((c) => (
+          <div key={c.id} className="rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">{c.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.kind === "IN_APP"
+                    ? "Always on. Nothing leaves the system."
+                    : c.enabled
+                      ? "Enabled. The adapter process sends these."
+                      : "Not enabled."}
+                </div>
+              </div>
+              {canManage && c.kind !== "IN_APP" && (
+                <Button size="sm" variant="outline" onClick={() => setEditing(c)}>
+                  Configure
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="rounded-lg border border-status-info bg-status-info-soft p-3 text-sm">
+        Enabling a channel queues messages for it. They are sent by an adapter
+        process run outside the app — see <code>scripts/whatsapp-adapter.mjs</code>.
+        Nothing is sent until that is running.
+      </p>
+
+      {editing && (
+        <ChannelDialog channel={editing} onClose={() => setEditing(null)}
+          onDone={async () => { setEditing(null); await onDone(); }} />
+      )}
+    </div>
+  );
+}
+
+function ChannelDialog({ channel, onClose, onDone }: {
+  channel: MessageChannel; onClose: () => void; onDone: () => void | Promise<void>;
+}) {
+  const [enabled, setEnabled] = useState(channel.enabled);
+  const [config, setConfig] = useState<Record<string, string>>(
+    Object.fromEntries(
+      Object.entries(channel.config).map(([k, v]) => [k, v == null ? "" : String(v)]),
+    ),
+  );
+  const [busy, setBusy] = useState(false);
+  const isWhatsApp = channel.kind === "WHATSAPP";
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{channel.name}</DialogTitle>
+          <DialogDescription>
+            {isWhatsApp
+              ? "From your WhatsApp Business account. The access token is not entered here — the adapter reads it from the environment."
+              : "Where messages come from and go to by default."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)} />
+            Send notifications on this channel
+          </label>
+          {Object.keys(config).map((k) => (
+            <div key={k} className="space-y-2">
+              <Label htmlFor={`ch-${k}`}>{k.replace(/_/g, " ")}</Label>
+              <Input id={`ch-${k}`} value={config[k]}
+                onChange={(e) => setConfig({ ...config, [k]: e.target.value })} />
+            </div>
+          ))}
+          {isWhatsApp && (
+            <p className="rounded-lg border p-3 text-xs text-muted-foreground">
+              Set <code>WHATSAPP_TOKEN</code> in the adapter's environment. It
+              is deliberately not stored in the database.
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button disabled={busy} onClick={async () => {
+            setBusy(true);
+            try {
+              await saveMessageChannel(channel.id, enabled,
+                Object.fromEntries(Object.entries(config).map(([k, v]) => [k, v || null])));
+              toast.success("Saved");
+              await onDone();
+            } catch (err) {
+              toast.error("Could not save", {
+                description: err instanceof Error ? err.message : String(err),
+              });
+            } finally { setBusy(false); }
+          }}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

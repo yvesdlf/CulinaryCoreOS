@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchMySupplierId, fetchPortalOrders, fetchPortalOrderLines, fetchPortalInvoices,
   acknowledgeOrder, fetchNotifications, markNotificationRead,
+  fetchPortalRfqs, fetchPortalRfqLines, submitQuote,
   type PortalOrder, type Notification,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -43,6 +44,8 @@ export function MessagesPage() {
   const [invoices, setInvoices] = useState<
     Awaited<ReturnType<typeof fetchPortalInvoices>>
   >([]);
+  const [rfqs, setRfqs] = useState<Awaited<ReturnType<typeof fetchPortalRfqs>>>([]);
+  const [quoting, setQuoting] = useState<(typeof rfqs)[number] | null>(null);
   const [acking, setAcking] = useState<PortalOrder | null>(null);
 
   async function load() {
@@ -50,12 +53,13 @@ export function MessagesPage() {
     try {
       const sup = await fetchMySupplierId();
       setSupplierId(sup);
-      const [n, o, inv] = await Promise.all([
+      const [n, o, inv, rq] = await Promise.all([
         fetchNotifications(),
         sup ? fetchPortalOrders() : Promise.resolve([]),
         sup ? fetchPortalInvoices() : Promise.resolve([]),
+        sup ? fetchPortalRfqs() : Promise.resolve([]),
       ]);
-      setNotifications(n); setOrders(o); setInvoices(inv);
+      setNotifications(n); setOrders(o); setInvoices(inv); setRfqs(rq);
     } catch (err) {
       toast.error("Could not load messages", {
         description: err instanceof Error ? err.message : String(err),
@@ -94,6 +98,9 @@ export function MessagesPage() {
               <TabsTrigger value="orders">
                 <PackageCheck className="size-4" />
                 Orders ({orders.length})
+              </TabsTrigger>
+              <TabsTrigger value="rfqs">
+                Quotes wanted ({rfqs.filter((r) => r.status === "SENT" && !r.respondedAt).length})
               </TabsTrigger>
               <TabsTrigger value="invoices">
                 <FileText className="size-4" />
@@ -207,6 +214,55 @@ export function MessagesPage() {
               )}
             </TabsContent>
 
+            <TabsContent value="rfqs" className="mt-4">
+              {rfqs.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Nobody has asked you to quote.
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>What for</TableHead>
+                        <TableHead>From</TableHead>
+                        <TableHead>Closes</TableHead>
+                        <TableHead>You</TableHead>
+                        <TableHead className="w-px" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rfqs.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-mono text-xs">{r.reference}</TableCell>
+                          <TableCell className="font-medium">{r.title}</TableCell>
+                          <TableCell>{r.buyerName}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {r.closesAt ? r.closesAt.slice(0, 10) : "—"}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {r.respondedAt ? (
+                              <span className="text-status-success">quoted</span>
+                            ) : (
+                              <span className="text-status-warning">not yet</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {r.status === "SENT" && (
+                              <Button size="sm" variant="ghost" onClick={() => setQuoting(r)}>
+                                {r.respondedAt ? "Revise" : "Quote"}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="invoices" className="mt-4">
               {invoices.length === 0 ? (
                 <p className="py-12 text-center text-sm text-muted-foreground">
@@ -246,6 +302,11 @@ export function MessagesPage() {
           </>
         )}
       </Tabs>
+
+      {quoting && (
+        <QuoteDialog rfq={quoting} onClose={() => setQuoting(null)}
+          onDone={async () => { setQuoting(null); await load(); }} />
+      )}
 
       {acking && (
         <AcknowledgeDialog order={acking} onClose={() => setAcking(null)}
@@ -344,6 +405,104 @@ function AcknowledgeDialog({ order, onClose, onDone }: {
           }}>
             <Mail className="size-4" />
             {order.acknowledgedAt ? "Update" : "Confirm order"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Quoting.
+ *
+ * A supplier sees the lines they were asked about and their own prices. No
+ * other supplier's quote is fetched here, so there is nothing to leak — the
+ * view behind this simply does not select them.
+ */
+function QuoteDialog({ rfq, onClose, onDone }: {
+  rfq: { id: string; reference: string; title: string; buyerName: string;
+         closesAt: string | null; neededBy: string | null };
+  onClose: () => void; onDone: () => void | Promise<void>;
+}) {
+  const [lines, setLines] = useState<
+    Awaited<ReturnType<typeof fetchPortalRfqLines>>
+  >([]);
+  const [draft, setDraft] = useState<Record<string, { price: string; lead: string }>>({});
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void fetchPortalRfqLines(rfq.id).then((l) => {
+      setLines(l);
+      setDraft(Object.fromEntries(l.map((x) => [x.id, {
+        price: x.myUnitPrice ?? "",
+        lead: x.myLeadTimeDays === null ? "" : String(x.myLeadTimeDays),
+      }])));
+    }).catch(() => setLines([]));
+  }, [rfq.id]);
+
+  const ready = lines.filter((l) => Number(draft[l.id]?.price) > 0);
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{rfq.title}</DialogTitle>
+          <DialogDescription>
+            {rfq.buyerName} asked for a price
+            {rfq.neededBy && `, needed by ${rfq.neededBy}`}
+            {rfq.closesAt && `. Quotes close ${rfq.closesAt.slice(0, 10)}`}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-80 space-y-3 overflow-y-auto">
+          {lines.map((l) => (
+            <div key={l.id} className="rounded-lg border p-3">
+              <div className="mb-2 text-sm font-medium">
+                {l.description} — {l.quantity} {l.unit}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs" htmlFor={`q-${l.id}`}>
+                    Your price per {l.unit}
+                  </Label>
+                  <Input id={`q-${l.id}`} type="number" min="0" step="any"
+                    value={draft[l.id]?.price ?? ""}
+                    onChange={(e) => setDraft((d) => ({
+                      ...d, [l.id]: { ...d[l.id], price: e.target.value },
+                    }))} />
+                </div>
+                <div>
+                  <Label className="text-xs" htmlFor={`ql-${l.id}`}>Lead time (days)</Label>
+                  <Input id={`ql-${l.id}`} type="number" min="0"
+                    value={draft[l.id]?.lead ?? ""}
+                    onChange={(e) => setDraft((d) => ({
+                      ...d, [l.id]: { ...d[l.id], lead: e.target.value },
+                    }))} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button disabled={busy || ready.length === 0} onClick={async () => {
+            setBusy(true);
+            try {
+              for (const l of ready) {
+                const d = draft[l.id];
+                await submitQuote(l.id, Number(d.price),
+                  d.lead === "" ? null : Number(d.lead), null);
+              }
+              toast.success(`Quoted ${ready.length} line${ready.length === 1 ? "" : "s"}`);
+              await onDone();
+            } catch (err) {
+              toast.error("Could not submit", {
+                description: err instanceof Error ? err.message : String(err),
+              });
+            } finally { setBusy(false); }
+          }}>
+            Send {ready.length} price{ready.length === 1 ? "" : "s"}
           </Button>
         </DialogFooter>
       </DialogContent>

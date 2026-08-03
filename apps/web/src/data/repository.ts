@@ -2316,3 +2316,242 @@ export async function completeTask(id: string, note: string | null): Promise<voi
   }).eq("id", id);
   if (error) fail("completeTask", error);
 }
+
+// ── Tax rates and channels ──────────────────────────────────────────────────
+
+export interface TaxRate {
+  id: string; name: string; percent: number; isDefault: boolean; note: string | null;
+}
+
+export async function fetchTaxRates(): Promise<TaxRate[]> {
+  const { data, error } = await requireSupabase()
+    .from("tax_rates").select("*").order("is_default", { ascending: false }).order("name");
+  if (error) fail("fetchTaxRates", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, name: r.name, percent: Number(r.percent),
+    isDefault: Boolean(r.is_default), note: r.note ?? null,
+  }));
+}
+
+export async function saveTaxRate(input: {
+  id?: string; name: string; percent: number; note: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const row = { name: input.name, percent: input.percent, note: input.note,
+                updated_at: new Date().toISOString() };
+  const { error } = input.id
+    ? await db.from("tax_rates").update(row).eq("id", input.id)
+    : await db.from("tax_rates").insert(row);
+  if (error) fail("saveTaxRate", error);
+}
+
+/**
+ * Make one rate the default.
+ *
+ * Two writes because a unique partial index enforces exactly one — clearing
+ * the old one first is what keeps the constraint satisfiable.
+ */
+export async function setDefaultTaxRate(id: string): Promise<void> {
+  const db = requireSupabase();
+  const { error: clear } = await db.from("tax_rates")
+    .update({ is_default: false }).eq("is_default", true);
+  if (clear) fail("setDefaultTaxRate(clear)", clear);
+  const { error } = await db.from("tax_rates").update({ is_default: true }).eq("id", id);
+  if (error) fail("setDefaultTaxRate", error);
+}
+
+export async function deleteTaxRate(id: string): Promise<void> {
+  const { error } = await requireSupabase().from("tax_rates").delete().eq("id", id);
+  if (error) fail("deleteTaxRate", error);
+}
+
+export interface CategoryTaxRate { id: string; category: string; taxRateId: string }
+
+export async function fetchCategoryTaxRates(): Promise<CategoryTaxRate[]> {
+  const { data, error } = await requireSupabase()
+    .from("category_tax_rates").select("*").order("category");
+  if (error) fail("fetchCategoryTaxRates", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, category: r.category, taxRateId: r.tax_rate_id,
+  }));
+}
+
+export async function setCategoryTaxRate(
+  category: string, taxRateId: string | null,
+): Promise<void> {
+  const db = requireSupabase();
+  if (taxRateId === null) {
+    const { error } = await db.from("category_tax_rates").delete().eq("category", category);
+    if (error) fail("setCategoryTaxRate(clear)", error);
+    return;
+  }
+  const { error } = await db.from("category_tax_rates")
+    .upsert({ category, tax_rate_id: taxRateId }, { onConflict: "org_id,category" });
+  if (error) fail("setCategoryTaxRate", error);
+}
+
+export interface MessageChannel {
+  id: string; kind: string; name: string; enabled: boolean;
+  config: Record<string, unknown>;
+}
+
+export async function fetchMessageChannels(): Promise<MessageChannel[]> {
+  const { data, error } = await requireSupabase()
+    .from("message_channels").select("*").order("kind");
+  if (error) fail("fetchMessageChannels", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, kind: r.kind, name: r.name,
+    enabled: Boolean(r.enabled), config: r.config ?? {},
+  }));
+}
+
+export async function saveMessageChannel(
+  id: string, enabled: boolean, config: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await requireSupabase().from("message_channels")
+    .update({ enabled, config, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) fail("saveMessageChannel", error);
+}
+
+export async function fetchDeliveryHealth(): Promise<
+  { status: string; count: number }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("message_deliveries").select("status").limit(1000);
+  if (error) fail("fetchDeliveryHealth", error);
+  const counts = new Map<string, number>();
+  for (const r of data ?? []) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+  return [...counts.entries()].map(([status, count]) => ({ status, count }));
+}
+
+// ── Sourcing ────────────────────────────────────────────────────────────────
+
+export interface Rfq {
+  id: string; reference: string; title: string; status: string;
+  neededBy: string | null; closesAt: string | null; notes: string | null;
+}
+
+export async function fetchRfqs(): Promise<Rfq[]> {
+  const { data, error } = await requireSupabase()
+    .from("rfqs").select("*").order("created_at", { ascending: false });
+  if (error) fail("fetchRfqs", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, reference: r.reference, title: r.title, status: r.status,
+    neededBy: r.needed_by ?? null, closesAt: r.closes_at ?? null, notes: r.notes ?? null,
+  }));
+}
+
+export async function createRfq(input: {
+  reference: string; title: string; neededBy: string | null; closesAt: string | null;
+  lines: { productId: string | null; description: string | null; quantity: number; unit: string }[];
+  supplierIds: string[];
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { data, error } = await db.from("rfqs").insert({
+    reference: input.reference, title: input.title,
+    needed_by: input.neededBy, closes_at: input.closesAt,
+    status: "DRAFT", created_by_email: auth.user?.email ?? null,
+  }).select("*").single();
+  if (error) fail("createRfq", error);
+
+  const { error: le } = await db.from("rfq_lines").insert(
+    input.lines.map((l, i) => ({
+      rfq_id: data.id, product_id: l.productId, description: l.description,
+      quantity: l.quantity, unit: l.unit, line_number: i + 1,
+    })),
+  );
+  if (le) { await db.from("rfqs").delete().eq("id", data.id); fail("createRfq(lines)", le); }
+
+  if (input.supplierIds.length > 0) {
+    const { error: se } = await db.from("rfq_suppliers").insert(
+      input.supplierIds.map((s) => ({ rfq_id: data.id, supplier_id: s })),
+    );
+    if (se) fail("createRfq(suppliers)", se);
+  }
+}
+
+export async function sendRfq(id: string): Promise<void> {
+  const { error } = await requireSupabase().from("rfqs")
+    .update({ status: "SENT", sent_at: new Date().toISOString() }).eq("id", id);
+  if (error) fail("sendRfq", error);
+}
+
+export interface QuoteRow {
+  rfqLineId: string; lineNumber: number; description: string | null;
+  quantity: number; unit: string; quoteId: string | null;
+  supplierId: string | null; supplierName: string | null;
+  unitPrice: string | null; lineTotal: string | null;
+  leadTimeDays: number | null; isLate: boolean; awarded: boolean;
+}
+
+export async function fetchRfqComparison(rfqId: string): Promise<QuoteRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("rfq_comparison").select("*").eq("rfq_id", rfqId).order("line_number");
+  if (error) fail("fetchRfqComparison", error);
+  return (data ?? []).map((r: any) => ({
+    rfqLineId: r.rfq_line_id, lineNumber: r.line_number,
+    description: r.description ?? null, quantity: Number(r.quantity), unit: r.unit,
+    quoteId: r.quote_id ?? null, supplierId: r.supplier_id ?? null,
+    supplierName: r.supplier_name ?? null,
+    unitPrice: r.unit_price === null ? null : String(r.unit_price),
+    lineTotal: r.line_total === null ? null : String(r.line_total),
+    leadTimeDays: r.lead_time_days ?? null,
+    isLate: Boolean(r.is_late), awarded: Boolean(r.awarded),
+  }));
+}
+
+export async function awardQuote(input: {
+  rfqId: string; rfqLineId: string; supplierId: string;
+  quoteId: string | null; rationale: string;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("rfq_awards").insert({
+    rfq_id: input.rfqId, rfq_line_id: input.rfqLineId,
+    supplier_id: input.supplierId, quote_id: input.quoteId,
+    rationale: input.rationale, awarded_by_email: auth.user?.email ?? null,
+  });
+  if (error) fail("awardQuote", error);
+}
+
+export async function fetchPortalRfqs(): Promise<
+  { id: string; reference: string; title: string; status: string;
+    neededBy: string | null; closesAt: string | null; buyerName: string;
+    respondedAt: string | null }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("portal_rfqs").select("*").order("closes_at");
+  if (error) fail("fetchPortalRfqs", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, reference: r.reference, title: r.title, status: r.status,
+    neededBy: r.needed_by ?? null, closesAt: r.closes_at ?? null,
+    buyerName: r.buyer_name, respondedAt: r.responded_at ?? null,
+  }));
+}
+
+export async function fetchPortalRfqLines(rfqId: string): Promise<
+  { id: string; lineNumber: number; description: string | null;
+    quantity: number; unit: string; myUnitPrice: string | null;
+    myLeadTimeDays: number | null; myNote: string | null }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("portal_rfq_lines").select("*").eq("rfq_id", rfqId).order("line_number");
+  if (error) fail("fetchPortalRfqLines", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, lineNumber: r.line_number, description: r.description ?? null,
+    quantity: Number(r.quantity), unit: r.unit,
+    myUnitPrice: r.my_unit_price === null ? null : String(r.my_unit_price),
+    myLeadTimeDays: r.my_lead_time_days ?? null, myNote: r.my_note ?? null,
+  }));
+}
+
+export async function submitQuote(
+  lineId: string, unitPrice: number, leadTimeDays: number | null, note: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().rpc("submit_quote", {
+    p_line: lineId, p_unit_price: unitPrice,
+    p_lead_time_days: leadTimeDays, p_note: note,
+  });
+  if (error) fail("submitQuote", error);
+}

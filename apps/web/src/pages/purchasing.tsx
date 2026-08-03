@@ -82,6 +82,7 @@ import {
   BudgetsTab,
   AnalyticsTab,
   ContractsTab,
+  SourcingTab,
 } from "@/components/purchasing/finance-tabs";
 import {
   fetchGoodsReceipts,
@@ -90,9 +91,11 @@ import {
   fetchTolerances,
   fetchContracts,
   fetchContractAttention,
+  fetchRfqs,
   type GoodsReceiptRow,
   type SupplierInvoice,
   type Contract,
+  type Rfq,
 } from "@/data/repository";
 import type { BudgetPosition, Tolerances } from "@/engine/invoice-matching";
 
@@ -130,6 +133,7 @@ export function PurchasingPage() {
   const [budgets, setBudgets] = useState<BudgetPosition[]>([]);
   const [tolerances, setTolerances] = useState<Tolerances | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [rfqs, setRfqs] = useState<Rfq[]>([]);
   const [contractAttention, setContractAttention] = useState<
     Awaited<ReturnType<typeof fetchContractAttention>>
   >([]);
@@ -162,6 +166,7 @@ export function PurchasingPage() {
         fetchContracts(), fetchContractAttention(),
       ]);
       setContracts(ctr); setContractAttention(ctrAtt);
+      setRfqs(await fetchRfqs());
       setRequisitions(r);
       setOrders(o);
       setCostCentres(c);
@@ -230,6 +235,7 @@ export function PurchasingPage() {
             Invoices ({invoices.length})
           </TabsTrigger>
           <TabsTrigger value="budgets">Budgets</TabsTrigger>
+          <TabsTrigger value="sourcing">Sourcing ({rfqs.length})</TabsTrigger>
           <TabsTrigger value="contracts">Contracts ({contracts.length})</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -439,6 +445,10 @@ export function PurchasingPage() {
 
         <TabsContent value="budgets" className="mt-4">
           <BudgetsTab positions={budgets} />
+        </TabsContent>
+
+        <TabsContent value="sourcing" className="mt-4">
+          <SourcingTab rfqs={rfqs} suppliers={suppliers} products={products} onDone={load} />
         </TabsContent>
 
         <TabsContent value="contracts" className="mt-4">

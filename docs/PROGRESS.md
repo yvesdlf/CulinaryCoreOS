@@ -362,16 +362,36 @@ before any test executes looks identical to a test regression.
       overwriting it would discard a chef's intentional trim override.
 - [ ] AI recipe import, and an AI assistant. Neither is started, and both
       need a provider and key decision first.
-- [ ] **Nothing is actually sent.** The communication cycle records every
-      moment somebody needs telling, and delivers it in-app only. An email or
-      messaging adapter marks the same rows rather than starting a second,
-      parallel history — but no channel has been chosen, so no adapter exists.
-- [ ] Sourcing and RFQ (procurement §6) — the last large unbuilt procurement
-      section. Quote collection, comparison and award.
+- [ ] **The WhatsApp adapter has never talked to WhatsApp.** It is written,
+      it drains its queue correctly and it was verified against real queued
+      messages in dry run — but sending needs a Meta Business account, an
+      approved message template and an access token, none of which exist.
+      Everything up to the network call is proved; the network call is not.
+- [ ] **Email has no adapter.** The channel row exists; nothing sends it.
 - [ ] The remaining HR modules: performance, competency, training content,
       quizzes, discipline. All are Phase H3 in the brief and none is started.
 
 ## Done since the last revision
+
+- [x] **Tax rates are editable.** Rows with a name, percentage and note, one
+      marked default, and a menu category can point at one. Nothing assumes a
+      country. Seeded at the EU standard with the reduced rate carrying a note
+      to set it to your member state's.
+- [x] **Sourcing and RFQ**, both sides. A buyer creates a request, sends it to
+      several suppliers, compares quotes side by side and awards with a
+      required rationale. A supplier quotes through the portal and never sees
+      another's price — proved in SQL, and the view behind their screen does
+      not select another supplier's quote at all, so there is nothing to leak.
+- [x] **WhatsApp adapter.** Runs outside the database, because a trigger must
+      never make a network call — a slow provider holds a transaction open and
+      a failing one rolls back the delivery that caused it. Reads the access
+      token from the environment, never the database. Verified in dry run
+      against real queued messages: it resolved a supplier's own number for a
+      supplier message and the channel default for a venue one.
+- [x] **The Playwright token is gone from history.** Force-pushed after
+      confirming the remote was untouched, then reflogs expired and the
+      repository garbage collected. Zero commits contain it, locally or
+      remotely.
 
 - [x] **Account deletion.** The membership guard refused the cascade from
       `auth.users`, so no account could be removed without disabling a
