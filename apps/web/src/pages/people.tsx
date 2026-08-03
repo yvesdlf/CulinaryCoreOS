@@ -42,6 +42,11 @@ import {
   type Department, type JobRole,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { RotaTab, AttendanceTab } from "@/components/people/rota-tabs";
+import {
+  fetchShifts, fetchAttendance, fetchOpenEntries,
+} from "@/data/repository";
+import type { Shift, AttendanceRecord } from "@/engine/scheduling";
 
 const STATUS_STYLE: Record<string, string> = {
   ACTIVE: "bg-status-success-soft text-status-success",
@@ -58,6 +63,12 @@ export function PeoplePage() {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [openEntries, setOpenEntries] = useState<
+    { id: string; employeeId: string; clockInAt: string; shiftId: string | null }[]
+  >([]);
+  const [weekOf, setWeekOf] = useState(() => new Date());
   const [adding, setAdding] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
@@ -83,6 +94,32 @@ export function PeoplePage() {
   }
 
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  /*
+   * The rota is read a week at a time rather than all at once. A year of
+   * shifts for thirty people is tens of thousands of rows and nobody looks at
+   * more than one week.
+   */
+  async function loadWeek(when: Date) {
+    if (!isSupabaseConfigured) return;
+    const monday = new Date(Date.UTC(when.getUTCFullYear(), when.getUTCMonth(), when.getUTCDate()));
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+    const next = new Date(monday.getTime() + 7 * 86_400_000);
+    try {
+      const [sh, att, open] = await Promise.all([
+        fetchShifts(monday.toISOString(), next.toISOString()),
+        fetchAttendance(monday.toISOString(), next.toISOString()),
+        fetchOpenEntries(),
+      ]);
+      setShifts(sh); setAttendance(att); setOpenEntries(open);
+    } catch (err) {
+      toast.error("Could not load the rota", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  useEffect(() => { void loadWeek(weekOf); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [weekOf]);
 
   const counts = useMemo(() => headcount(employees), [employees]);
   const lapsing = useMemo(
@@ -123,10 +160,24 @@ export function PeoplePage() {
         <TabsList>
           <TabsTrigger value="team"><Users className="size-4" />Team ({employees.length})</TabsTrigger>
           <TabsTrigger value="leave"><CalendarDays className="size-4" />Leave ({leave.length})</TabsTrigger>
+          <TabsTrigger value="rota">Rota</TabsTrigger>
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="certifications">
             <BadgeCheck className="size-4" />Certifications ({certifications.length})
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="rota" className="mt-4">
+          <RotaTab weekOf={weekOf} onWeek={setWeekOf} shifts={shifts}
+            employees={employees} roles={roles} departments={departments}
+            openEntries={openEntries} onDone={() => loadWeek(weekOf)} />
+        </TabsContent>
+
+        <TabsContent value="attendance" className="mt-4">
+          <AttendanceTab shifts={shifts} attendance={attendance}
+            employees={employees} openEntries={openEntries}
+            onDone={() => loadWeek(weekOf)} />
+        </TabsContent>
 
         <TabsContent value="team" className="mt-4">
           {loading ? (

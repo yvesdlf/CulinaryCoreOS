@@ -1950,3 +1950,107 @@ export async function decideLeave(
   }).eq("id", id);
   if (error) fail("decideLeave", error);
 }
+
+// ── Scheduling and attendance ───────────────────────────────────────────────
+
+import type { Shift, AttendanceRecord } from "@/engine/scheduling";
+
+export async function fetchShifts(fromIso: string, toIso: string): Promise<Shift[]> {
+  const { data, error } = await requireSupabase()
+    .from("shifts").select("*")
+    .gte("starts_at", fromIso).lt("starts_at", toIso)
+    .order("starts_at");
+  if (error) fail("fetchShifts", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, employeeId: r.employee_id ?? null,
+    departmentId: r.department_id ?? null, jobRoleId: r.job_role_id ?? null,
+    startsAt: r.starts_at, endsAt: r.ends_at,
+    breakMinutes: r.break_minutes ?? 0, status: r.status,
+  }));
+}
+
+export async function saveShift(input: {
+  id?: string;
+  employeeId: string | null;
+  departmentId: string | null;
+  jobRoleId: string | null;
+  startsAt: string;
+  endsAt: string;
+  breakMinutes: number;
+  status: "DRAFT" | "PUBLISHED" | "CANCELLED";
+  notes?: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const row = {
+    employee_id: input.employeeId, department_id: input.departmentId,
+    job_role_id: input.jobRoleId, starts_at: input.startsAt, ends_at: input.endsAt,
+    break_minutes: input.breakMinutes, status: input.status,
+    notes: input.notes ?? null, updated_at: new Date().toISOString(),
+  };
+  const { error } = input.id
+    ? await db.from("shifts").update(row).eq("id", input.id)
+    : await db.from("shifts").insert({
+        ...row, created_by: auth.user?.id ?? null,
+        created_by_email: auth.user?.email ?? null,
+      });
+  // The database refuses an uncertified or on-leave assignment; that message
+  // is the policy speaking and is worth showing as written.
+  if (error) fail("saveShift", error);
+}
+
+export async function deleteShift(id: string): Promise<void> {
+  const { error } = await requireSupabase().from("shifts").delete().eq("id", id);
+  if (error) fail("deleteShift", error);
+}
+
+export async function fetchAttendance(
+  fromIso: string, toIso: string,
+): Promise<AttendanceRecord[]> {
+  const { data, error } = await requireSupabase()
+    .from("attendance").select("*")
+    .gte("effective_in", fromIso).lt("effective_in", toIso)
+    .order("effective_in", { ascending: false });
+  if (error) fail("fetchAttendance", error);
+  return (data ?? []).map((r: any) => ({
+    employeeId: r.employee_id, shiftId: r.shift_id ?? null,
+    effectiveIn: r.effective_in, effectiveOut: r.effective_out ?? null,
+    hours: r.hours === null || r.hours === undefined ? null : Number(r.hours),
+    corrected: Boolean(r.corrected),
+  }));
+}
+
+/** Open punches — people currently on the clock. */
+export async function fetchOpenEntries(): Promise<
+  { id: string; employeeId: string; clockInAt: string; shiftId: string | null }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("time_entries").select("id, employee_id, clock_in_at, shift_id")
+    .is("clock_out_at", null);
+  if (error) fail("fetchOpenEntries", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, employeeId: r.employee_id,
+    clockInAt: r.clock_in_at, shiftId: r.shift_id ?? null,
+  }));
+}
+
+export async function clockIn(
+  employeeId: string, shiftId: string | null,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("time_entries").insert({
+    employee_id: employeeId, shift_id: shiftId,
+    clock_in_at: new Date().toISOString(), source: "WEB",
+    recorded_by: auth.user?.id ?? null,
+    recorded_by_email: auth.user?.email ?? null,
+  });
+  if (error) fail("clockIn", error);
+}
+
+export async function clockOut(entryId: string, breakMinutes: number): Promise<void> {
+  const { error } = await requireSupabase().from("time_entries")
+    .update({ clock_out_at: new Date().toISOString(), break_minutes: breakMinutes })
+    .eq("id", entryId);
+  if (error) fail("clockOut", error);
+}

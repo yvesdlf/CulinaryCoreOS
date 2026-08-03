@@ -362,12 +362,33 @@ before any test executes looks identical to a test regression.
       overwriting it would discard a chef's intentional trim override.
 - [ ] AI recipe import, and an AI assistant. Neither is started, and both
       need a provider and key decision first.
-- [ ] The larger unbuilt modules, in the order they would pay off: shift
-      scheduling and attendance, supplier/vendor portal and the communication
-      cycle, contracts, onboarding and offboarding. See the procurement and HR
-      coverage notes below.
+- [ ] The larger unbuilt modules, in the order they would pay off: the
+      supplier/vendor portal and the communication cycle, contracts, then
+      onboarding and offboarding. Scheduling and attendance are now done.
 
 ## Done since the last revision
+
+- [x] **Shift scheduling and attendance.** A week rota, clock in and out, and
+      rostered-against-worked variance.
+
+      Working-time rules are the EU Working Time Directive (2003/88/EC), not
+      invented thresholds — 11 hours daily rest, a break past 6 hours, 24
+      hours weekly rest, 48 hours average weekly. Each warning cites its
+      article so a manager can look it up. They are warnings rather than
+      refusals: a manager sometimes has to break a rota rule and record why,
+      and a system that simply refused would be worked around with a paper
+      rota, after which nothing is visible at all.
+
+      Two things the database does refuse outright, because they are unlawful
+      regardless of intent: rostering somebody whose required certification
+      has lapsed or is missing (852/2004 Annex II Chapter XII), and rostering
+      somebody on approved leave. A draft passes; publishing is the
+      commitment, so that is where the checks bite.
+
+      A punch, once closed, cannot be edited — time becomes pay, so a record
+      that can be quietly changed is one nobody can rely on. Corrections are
+      separate records and cannot be approved by the person who asked for
+      them. Both the original and the effective figure stay visible.
 
 - [x] Membership management: invite by email, set roles, remove people, with
       privilege escalation refused by trigger. Was the blocker that made every
