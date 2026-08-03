@@ -81,14 +81,18 @@ import {
   InvoicesTab,
   BudgetsTab,
   AnalyticsTab,
+  ContractsTab,
 } from "@/components/purchasing/finance-tabs";
 import {
   fetchGoodsReceipts,
   fetchSupplierInvoices,
   fetchBudgetPositions,
   fetchTolerances,
+  fetchContracts,
+  fetchContractAttention,
   type GoodsReceiptRow,
   type SupplierInvoice,
+  type Contract,
 } from "@/data/repository";
 import type { BudgetPosition, Tolerances } from "@/engine/invoice-matching";
 
@@ -125,6 +129,10 @@ export function PurchasingPage() {
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
   const [budgets, setBudgets] = useState<BudgetPosition[]>([]);
   const [tolerances, setTolerances] = useState<Tolerances | null>(null);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [contractAttention, setContractAttention] = useState<
+    Awaited<ReturnType<typeof fetchContractAttention>>
+  >([]);
   const [me, setMe] = useState<{ email: string | null; role: OrgRole } | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -150,6 +158,10 @@ export function PurchasingPage() {
         fetchBudgetPositions(),
         fetchTolerances(),
       ]);
+      const [ctr, ctrAtt] = await Promise.all([
+        fetchContracts(), fetchContractAttention(),
+      ]);
+      setContracts(ctr); setContractAttention(ctrAtt);
       setRequisitions(r);
       setOrders(o);
       setCostCentres(c);
@@ -218,6 +230,7 @@ export function PurchasingPage() {
             Invoices ({invoices.length})
           </TabsTrigger>
           <TabsTrigger value="budgets">Budgets</TabsTrigger>
+          <TabsTrigger value="contracts">Contracts ({contracts.length})</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -426,6 +439,11 @@ export function PurchasingPage() {
 
         <TabsContent value="budgets" className="mt-4">
           <BudgetsTab positions={budgets} />
+        </TabsContent>
+
+        <TabsContent value="contracts" className="mt-4">
+          <ContractsTab contracts={contracts} attention={contractAttention}
+            suppliers={suppliers} products={products} onDone={load} />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4">

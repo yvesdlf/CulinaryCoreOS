@@ -25,7 +25,8 @@ export type ExceptionKind =
   | "NOT_RECEIVED"
   | "LINE_NOT_ON_ORDER"
   | "DUPLICATE_INVOICE"
-  | "TOTAL_MISMATCH";
+  | "TOTAL_MISMATCH"
+  | "PRICE_ABOVE_CONTRACT";
 
 export interface MatchException {
   kind: ExceptionKind;
@@ -65,6 +66,11 @@ export interface InvoiceLine {
   quantity: number;
   unitPrice: string;
   lineTotal: string;
+  /**
+   * The price agreed in a live contract on the invoice date, where one covers
+   * this product. Null when no contract does — which is most lines.
+   */
+  contractPrice?: string | null;
 }
 
 export interface MatchInput {
@@ -167,6 +173,30 @@ export function matchInvoice(input: MatchInput): MatchException[] {
           .times(line.quantity - order.quantity)
           .toFixed(2),
       });
+    }
+
+    /*
+     * Against the contract, where there is one.
+     *
+     * Separate from the order check and not a substitute for it. An order can
+     * be raised at the wrong price by mistake, in which case the invoice
+     * agrees with the order and both are wrong — only the contract catches
+     * that. This is the exception that pays for having contracts in the
+     * system at all.
+     */
+    if (line.contractPrice != null) {
+      const agreed = toDecimal(line.contractPrice).toNumber();
+      if (
+        charged > agreed &&
+        !withinTolerance(agreed, charged, tol.pricePercent, toDecimal(tol.priceAbsolute).toNumber())
+      ) {
+        exceptions.push({
+          kind: "PRICE_ABOVE_CONTRACT",
+          lineNumber: line.lineNumber,
+          description: `Charged ${charged.toLocaleString()} against a contracted price of ${agreed.toLocaleString()}.`,
+          variance: toDecimal(charged).minus(agreed).times(line.quantity).toFixed(2),
+        });
+      }
     }
 
     /*

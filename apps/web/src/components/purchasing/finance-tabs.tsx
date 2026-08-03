@@ -994,3 +994,364 @@ export function AnalyticsTab({
     </div>
   );
 }
+
+// ── Contracts ───────────────────────────────────────────────────────────────
+
+import { FileSignature, CalendarClock } from "lucide-react";
+import {
+  fetchContractPrices, addContractPrice, saveContract, refreshContractStatuses,
+  type Contract, type ContractPrice,
+} from "@/data/repository";
+
+/**
+ * Supplier agreements.
+ *
+ * Two dates and they are not the same one. `ends_on` is when the agreement
+ * stops; `notice_by` is the last day to say you are not renewing, usually
+ * months earlier. A list that only shows the end date lets a contract renew
+ * itself while everybody is still deciding, which is why notice leads here.
+ */
+export function ContractsTab({
+  contracts, attention, suppliers, products, onDone,
+}: {
+  contracts: Contract[];
+  attention: {
+    id: string; reference: string; title: string; supplierName: string;
+    endsOn: string | null; noticeBy: string | null;
+    daysToEnd: number | null; daysToNotice: number | null; autoRenews: boolean;
+  }[];
+  suppliers: Supplier[];
+  products: { id: string; name: string; packing: { totalUnit: string } }[];
+  onDone: () => void | Promise<void>;
+}) {
+  const [editing, setEditing] = useState<Contract | "new" | null>(null);
+  const [pricesFor, setPricesFor] = useState<Contract | null>(null);
+  const supplierName = useMemo(
+    () => new Map(suppliers.map((s) => [s.id, s.name])), [suppliers],
+  );
+
+  const noticeDue = attention.filter(
+    (a) => a.daysToNotice !== null && a.daysToNotice <= 30,
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {contracts.length} agreement{contracts.length === 1 ? "" : "s"}
+        </p>
+        <PermissionGate>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={async () => {
+              await refreshContractStatuses();
+              toast.success("Statuses brought up to date");
+              await onDone();
+            }}>Refresh statuses</Button>
+            <Button size="sm" onClick={() => setEditing("new")}>New contract</Button>
+          </div>
+        </PermissionGate>
+      </div>
+
+      {noticeDue.length > 0 && (
+        <div className="rounded-lg border border-status-warning bg-status-warning-soft p-4">
+          <div className="flex items-center gap-2 font-medium text-status-warning">
+            <CalendarClock className="size-4" />
+            Notice falls due on {noticeDue.length} contract
+            {noticeDue.length === 1 ? "" : "s"}
+          </div>
+          <ul className="mt-2 space-y-1 text-sm">
+            {noticeDue.map((a) => (
+              <li key={a.id}>
+                <span className="font-medium">{a.supplierName}</span> — {a.title}:
+                {" "}
+                {a.daysToNotice! < 0
+                  ? `notice date passed ${Math.abs(a.daysToNotice!)} days ago`
+                  : `${a.daysToNotice} days to give notice`}
+                {a.autoRenews && ". It renews automatically."}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {contracts.length === 0 ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          No contracts recorded. An agreement here is checked against what
+          suppliers actually invoice — that is the point of holding it.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reference</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Runs to</TableHead>
+                <TableHead>Notice by</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-px" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contracts.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono text-xs">{c.reference}</TableCell>
+                  <TableCell className="font-medium">
+                    {supplierName.get(c.supplierId) ?? "—"}
+                  </TableCell>
+                  <TableCell>{c.title}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {c.endsOn ?? "open-ended"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {c.noticeBy ?? "—"}
+                    {c.autoRenews && (
+                      <span className="ml-1 text-xs">(auto-renews)</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">{c.status.toLowerCase()}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => setPricesFor(c)}>
+                        Prices
+                      </Button>
+                      <PermissionGate>
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(c)}>
+                          Edit
+                        </Button>
+                      </PermissionGate>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {editing && (
+        <ContractDialog contract={editing === "new" ? null : editing}
+          suppliers={suppliers} onClose={() => setEditing(null)}
+          onDone={async () => { setEditing(null); await onDone(); }} />
+      )}
+      {pricesFor && (
+        <ContractPricesDialog contract={pricesFor} products={products}
+          onClose={() => setPricesFor(null)} />
+      )}
+    </div>
+  );
+}
+
+function ContractDialog({ contract, suppliers, onClose, onDone }: {
+  contract: Contract | null; suppliers: Supplier[];
+  onClose: () => void; onDone: () => void | Promise<void>;
+}) {
+  const [f, setF] = useState({
+    supplierId: contract?.supplierId ?? suppliers[0]?.id ?? "",
+    reference: contract?.reference ?? `CTR-${new Date().getFullYear()}-001`,
+    title: contract?.title ?? "",
+    startsOn: contract?.startsOn ?? new Date().toISOString().slice(0, 10),
+    endsOn: contract?.endsOn ?? "",
+    noticeBy: contract?.noticeBy ?? "",
+    autoRenews: contract?.autoRenews ?? false,
+    leadTimeDays: contract?.leadTimeDays?.toString() ?? "",
+    deliveryDays: contract?.deliveryDays ?? "",
+    serviceTerms: contract?.serviceTerms ?? "",
+  });
+  const [busy, setBusy] = useState(false);
+  const valid = f.supplierId && f.reference.trim() && f.title.trim() && f.startsOn;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{contract ? "Edit contract" : "New contract"}</DialogTitle>
+          <DialogDescription>
+            The notice date is the last day to say you are not renewing. It is
+            usually well before the end date, and missing it is how an
+            agreement renews itself.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="c-sup">Supplier</Label>
+            <select id="c-sup" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+              value={f.supplierId} onChange={(e) => setF({ ...f, supplierId: e.target.value })}>
+              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="c-ref">Reference</Label>
+            <Input id="c-ref" value={f.reference}
+              onChange={(e) => setF({ ...f, reference: e.target.value })} />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="c-title">Title</Label>
+            <Input id="c-title" value={f.title} placeholder="Annual produce supply"
+              onChange={(e) => setF({ ...f, title: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="c-from">Starts</Label>
+            <Input id="c-from" type="date" value={f.startsOn}
+              onChange={(e) => setF({ ...f, startsOn: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="c-to">Ends</Label>
+            <Input id="c-to" type="date" value={f.endsOn}
+              onChange={(e) => setF({ ...f, endsOn: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="c-notice">Notice by</Label>
+            <Input id="c-notice" type="date" value={f.noticeBy}
+              onChange={(e) => setF({ ...f, noticeBy: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="c-lead">Lead time (days)</Label>
+            <Input id="c-lead" type="number" min="0" value={f.leadTimeDays}
+              onChange={(e) => setF({ ...f, leadTimeDays: e.target.value })} />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={f.autoRenews}
+                onChange={(e) => setF({ ...f, autoRenews: e.target.checked })} />
+              Renews automatically unless notice is given
+            </label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button disabled={!valid || busy} onClick={async () => {
+            setBusy(true);
+            try {
+              await saveContract({
+                id: contract?.id, supplierId: f.supplierId,
+                reference: f.reference.trim(), title: f.title.trim(),
+                startsOn: f.startsOn, endsOn: f.endsOn || null,
+                noticeBy: f.noticeBy || null, autoRenews: f.autoRenews,
+                leadTimeDays: f.leadTimeDays === "" ? null : Number(f.leadTimeDays),
+                deliveryDays: f.deliveryDays || null,
+                serviceTerms: f.serviceTerms || null,
+              });
+              toast.success("Contract saved");
+              await onDone();
+            } catch (err) {
+              toast.error("Could not save", {
+                description: err instanceof Error ? err.message : String(err),
+              });
+            } finally { setBusy(false); }
+          }}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ContractPricesDialog({ contract, products, onClose }: {
+  contract: Contract;
+  products: { id: string; name: string; packing: { totalUnit: string } }[];
+  onClose: () => void;
+}) {
+  const [prices, setPrices] = useState<ContractPrice[]>([]);
+  const [productId, setProductId] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [from, setFrom] = useState(contract.startsOn);
+  const [busy, setBusy] = useState(false);
+
+  const load = () => void fetchContractPrices(contract.id).then(setPrices).catch(() => setPrices([]));
+  useState(() => { load(); return undefined; });
+
+  const productName = useMemo(
+    () => new Map(products.map((p) => [p.id, p.name])), [products],
+  );
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Agreed prices — {contract.title}</DialogTitle>
+          <DialogDescription>
+            Effective-dated, so an old invoice can be checked against what was
+            agreed then rather than against what is agreed now. An invoice
+            charging above these is held.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="max-h-48 overflow-y-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead>From</TableHead>
+                  <TableHead>To</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {prices.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      No prices agreed yet.
+                    </TableCell>
+                  </TableRow>
+                ) : prices.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      {p.productId ? productName.get(p.productId) ?? "—" : p.description}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <CurrencyDisplay value={p.unitPrice} /> / {p.unit}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{p.effectiveFrom}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.effectiveTo ?? "open"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <PermissionGate>
+            <div className="grid grid-cols-[1fr_8rem_9rem_auto] gap-2">
+              <select className="h-9 rounded-md border bg-transparent px-2 text-sm"
+                aria-label="Ingredient" value={productId}
+                onChange={(e) => setProductId(e.target.value)}>
+                <option value="">Choose an ingredient</option>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <Input type="number" min="0" step="any" placeholder="Price"
+                aria-label="Agreed price" value={unitPrice}
+                onChange={(e) => setUnitPrice(e.target.value)} />
+              <Input type="date" aria-label="Effective from" value={from}
+                onChange={(e) => setFrom(e.target.value)} />
+              <Button size="sm" disabled={busy || !productId || !unitPrice}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const p = products.find((x) => x.id === productId);
+                    await addContractPrice({
+                      contractId: contract.id, productId,
+                      description: p?.name ?? null,
+                      unit: p?.packing.totalUnit ?? "KG",
+                      unitPrice, effectiveFrom: from, effectiveTo: null,
+                    });
+                    toast.success("Price agreed");
+                    setProductId(""); setUnitPrice("");
+                    load();
+                  } catch (err) {
+                    toast.error("Could not add", {
+                      description: err instanceof Error ? err.message : String(err),
+                    });
+                  } finally { setBusy(false); }
+                }}>Add</Button>
+            </div>
+          </PermissionGate>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

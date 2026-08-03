@@ -123,3 +123,67 @@ describe("delivery performance", () => {
     expect(out[0].supplierName).toBe("Late");
   });
 });
+
+// ── Contract price checking, which lives in invoice matching ────────────────
+
+import { matchInvoice } from "./invoice-matching";
+
+describe("invoice against contract", () => {
+  const base = {
+    invoiceNumber: "INV-1",
+    supplierId: "s1",
+    orderLines: [{
+      id: "ol1", description: "Guanciale", quantity: 10,
+      unitPrice: "700000", quantityReceived: 10,
+    }],
+    existingInvoiceNumbers: [],
+  };
+
+  it("catches a price above contract even when it agrees with the order", () => {
+    /*
+     * The case contracts exist for. The order was raised at 700.000, the
+     * invoice agrees with it, and both are above the 590.000 that was agreed.
+     * Only the contract catches this.
+     */
+    const ex = matchInvoice({
+      ...base,
+      invoiceLines: [{
+        lineNumber: 1, purchaseOrderLineId: "ol1", description: "Guanciale",
+        quantity: 10, unitPrice: "700000", lineTotal: "7000000",
+        contractPrice: "590000",
+      }],
+      invoiceTotal: "7000000",
+    });
+    expect(ex.some((e) => e.kind === "PRICE_ABOVE_ORDER")).toBe(false);
+    const c = ex.find((e) => e.kind === "PRICE_ABOVE_CONTRACT");
+    expect(c).toBeTruthy();
+    expect(c!.variance).toBe("1100000.00");
+  });
+
+  it("says nothing when the charge is at or under the contract", () => {
+    const ex = matchInvoice({
+      ...base,
+      invoiceLines: [{
+        lineNumber: 1, purchaseOrderLineId: "ol1", description: "Guanciale",
+        quantity: 10, unitPrice: "590000", lineTotal: "5900000",
+        contractPrice: "590000",
+      }],
+      invoiceTotal: "5900000",
+    });
+    expect(ex.some((e) => e.kind === "PRICE_ABOVE_CONTRACT")).toBe(false);
+  });
+
+  it("says nothing when no contract covers the line", () => {
+    // Most lines. An absent contract is not a finding.
+    const ex = matchInvoice({
+      ...base,
+      invoiceLines: [{
+        lineNumber: 1, purchaseOrderLineId: "ol1", description: "Guanciale",
+        quantity: 10, unitPrice: "700000", lineTotal: "7000000",
+        contractPrice: null,
+      }],
+      invoiceTotal: "7000000",
+    });
+    expect(ex.some((e) => e.kind === "PRICE_ABOVE_CONTRACT")).toBe(false);
+  });
+});

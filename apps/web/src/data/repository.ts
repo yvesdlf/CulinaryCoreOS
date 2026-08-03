@@ -2164,3 +2164,114 @@ export async function inviteSupplierContact(
   });
   if (error) fail("inviteSupplierContact", error);
 }
+
+// ── Contracts ───────────────────────────────────────────────────────────────
+
+export interface Contract {
+  id: string; supplierId: string; reference: string; title: string;
+  status: string; startsOn: string; endsOn: string | null;
+  noticeBy: string | null; autoRenews: boolean;
+  minimumCommitment: string | null; leadTimeDays: number | null;
+  deliveryDays: string | null; serviceTerms: string | null; notes: string | null;
+}
+
+export async function fetchContracts(): Promise<Contract[]> {
+  const { data, error } = await requireSupabase()
+    .from("contracts").select("*").order("ends_on", { nullsFirst: false });
+  if (error) fail("fetchContracts", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, supplierId: r.supplier_id, reference: r.reference, title: r.title,
+    status: r.status, startsOn: r.starts_on, endsOn: r.ends_on ?? null,
+    noticeBy: r.notice_by ?? null, autoRenews: Boolean(r.auto_renews),
+    minimumCommitment: r.minimum_commitment === null ? null : String(r.minimum_commitment),
+    leadTimeDays: r.lead_time_days ?? null, deliveryDays: r.delivery_days ?? null,
+    serviceTerms: r.service_terms ?? null, notes: r.notes ?? null,
+  }));
+}
+
+export async function saveContract(input: Partial<Contract> & {
+  supplierId: string; reference: string; title: string; startsOn: string;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const row = {
+    supplier_id: input.supplierId, reference: input.reference, title: input.title,
+    starts_on: input.startsOn, ends_on: input.endsOn ?? null,
+    notice_by: input.noticeBy ?? null, auto_renews: input.autoRenews ?? false,
+    minimum_commitment: input.minimumCommitment ?? null,
+    lead_time_days: input.leadTimeDays ?? null,
+    delivery_days: input.deliveryDays ?? null,
+    service_terms: input.serviceTerms ?? null, notes: input.notes ?? null,
+    status: input.status ?? "ACTIVE",
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = input.id
+    ? await db.from("contracts").update(row).eq("id", input.id)
+    : await db.from("contracts").insert({ ...row, created_by_email: auth.user?.email ?? null });
+  if (error) fail("saveContract", error);
+}
+
+export async function refreshContractStatuses(): Promise<void> {
+  const { error } = await requireSupabase().rpc("refresh_contract_statuses");
+  if (error) fail("refreshContractStatuses", error);
+}
+
+export async function fetchContractAttention(): Promise<
+  { id: string; reference: string; title: string; supplierName: string;
+    status: string; endsOn: string | null; noticeBy: string | null;
+    daysToEnd: number | null; daysToNotice: number | null; autoRenews: boolean }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("contract_attention").select("*").order("days_to_notice", { nullsFirst: false });
+  if (error) fail("fetchContractAttention", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, reference: r.reference, title: r.title,
+    supplierName: r.supplier_name, status: r.status,
+    endsOn: r.ends_on ?? null, noticeBy: r.notice_by ?? null,
+    daysToEnd: r.days_to_end ?? null, daysToNotice: r.days_to_notice ?? null,
+    autoRenews: Boolean(r.auto_renews),
+  }));
+}
+
+export interface ContractPrice {
+  id: string; contractId: string; productId: string | null;
+  description: string | null; unit: string; unitPrice: string;
+  effectiveFrom: string; effectiveTo: string | null;
+}
+
+export async function fetchContractPrices(contractId: string): Promise<ContractPrice[]> {
+  const { data, error } = await requireSupabase()
+    .from("contract_prices").select("*")
+    .eq("contract_id", contractId).order("effective_from", { ascending: false });
+  if (error) fail("fetchContractPrices", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, contractId: r.contract_id, productId: r.product_id ?? null,
+    description: r.description ?? null, unit: r.unit,
+    unitPrice: String(r.unit_price), effectiveFrom: r.effective_from,
+    effectiveTo: r.effective_to ?? null,
+  }));
+}
+
+export async function addContractPrice(input: {
+  contractId: string; productId: string | null; description: string | null;
+  unit: string; unitPrice: string; effectiveFrom: string; effectiveTo: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("contract_prices").insert({
+    contract_id: input.contractId, product_id: input.productId,
+    description: input.description, unit: input.unit,
+    unit_price: input.unitPrice, effective_from: input.effectiveFrom,
+    effective_to: input.effectiveTo,
+  });
+  if (error) fail("addContractPrice", error);
+}
+
+/** The agreed price for a product from a supplier on a date, if any. */
+export async function contractPriceFor(
+  productId: string, supplierId: string, onDate: string,
+): Promise<string | null> {
+  const { data, error } = await requireSupabase().rpc("contract_price_for", {
+    p_product: productId, p_supplier: supplierId, p_on: onDate,
+  });
+  if (error) fail("contractPriceFor", error);
+  return data === null || data === undefined ? null : String(data);
+}
