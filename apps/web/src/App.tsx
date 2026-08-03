@@ -20,6 +20,7 @@ import { useAuthStore, useIsAuthenticated } from "@/stores/auth-store";
  */
 const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x) => ({ default: x.AllergenMatrixPage })));
 const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
+const MessagesPage = lazy(() => import("@/pages/messages").then((x) => ({ default: x.MessagesPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const PeoplePage = lazy(() => import("@/pages/people").then((x) => ({ default: x.PeoplePage })));
 const PurchasingPage = lazy(() => import("@/pages/purchasing").then((x) => ({ default: x.PurchasingPage })));
@@ -95,6 +96,7 @@ export function App() {
         <Route path="/purchasing" element={<PurchasingPage />} />
         <Route path="/people" element={<PeoplePage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
         <Route path="/duplicates" element={<DuplicatesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/allergen-matrix" element={<AllergenMatrixPage />} />

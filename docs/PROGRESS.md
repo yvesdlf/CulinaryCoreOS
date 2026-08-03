@@ -362,11 +362,40 @@ before any test executes looks identical to a test regression.
       overwriting it would discard a chef's intentional trim override.
 - [ ] AI recipe import, and an AI assistant. Neither is started, and both
       need a provider and key decision first.
-- [ ] The larger unbuilt modules, in the order they would pay off: the
-      supplier/vendor portal and the communication cycle, contracts, then
-      onboarding and offboarding. Scheduling and attendance are now done.
+- [ ] **Deleting a user account fails.** Removing a row from `auth.users`
+      cascades to `organization_members`, and the membership guard added for
+      privilege-escalation refuses the delete. Found while clearing test
+      fixtures. The guard needs to distinguish a cascade from a person
+      removing a colleague; until then, account deletion needs the trigger
+      disabled, which is not something an application should have to do.
+- [ ] **Nothing is actually sent.** The communication cycle records every
+      moment somebody needs telling, and delivers it in-app only. An email or
+      messaging adapter marks the same rows rather than starting a second,
+      parallel history — but no channel has been chosen, so no adapter exists.
+- [ ] The larger unbuilt modules, in the order they would pay off: contracts,
+      then onboarding and offboarding, then sourcing/RFQ.
 
 ## Done since the last revision
+
+- [x] **Vendor portal.** A supplier contact is deliberately not a member of
+      the organisation, so `auth_org_ids()` returns nothing for them and every
+      existing policy in the system already denies them by default. Their
+      access comes only from four narrow views. That is the safe direction to
+      fail in: adding a supplier to the organisation and then subtracting what
+      they must not see would mean every future table silently grants them
+      something.
+
+      Proved in SQL rather than asserted. A supplier sees exactly their own
+      orders, and reads zero rows from `purchase_orders`, `products` and
+      `recipes` directly. Acknowledging another supplier's order is refused.
+
+- [x] **Communication cycle.** Requisition submitted and decided, order sent
+      and acknowledged, delivery booked in, goods rejected, invoice held and
+      approved, leave requested and decided. Raised by trigger rather than by
+      the pages, so an import or a future mobile client tells the same people
+      — a notification that only fires when somebody used the right screen is
+      not a cycle. Venue and supplier audiences are separate, and the wording
+      differs because what may be said differs.
 
 - [x] **Shift scheduling and attendance.** A week rota, clock in and out, and
       rostered-against-worked variance.

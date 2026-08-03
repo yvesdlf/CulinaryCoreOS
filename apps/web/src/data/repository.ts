@@ -2054,3 +2054,113 @@ export async function clockOut(entryId: string, breakMinutes: number): Promise<v
     .eq("id", entryId);
   if (error) fail("clockOut", error);
 }
+
+// ── Vendor portal and notifications ─────────────────────────────────────────
+
+export interface PortalOrder {
+  id: string; reference: string; status: string; orderedOn: string | null;
+  expectedOn: string | null; totalAmount: string; buyerName: string;
+  acknowledgedAt: string | null; supplierPromisedOn: string | null;
+  supplierNote: string | null;
+}
+
+/** Null when the signed-in person is not a supplier contact. */
+export async function fetchMySupplierId(): Promise<string | null> {
+  const { data, error } = await requireSupabase().rpc("auth_supplier_id");
+  if (error) fail("fetchMySupplierId", error);
+  return (data as string | null) ?? null;
+}
+
+export async function fetchPortalOrders(): Promise<PortalOrder[]> {
+  const { data, error } = await requireSupabase()
+    .from("portal_orders").select("*").order("ordered_on", { ascending: false });
+  if (error) fail("fetchPortalOrders", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, reference: r.reference, status: r.status,
+    orderedOn: r.ordered_on ?? null, expectedOn: r.expected_on ?? null,
+    totalAmount: String(r.total_amount ?? 0), buyerName: r.buyer_name,
+    acknowledgedAt: r.acknowledged_at ?? null,
+    supplierPromisedOn: r.supplier_promised_on ?? null,
+    supplierNote: r.supplier_note ?? null,
+  }));
+}
+
+export async function fetchPortalOrderLines(orderId: string): Promise<
+  { id: string; description: string | null; quantity: number; unit: string;
+    unitPrice: string; lineTotal: string; quantityReceived: number }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("portal_order_lines").select("*")
+    .eq("purchase_order_id", orderId).order("line_number");
+  if (error) fail("fetchPortalOrderLines", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, description: r.description ?? null,
+    quantity: Number(r.quantity), unit: r.unit,
+    unitPrice: String(r.unit_price ?? 0), lineTotal: String(r.line_total ?? 0),
+    quantityReceived: Number(r.quantity_received ?? 0),
+  }));
+}
+
+export async function fetchPortalInvoices(): Promise<
+  { id: string; invoiceNumber: string; invoiceDate: string; dueDate: string | null;
+    totalAmount: string; status: string; hasQuery: boolean }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("portal_invoices").select("*").order("invoice_date", { ascending: false });
+  if (error) fail("fetchPortalInvoices", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, invoiceNumber: r.invoice_number, invoiceDate: r.invoice_date,
+    dueDate: r.due_date ?? null, totalAmount: String(r.total_amount ?? 0),
+    status: r.status, hasQuery: Boolean(r.has_query),
+  }));
+}
+
+export async function acknowledgeOrder(
+  orderId: string, promisedOn: string | null, note: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().rpc("acknowledge_purchase_order", {
+    order_id: orderId, promised_on: promisedOn, note,
+  });
+  if (error) fail("acknowledgeOrder", error);
+}
+
+export interface Notification {
+  id: string; kind: string; subject: string; body: string | null;
+  entityType: string | null; entityId: string | null;
+  createdAt: string; readAt: string | null; forSupplier: boolean;
+}
+
+export async function fetchNotifications(): Promise<Notification[]> {
+  const { data, error } = await requireSupabase()
+    .from("notifications").select("*")
+    .order("created_at", { ascending: false }).limit(200);
+  if (error) fail("fetchNotifications", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, kind: r.kind, subject: r.subject, body: r.body ?? null,
+    entityType: r.entity_type ?? null, entityId: r.entity_id ?? null,
+    createdAt: r.created_at, readAt: r.read_at ?? null,
+    forSupplier: r.supplier_id !== null,
+  }));
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("notifications")
+    .update({ read_at: new Date().toISOString(), read_by: auth.user?.id ?? null })
+    .eq("id", id);
+  if (error) fail("markNotificationRead", error);
+}
+
+export async function inviteSupplierContact(
+  supplierId: string, email: string,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("supplier_users").insert({
+    supplier_id: supplierId,
+    email: email.trim().toLowerCase(),
+    invited_by_email: auth.user?.email ?? null,
+  });
+  if (error) fail("inviteSupplierContact", error);
+}

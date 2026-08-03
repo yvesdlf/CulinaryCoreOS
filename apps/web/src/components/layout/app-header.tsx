@@ -27,6 +27,7 @@ const routeLabels: Record<string, string> = {
   purchasing: "Purchasing",
   people: "People",
   settings: "Settings",
+  messages: "Messages",
   traceability: "Traceability",
   production: "Production",
   "menu-engineering": "Menu Engineering",
