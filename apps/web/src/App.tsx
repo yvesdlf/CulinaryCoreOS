@@ -22,6 +22,7 @@ const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x)
 const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
 const MessagesPage = lazy(() => import("@/pages/messages").then((x) => ({ default: x.MessagesPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
+const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
 const PeoplePage = lazy(() => import("@/pages/people").then((x) => ({ default: x.PeoplePage })));
 const PurchasingPage = lazy(() => import("@/pages/purchasing").then((x) => ({ default: x.PurchasingPage })));
 const TraceabilityPage = lazy(() => import("@/pages/traceability").then((x) => ({ default: x.TraceabilityPage })));
@@ -95,6 +96,7 @@ export function App() {
         <Route path="/traceability" element={<TraceabilityPage />} />
         <Route path="/purchasing" element={<PurchasingPage />} />
         <Route path="/people" element={<PeoplePage />} />
+        <Route path="/hygiene" element={<HygienePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/duplicates" element={<DuplicatesPage />} />

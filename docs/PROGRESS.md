@@ -367,10 +367,6 @@ before any test executes looks identical to a test regression.
       messages in dry run — but sending needs a Meta Business account, an
       approved message template and an access token, none of which exist.
       Everything up to the network call is proved; the network call is not.
-- [ ] **No UI for training, competency, performance or HR cases.** The
-      schema, the marking, the certificate issue and the access rules are
-      built and proved; there is no screen for any of them. They can only be
-      driven by SQL today.
 - [ ] **The participant-can-read path on an HR case is untested.** The policy
       requires both organisation membership and being named on the case, so
       proving it needs a non-owner member and the organisation currently has
@@ -378,6 +374,29 @@ before any test executes looks identical to a test regression.
       participant sees nothing — is proved.
 
 ## Done since the last revision
+
+- [x] **Training, competency, reviews and HR cases now have screens**, as
+      four more tabs on People. Competency is shown as a matrix — people
+      across, competencies down — because that is the shape the question
+      "who can cover the grill on Friday" is actually asked in.
+- [x] **Hygiene: the venue's own HACCP control sheets**, numbered as their
+      paperwork numbers them so an inspector asking for 3.1 finds 3.1. Taken
+      from the real workbooks: cleaning schedules, hand-washing logs, cook and
+      reheat temperatures, cooling, defrosting, dry ager, sushi rice pH, CCP
+      monitoring, non-conformity, allergen testing, chemical inventory.
+
+      The page leads with what has not been done rather than with the forms,
+      because a folder of neatly completed sheets with three missing days is
+      exactly what an audit finds and nobody notices in advance. A breach
+      cannot be recorded without a corrective action — a recorded breach with
+      nothing done about it is evidence you knew.
+- [x] **Written quiz answers.** The real Manuza quizzes are written, not
+      multiple choice — "Please write the correct answer", then "List 3 items
+      in Sushi Boat". A machine cannot mark that, so a question is now either
+      auto-marked or marked by a named person, and the marker cannot be the
+      person who sat it. Observation checklists are recorded separately,
+      because passing a paper about carrying three plates is not the same as
+      carrying three plates.
 
 - [x] **Email adapter**, same shape as the WhatsApp one and for the same
       reasons. Written against a provider's HTTP API rather than SMTP,

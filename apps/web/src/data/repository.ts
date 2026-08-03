@@ -2555,3 +2555,292 @@ export async function submitQuote(
   });
   if (error) fail("submitQuote", error);
 }
+
+// ── Development and hygiene ─────────────────────────────────────────────────
+
+export interface TrainingCourse {
+  id: string; code: string; title: string; description: string | null;
+  grantsCertification: string | null; validMonths: number | null;
+}
+
+export interface TrainingAssignmentRow {
+  id: string; courseId: string; employeeId: string;
+  dueOn: string | null; completedOn: string | null;
+  score: string | null; passed: boolean | null;
+}
+
+export async function fetchTrainingCourses(): Promise<TrainingCourse[]> {
+  const { data, error } = await requireSupabase()
+    .from("training_courses").select("*").is("retired_at", null).order("code");
+  if (error) fail("fetchTrainingCourses", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, code: r.code, title: r.title, description: r.description ?? null,
+    grantsCertification: r.grants_certification ?? null,
+    validMonths: r.valid_months ?? null,
+  }));
+}
+
+export async function saveTrainingCourse(input: {
+  id?: string; code: string; title: string; description: string | null;
+  grantsCertification: string | null; validMonths: number | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const row = {
+    code: input.code, title: input.title, description: input.description,
+    grants_certification: input.grantsCertification,
+    valid_months: input.validMonths, updated_at: new Date().toISOString(),
+  };
+  const { error } = input.id
+    ? await db.from("training_courses").update(row).eq("id", input.id)
+    : await db.from("training_courses").insert(row);
+  if (error) fail("saveTrainingCourse", error);
+}
+
+export async function fetchTrainingAssignments(): Promise<TrainingAssignmentRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("training_assignments").select("*").order("due_on", { nullsFirst: false });
+  if (error) fail("fetchTrainingAssignments", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, courseId: r.course_id, employeeId: r.employee_id,
+    dueOn: r.due_on ?? null, completedOn: r.completed_on ?? null,
+    score: r.score === null ? null : String(r.score), passed: r.passed,
+  }));
+}
+
+export async function assignTraining(
+  courseId: string, employeeId: string, dueOn: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("training_assignments")
+    .insert({ course_id: courseId, employee_id: employeeId, due_on: dueOn });
+  if (error) fail("assignTraining", error);
+}
+
+export async function completeTraining(
+  id: string, score: number | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("training_assignments").update({
+    completed_on: new Date().toISOString().slice(0, 10),
+    score, passed: score === null ? true : score >= 80,
+  }).eq("id", id);
+  if (error) fail("completeTraining", error);
+}
+
+export interface Competency {
+  id: string; name: string; criteria: string; jobRoleId: string | null;
+}
+export interface CompetencyAssessment {
+  id: string; competencyId: string; employeeId: string;
+  level: number; evidence: string | null; assessedByEmail: string; assessedOn: string;
+}
+
+export async function fetchCompetencies(): Promise<Competency[]> {
+  const { data, error } = await requireSupabase()
+    .from("competencies").select("*").order("name");
+  if (error) fail("fetchCompetencies", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, name: r.name, criteria: r.criteria, jobRoleId: r.job_role_id ?? null,
+  }));
+}
+
+export async function saveCompetency(input: {
+  id?: string; name: string; criteria: string; jobRoleId: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const row = { name: input.name, criteria: input.criteria, job_role_id: input.jobRoleId };
+  const { error } = input.id
+    ? await db.from("competencies").update(row).eq("id", input.id)
+    : await db.from("competencies").insert(row);
+  if (error) fail("saveCompetency", error);
+}
+
+export async function fetchCompetencyAssessments(): Promise<CompetencyAssessment[]> {
+  const { data, error } = await requireSupabase()
+    .from("competency_assessments").select("*").order("assessed_on", { ascending: false });
+  if (error) fail("fetchCompetencyAssessments", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, competencyId: r.competency_id, employeeId: r.employee_id,
+    level: r.level, evidence: r.evidence ?? null,
+    assessedByEmail: r.assessed_by_email, assessedOn: r.assessed_on,
+  }));
+}
+
+export async function assessCompetency(input: {
+  competencyId: string; employeeId: string; level: number; evidence: string;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("competency_assessments").insert({
+    competency_id: input.competencyId, employee_id: input.employeeId,
+    level: input.level, evidence: input.evidence,
+    assessed_by_email: auth.user?.email ?? "unknown",
+  });
+  if (error) fail("assessCompetency", error);
+}
+
+export interface PerformanceReview {
+  id: string; employeeId: string; periodStart: string; periodEnd: string;
+  kind: string; status: string; selfComments: string | null;
+  managerComments: string | null; agreedActions: string | null;
+  reviewerEmail: string | null;
+}
+
+export async function fetchReviews(): Promise<PerformanceReview[]> {
+  const { data, error } = await requireSupabase()
+    .from("performance_reviews").select("*").order("period_end", { ascending: false });
+  if (error) fail("fetchReviews", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, employeeId: r.employee_id, periodStart: r.period_start,
+    periodEnd: r.period_end, kind: r.kind, status: r.status,
+    selfComments: r.self_comments ?? null, managerComments: r.manager_comments ?? null,
+    agreedActions: r.agreed_actions ?? null, reviewerEmail: r.reviewer_email ?? null,
+  }));
+}
+
+export async function saveReview(input: Partial<PerformanceReview> & {
+  employeeId: string; periodStart: string; periodEnd: string;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const row = {
+    employee_id: input.employeeId, period_start: input.periodStart,
+    period_end: input.periodEnd, kind: input.kind ?? "ANNUAL",
+    status: input.status ?? "DRAFT",
+    self_comments: input.selfComments ?? null,
+    manager_comments: input.managerComments ?? null,
+    agreed_actions: input.agreedActions ?? null,
+    reviewer_email: input.reviewerEmail ?? auth.user?.email ?? null,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = input.id
+    ? await db.from("performance_reviews").update(row).eq("id", input.id)
+    : await db.from("performance_reviews").insert(row);
+  // A completion refused by the segregation-of-duties trigger arrives here.
+  if (error) fail("saveReview", error);
+}
+
+export interface HrCase {
+  id: string; employeeId: string; reference: string; kind: string;
+  status: string; summary: string; detail: string | null; outcome: string | null;
+  openedOn: string; openedByEmail: string | null;
+}
+
+export async function fetchHrCases(): Promise<HrCase[]> {
+  const { data, error } = await requireSupabase()
+    .from("hr_cases").select("*").order("opened_on", { ascending: false });
+  if (error) fail("fetchHrCases", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, employeeId: r.employee_id, reference: r.reference, kind: r.kind,
+    status: r.status, summary: r.summary, detail: r.detail ?? null,
+    outcome: r.outcome ?? null, openedOn: r.opened_on,
+    openedByEmail: r.opened_by_email ?? null,
+  }));
+}
+
+/**
+ * Open a case, and name yourself on it.
+ *
+ * Two writes because a case with no participants is invisible to everybody
+ * except an owner — including the person who just opened it.
+ */
+export async function openHrCase(input: {
+  employeeId: string; reference: string; kind: string; summary: string;
+  detail: string | null; participants: string[];
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { data, error } = await db.from("hr_cases").insert({
+    employee_id: input.employeeId, reference: input.reference, kind: input.kind,
+    summary: input.summary, detail: input.detail,
+    opened_by_email: auth.user?.email ?? null,
+  }).select("id").single();
+  if (error) fail("openHrCase", error);
+
+  const emails = [...new Set([auth.user?.email, ...input.participants].filter(Boolean))];
+  const { error: pe } = await db.from("hr_case_participants").insert(
+    emails.map((e, i) => ({
+      case_id: data.id, email: String(e).toLowerCase(),
+      role: i === 0 ? "OWNER" : "PARTICIPANT",
+    })),
+  );
+  if (pe) fail("openHrCase(participants)", pe);
+}
+
+export async function updateHrCase(
+  id: string, status: string, outcome: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("hr_cases").update({
+    status, outcome,
+    closed_on: ["RESOLVED", "WITHDRAWN"].includes(status)
+      ? new Date().toISOString().slice(0, 10) : null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) fail("updateHrCase", error);
+}
+
+export interface HaccpForm {
+  id: string; code: string; section: string; title: string;
+  frequency: string; isCcp: boolean;
+  lastCompleted: string | null; daysSince: number | null;
+}
+
+export async function fetchHaccpForms(): Promise<HaccpForm[]> {
+  const { data, error } = await requireSupabase()
+    .from("haccp_outstanding").select("*").order("code");
+  if (error) fail("fetchHaccpForms", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.form_id, code: r.code, section: r.section, title: r.title,
+    frequency: r.frequency, isCcp: Boolean(r.is_ccp),
+    lastCompleted: r.last_completed ?? null,
+    daysSince: r.days_since === null ? null : Number(r.days_since),
+  }));
+}
+
+export interface HaccpRecord {
+  id: string; formId: string; coversDate: string; shift: string | null;
+  location: string | null; breach: boolean; breachDetail: string | null;
+  correctiveAction: string | null; completedByEmail: string;
+  verifiedByEmail: string | null;
+}
+
+export async function fetchHaccpRecords(): Promise<HaccpRecord[]> {
+  const { data, error } = await requireSupabase()
+    .from("haccp_records").select("*")
+    .order("covers_date", { ascending: false }).limit(300);
+  if (error) fail("fetchHaccpRecords", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, formId: r.form_id, coversDate: r.covers_date,
+    shift: r.shift ?? null, location: r.location ?? null,
+    breach: Boolean(r.breach), breachDetail: r.breach_detail ?? null,
+    correctiveAction: r.corrective_action ?? null,
+    completedByEmail: r.completed_by_email,
+    verifiedByEmail: r.verified_by_email ?? null,
+  }));
+}
+
+export async function recordHaccp(input: {
+  formId: string; coversDate: string; shift: string | null; location: string | null;
+  values: Record<string, unknown>; breach: boolean;
+  breachDetail: string | null; correctiveAction: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("haccp_records").insert({
+    form_id: input.formId, covers_date: input.coversDate,
+    shift: input.shift, location: input.location, values: input.values,
+    breach: input.breach, breach_detail: input.breachDetail,
+    corrective_action: input.correctiveAction,
+    completed_by_email: auth.user?.email ?? "unknown",
+  });
+  // The trigger refuses a breach with no corrective action; show it as written.
+  if (error) fail("recordHaccp", error);
+}
+
+export async function verifyHaccpRecord(id: string): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("haccp_records").update({
+    verified_by_email: auth.user?.email ?? null,
+    verified_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) fail("verifyHaccpRecord", error);
+}

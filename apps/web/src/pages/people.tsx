@@ -44,8 +44,15 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { RotaTab, AttendanceTab, LifecycleTab } from "@/components/people/rota-tabs";
 import {
+  TrainingTab, CompetencyTab, ReviewsTab, CasesTab,
+} from "@/components/people/development-tabs";
+import {
   fetchShifts, fetchAttendance, fetchOpenEntries, fetchTaskBoard,
-  type EmployeeTask,
+  fetchTrainingCourses, fetchTrainingAssignments, fetchCompetencies,
+  fetchCompetencyAssessments, fetchReviews, fetchHrCases,
+  type EmployeeTask, type TrainingCourse, type TrainingAssignmentRow,
+  type Competency, type CompetencyAssessment, type PerformanceReview,
+  type HrCase,
 } from "@/data/repository";
 import type { Shift, AttendanceRecord } from "@/engine/scheduling";
 
@@ -70,6 +77,12 @@ export function PeoplePage() {
     { id: string; employeeId: string; clockInAt: string; shiftId: string | null }[]
   >([]);
   const [tasks, setTasks] = useState<EmployeeTask[]>([]);
+  const [courses, setCourses] = useState<TrainingCourse[]>([]);
+  const [trainingAssignments, setTrainingAssignments] = useState<TrainingAssignmentRow[]>([]);
+  const [competencies, setCompetencies] = useState<Competency[]>([]);
+  const [assessments, setAssessments] = useState<CompetencyAssessment[]>([]);
+  const [reviews, setReviews] = useState<PerformanceReview[]>([]);
+  const [cases, setCases] = useState<HrCase[]>([]);
   const [weekOf, setWeekOf] = useState(() => new Date());
   const [adding, setAdding] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -87,6 +100,12 @@ export function PeoplePage() {
         fetchCertifications(), fetchLeaveTypes(), fetchLeaveRequests(),
       ]);
       setTasks(await fetchTaskBoard());
+      const [tc, ta, cp, ca, rv, hc] = await Promise.all([
+        fetchTrainingCourses(), fetchTrainingAssignments(), fetchCompetencies(),
+        fetchCompetencyAssessments(), fetchReviews(), fetchHrCases(),
+      ]);
+      setCourses(tc); setTrainingAssignments(ta); setCompetencies(cp);
+      setAssessments(ca); setReviews(rv); setCases(hc);
       setEmployees(e); setDepartments(d); setRoles(r);
       setCertifications(c); setLeaveTypes(lt); setLeave(lr);
     } catch (err) {
@@ -169,6 +188,10 @@ export function PeoplePage() {
           <TabsTrigger value="certifications">
             <BadgeCheck className="size-4" />Certifications ({certifications.length})
           </TabsTrigger>
+          <TabsTrigger value="training">Training ({courses.length})</TabsTrigger>
+          <TabsTrigger value="competency">Competency</TabsTrigger>
+          <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
+          <TabsTrigger value="cases">Cases ({cases.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lifecycle" className="mt-4">
@@ -407,6 +430,24 @@ export function PeoplePage() {
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="training" className="mt-4">
+          <TrainingTab courses={courses} assignments={trainingAssignments}
+            employees={employees} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="competency" className="mt-4">
+          <CompetencyTab competencies={competencies} assessments={assessments}
+            employees={employees} roles={roles} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="reviews" className="mt-4">
+          <ReviewsTab reviews={reviews} employees={employees} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="cases" className="mt-4">
+          <CasesTab cases={cases} employees={employees} onDone={load} />
         </TabsContent>
       </Tabs>
 
