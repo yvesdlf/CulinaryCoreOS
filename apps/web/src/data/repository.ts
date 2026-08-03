@@ -2275,3 +2275,44 @@ export async function contractPriceFor(
   if (error) fail("contractPriceFor", error);
   return data === null || data === undefined ? null : String(data);
 }
+
+// ── Onboarding and offboarding ──────────────────────────────────────────────
+
+export interface EmployeeTask {
+  id: string; employeeId: string; employeeName: string; kind: string;
+  category: string; title: string; detail: string | null;
+  dueOn: string | null; blocksCompletion: boolean; daysUntilDue: number | null;
+}
+
+export async function fetchTaskBoard(): Promise<EmployeeTask[]> {
+  const { data, error } = await requireSupabase()
+    .from("employee_task_board").select("*").order("due_on", { nullsFirst: false });
+  if (error) fail("fetchTaskBoard", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, employeeId: r.employee_id, employeeName: r.employee_name,
+    kind: r.kind, category: r.category, title: r.title, detail: r.detail ?? null,
+    dueOn: r.due_on ?? null, blocksCompletion: Boolean(r.blocks_completion),
+    daysUntilDue: r.days_until_due ?? null,
+  }));
+}
+
+export async function startChecklist(
+  employeeId: string, kind: "ONBOARDING" | "OFFBOARDING", anchor: string | null,
+): Promise<number> {
+  const { data, error } = await requireSupabase().rpc("start_checklist", {
+    p_employee: employeeId, p_kind: kind, p_anchor: anchor,
+  });
+  if (error) fail("startChecklist", error);
+  return Number(data ?? 0);
+}
+
+export async function completeTask(id: string, note: string | null): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("employee_tasks").update({
+    completed_at: new Date().toISOString(),
+    completed_by_email: auth.user?.email ?? null,
+    note,
+  }).eq("id", id);
+  if (error) fail("completeTask", error);
+}

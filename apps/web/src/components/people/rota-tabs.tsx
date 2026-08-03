@@ -469,3 +469,169 @@ export function AttendanceTab({
     </div>
   );
 }
+
+// ── Onboarding and offboarding ──────────────────────────────────────────────
+
+import { ClipboardCheck, UserPlus, UserMinus, Lock } from "lucide-react";
+import {
+  fetchTaskBoard, startChecklist, completeTask, type EmployeeTask,
+} from "@/data/repository";
+
+/**
+ * The two ends of employment, and they are not symmetrical.
+ *
+ * An onboarding step being late means somebody chases it. An offboarding step
+ * being left open means an account is still live or a key is still out, so
+ * those are marked and the database refuses to archive anybody while one
+ * stands.
+ */
+export function LifecycleTab({
+  employees, tasks, onDone,
+}: {
+  employees: Employee[];
+  tasks: EmployeeTask[];
+  onDone: () => void | Promise<void>;
+}) {
+  const [starting, setStarting] = useState<"ONBOARDING" | "OFFBOARDING" | null>(null);
+  const [who, setWho] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const onboarding = tasks.filter((t) => t.kind === "ONBOARDING");
+  const offboarding = tasks.filter((t) => t.kind === "OFFBOARDING");
+  const blocking = offboarding.filter((t) => t.blocksCompletion);
+
+  const section = (title: string, list: EmployeeTask[], icon: React.ReactNode) => (
+    <div>
+      <h2 className="mb-2 flex items-center gap-2 text-sm font-medium">
+        {icon}{title} ({list.length})
+      </h2>
+      {list.length === 0 ? (
+        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+          Nothing outstanding.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Who</TableHead>
+                <TableHead>Task</TableHead>
+                <TableHead>Area</TableHead>
+                <TableHead>Due</TableHead>
+                <TableHead className="w-px" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {list.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="font-medium">{t.employeeName}</TableCell>
+                  <TableCell>
+                    {t.title}
+                    {t.blocksCompletion && (
+                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-status-danger-soft px-2 py-0.5 text-xs text-status-danger">
+                        <Lock className="size-3" />blocks archiving
+                      </span>
+                    )}
+                    {t.detail && (
+                      <div className="text-xs text-muted-foreground">{t.detail}</div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {t.category.toLowerCase()}
+                  </TableCell>
+                  <TableCell className={`text-sm ${
+                    t.daysUntilDue !== null && t.daysUntilDue < 0 ? "text-status-warning" : "text-muted-foreground"}`}>
+                    {t.dueOn ?? "—"}
+                    {t.daysUntilDue !== null && t.daysUntilDue < 0 &&
+                      ` (${Math.abs(t.daysUntilDue)}d late)`}
+                  </TableCell>
+                  <TableCell>
+                    <PermissionGate>
+                      <Button size="sm" variant="ghost" onClick={async () => {
+                        await completeTask(t.id, null);
+                        toast.success("Done");
+                        await onDone();
+                      }}>Done</Button>
+                    </PermissionGate>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {tasks.length} task{tasks.length === 1 ? "" : "s"} outstanding
+          {blocking.length > 0 &&
+            `, ${blocking.length} preventing somebody being archived`}
+        </p>
+        <PermissionGate>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setStarting("ONBOARDING")}>
+              <UserPlus className="size-4" />Start onboarding
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setStarting("OFFBOARDING")}>
+              <UserMinus className="size-4" />Start offboarding
+            </Button>
+          </div>
+        </PermissionGate>
+      </div>
+
+      {section("Onboarding", onboarding, <UserPlus className="size-4" />)}
+      {section("Offboarding", offboarding, <UserMinus className="size-4" />)}
+
+      {starting && (
+        <Dialog open onOpenChange={(o) => !o && setStarting(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Start {starting === "ONBOARDING" ? "onboarding" : "offboarding"}
+              </DialogTitle>
+              <DialogDescription>
+                {starting === "ONBOARDING"
+                  ? "Creates this venue's arrival checklist, dated from their start date."
+                  : "Creates the leaving checklist. Access and keys must be dealt with before the record can be archived."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="lc-who">Who</Label>
+              <select id="lc-who" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+                value={who} onChange={(e) => setWho(e.target.value)}>
+                <option value="">Choose someone</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>{fullName(e)}</option>
+                ))}
+              </select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStarting(null)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button disabled={!who || busy} onClick={async () => {
+                setBusy(true);
+                try {
+                  const made = await startChecklist(who, starting, null);
+                  toast.success(
+                    made === 0 ? "Already started" : `${made} tasks created`,
+                  );
+                  setStarting(null); setWho("");
+                  await onDone();
+                } catch (err) {
+                  toast.error("Could not start it", {
+                    description: err instanceof Error ? err.message : String(err),
+                  });
+                } finally { setBusy(false); }
+              }}>Start</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

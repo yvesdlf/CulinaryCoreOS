@@ -42,9 +42,10 @@ import {
   type Department, type JobRole,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { RotaTab, AttendanceTab } from "@/components/people/rota-tabs";
+import { RotaTab, AttendanceTab, LifecycleTab } from "@/components/people/rota-tabs";
 import {
-  fetchShifts, fetchAttendance, fetchOpenEntries,
+  fetchShifts, fetchAttendance, fetchOpenEntries, fetchTaskBoard,
+  type EmployeeTask,
 } from "@/data/repository";
 import type { Shift, AttendanceRecord } from "@/engine/scheduling";
 
@@ -68,6 +69,7 @@ export function PeoplePage() {
   const [openEntries, setOpenEntries] = useState<
     { id: string; employeeId: string; clockInAt: string; shiftId: string | null }[]
   >([]);
+  const [tasks, setTasks] = useState<EmployeeTask[]>([]);
   const [weekOf, setWeekOf] = useState(() => new Date());
   const [adding, setAdding] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -84,6 +86,7 @@ export function PeoplePage() {
         fetchEmployees(), fetchDepartments(), fetchJobRoles(),
         fetchCertifications(), fetchLeaveTypes(), fetchLeaveRequests(),
       ]);
+      setTasks(await fetchTaskBoard());
       setEmployees(e); setDepartments(d); setRoles(r);
       setCertifications(c); setLeaveTypes(lt); setLeave(lr);
     } catch (err) {
@@ -161,11 +164,16 @@ export function PeoplePage() {
           <TabsTrigger value="team"><Users className="size-4" />Team ({employees.length})</TabsTrigger>
           <TabsTrigger value="leave"><CalendarDays className="size-4" />Leave ({leave.length})</TabsTrigger>
           <TabsTrigger value="rota">Rota</TabsTrigger>
+          <TabsTrigger value="lifecycle">Joining &amp; leaving ({tasks.length})</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="certifications">
             <BadgeCheck className="size-4" />Certifications ({certifications.length})
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="lifecycle" className="mt-4">
+          <LifecycleTab employees={employees} tasks={tasks} onDone={load} />
+        </TabsContent>
 
         <TabsContent value="rota" className="mt-4">
           <RotaTab weekOf={weekOf} onWeek={setWeekOf} shifts={shifts}

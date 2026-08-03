@@ -362,20 +362,35 @@ before any test executes looks identical to a test regression.
       overwriting it would discard a chef's intentional trim override.
 - [ ] AI recipe import, and an AI assistant. Neither is started, and both
       need a provider and key decision first.
-- [ ] **Deleting a user account fails.** Removing a row from `auth.users`
-      cascades to `organization_members`, and the membership guard added for
-      privilege-escalation refuses the delete. Found while clearing test
-      fixtures. The guard needs to distinguish a cascade from a person
-      removing a colleague; until then, account deletion needs the trigger
-      disabled, which is not something an application should have to do.
 - [ ] **Nothing is actually sent.** The communication cycle records every
       moment somebody needs telling, and delivers it in-app only. An email or
       messaging adapter marks the same rows rather than starting a second,
       parallel history — but no channel has been chosen, so no adapter exists.
-- [ ] The larger unbuilt modules, in the order they would pay off: contracts,
-      then onboarding and offboarding, then sourcing/RFQ.
+- [ ] Sourcing and RFQ (procurement §6) — the last large unbuilt procurement
+      section. Quote collection, comparison and award.
+- [ ] The remaining HR modules: performance, competency, training content,
+      quizzes, discipline. All are Phase H3 in the brief and none is started.
 
 ## Done since the last revision
+
+- [x] **Account deletion.** The membership guard refused the cascade from
+      `auth.users`, so no account could be removed without disabling a
+      trigger — and a GDPR Article 17 request could not have been honoured.
+      The guard now stands aside when there is no session, which is a
+      cascade, a migration or an administrator rather than a person using the
+      app. Self-demotion is still refused.
+- [x] **Contracts**, with effective-dated agreed prices, and an invoice check
+      against them. That check is separate from the check against the order
+      and not a substitute: an order raised at the wrong price makes the
+      invoice agree with the order while both are wrong, and only the
+      contract catches it. Notice dates lead the attention list, because
+      `notice_by` is not `ends_on` and missing it is how a contract renews
+      itself.
+- [x] **Onboarding and offboarding.** Templates instantiated per person and
+      copied rather than referenced, so editing the template next year does
+      not rewrite what somebody was actually asked to do. Offboarding tasks
+      can block: a leaver cannot be archived while their access is still live
+      or their keys are still out, refused by trigger.
 
 - [x] **Vendor portal.** A supplier contact is deliberately not a member of
       the organisation, so `auth_org_ids()` returns nothing for them and every
