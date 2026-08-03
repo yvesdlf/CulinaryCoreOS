@@ -1354,19 +1354,160 @@ export async function setPurchaseOrderStatus(
   if (error) fail("setPurchaseOrderStatus", error);
 }
 
-/** The signed-in user's role in the current organisation. */
+/**
+ * The signed-in user's role in the organisation they write into.
+ *
+ * Scoped to that organisation rather than taking whichever membership comes
+ * back first. A user can belong to more than one — the venue they were
+ * invited to, and a personal one created when they signed up — and picking
+ * arbitrarily would report a role from the wrong place.
+ */
 export async function fetchMyRole(): Promise<OrgRole | null> {
   const db = requireSupabase();
   const { data: auth } = await db.auth.getUser();
   if (!auth.user) return null;
+  const { data: orgId, error: orgError } = await db.rpc("auth_default_org_id");
+  if (orgError) fail("fetchMyRole(org)", orgError);
+  if (!orgId) return null;
   const { data, error } = await db
     .from("organization_members")
     .select("role")
     .eq("user_id", auth.user.id)
-    .limit(1)
+    .eq("organization_id", orgId)
     .maybeSingle();
   if (error) fail("fetchMyRole", error);
   return (data?.role as OrgRole) ?? null;
+}
+
+// ── Membership ──────────────────────────────────────────────────────────────
+
+export interface OrgPerson {
+  userId: string;
+  email: string | null;
+  role: OrgRole;
+  joinedAt: string;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: OrgRole;
+  invitedByEmail: string | null;
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+}
+
+export async function fetchOrgPeople(): Promise<OrgPerson[]> {
+  const { data, error } = await requireSupabase()
+    .from("organization_people")
+    .select("*")
+    .order("role");
+  if (error) fail("fetchOrgPeople", error);
+  return (data ?? []).map((r: any) => ({
+    userId: r.user_id, email: r.email ?? null,
+    role: r.role as OrgRole, joinedAt: r.created_at,
+  }));
+}
+
+export async function fetchInvitations(): Promise<Invitation[]> {
+  const { data, error } = await requireSupabase()
+    .from("organization_invitations")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) fail("fetchInvitations", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, email: r.email, role: r.role as OrgRole,
+    invitedByEmail: r.invited_by_email ?? null,
+    createdAt: r.created_at, expiresAt: r.expires_at,
+    acceptedAt: r.accepted_at ?? null, revokedAt: r.revoked_at ?? null,
+  }));
+}
+
+/**
+ * Invite somebody.
+ *
+ * The database refuses an admin inviting an owner, so a rejection here is the
+ * policy speaking and its message is worth showing as written.
+ */
+export async function inviteToOrg(email: string, role: OrgRole): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { data: orgId, error: orgError } = await db.rpc("auth_default_org_id");
+  if (orgError) fail("inviteToOrg(org)", orgError);
+  const { error } = await db.from("organization_invitations").insert({
+    organization_id: orgId,
+    email: email.trim().toLowerCase(),
+    role,
+    invited_by: auth.user?.id ?? null,
+    invited_by_email: auth.user?.email ?? null,
+  });
+  if (error) fail("inviteToOrg", error);
+}
+
+export async function revokeInvitation(id: string): Promise<void> {
+  const { error } = await requireSupabase()
+    .from("organization_invitations")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) fail("revokeInvitation", error);
+}
+
+/** Invitations addressed to the signed-in user that are still open. */
+export async function fetchMyInvitations(): Promise<
+  (Invitation & { organizationName: string | null })[]
+> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  if (!auth.user?.email) return [];
+  const { data, error } = await db
+    .from("organization_invitations")
+    .select("*, organizations(name)")
+    .is("accepted_at", null)
+    .is("revoked_at", null);
+  if (error) fail("fetchMyInvitations", error);
+  return (data ?? [])
+    .filter((r: any) => r.email?.toLowerCase() === auth.user!.email!.toLowerCase())
+    .map((r: any) => ({
+      id: r.id, email: r.email, role: r.role as OrgRole,
+      invitedByEmail: r.invited_by_email ?? null,
+      createdAt: r.created_at, expiresAt: r.expires_at,
+      acceptedAt: null, revokedAt: null,
+      organizationName: r.organizations?.name ?? null,
+    }));
+}
+
+export async function acceptInvitation(id: string): Promise<void> {
+  const { error } = await requireSupabase().rpc("accept_invitation", {
+    invitation_id: id,
+  });
+  if (error) fail("acceptInvitation", error);
+}
+
+/** Change somebody's role. Guarded by trigger — see migration 0024. */
+export async function setMemberRole(userId: string, role: OrgRole): Promise<void> {
+  const db = requireSupabase();
+  const { data: orgId, error: orgError } = await db.rpc("auth_default_org_id");
+  if (orgError) fail("setMemberRole(org)", orgError);
+  const { error } = await db
+    .from("organization_members")
+    .update({ role })
+    .eq("user_id", userId)
+    .eq("organization_id", orgId);
+  if (error) fail("setMemberRole", error);
+}
+
+export async function removeMember(userId: string): Promise<void> {
+  const db = requireSupabase();
+  const { data: orgId, error: orgError } = await db.rpc("auth_default_org_id");
+  if (orgError) fail("removeMember(org)", orgError);
+  const { error } = await db
+    .from("organization_members")
+    .delete()
+    .eq("user_id", userId)
+    .eq("organization_id", orgId);
+  if (error) fail("removeMember", error);
 }
 
 // ── Receiving, invoices, budgets ────────────────────────────────────────────

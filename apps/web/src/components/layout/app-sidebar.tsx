@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Factory,
   ChartNoAxesCombined,
+  Settings,
   UtensilsCrossed,
 } from "lucide-react";
 import {
@@ -45,6 +46,7 @@ const navItems = [
   { title: "Traceability", to: "/traceability", icon: ShieldCheck },
   { title: "Production", to: "/production", icon: Factory },
   { title: "Menu Engineering", to: "/menu-engineering", icon: ChartNoAxesCombined },
+  { title: "Settings", to: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
