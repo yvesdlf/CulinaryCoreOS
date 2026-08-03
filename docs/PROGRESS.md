@@ -307,46 +307,79 @@ lookup can simply fail. Pinned to 2.109.1. Worth remembering that a job dying
 before any test executes looks identical to a test regression.
 
 ## In progress / next up
-- [ ] No realtime subscription. The catalogue re-reads when the tab regains
-      focus, which covers the common case; a second user's edit made while you
-      are watching the same screen still needs a focus change to appear.
-- [ ] A Playwright session token is present in git history at `3bbcc97`.
-      Removing it needs a force-push, which is the repository owner's call.
 
-## Backlog (from SRS, not yet started)
-- [ ] Membership management: invites, role changes and removing a member are
-      deliberately not client-writable. `organization_members` has a read
-      policy only, so this needs a server-side flow.
-- [ ] Organization switcher. `auth_default_org_id()` takes the oldest
-      membership, so a user in more than one org always writes to the first.
-      write, but the editors still present Save as though it will succeed.
-- [ ] Reads are hydrate-once at startup. No realtime subscription and no
-      refetch, so a second user's edits are not seen until reload.
-- [x] The cascade fan-out is wrapped in the `apply_cascade` RPC, so it commits
-      or does not. The primary entity's own UPDATE is still a separate request
-      — see below.
-- [ ] Products have no `version` column, so they get no lost-update protection
-      (recipes and sub-recipes do). Add one if concurrent product editing
-      becomes a real scenario.
-- [ ] The cascade fan-out is atomic, but the primary entity's own UPDATE is
-      still a separate request from it. Folding that into the same RPC would
-      close the last window.
-- [ ] Cascade `refPercent` too, if product yield should override recipe lines.
-      Deliberately not done: ref % is editable per line in the ingredient grid,
-      so overwriting it would discard a chef's intentional trim override.
-- [x] Allergen management (EU 14). US 9 union still outstanding.
-- [x] Menu engineering: food cost by section, off-target dishes and
-      suggested prices on the dashboard. Sales-mix weighting still needs
-      POS data the app does not yet receive.
-- [ ] Supplier & procurement module
-- [ ] AI recipe import (from the two source workbooks, as first real dataset)
-- [ ] AI conversational assistant
-- [ ] Reporting & analytics
-- [ ] RBAC / user management
-- [~] Audit logging: recipe status transitions are logged append-only.
-      Field-level history for other entities is not.
-- [ ] Notifications & tasks
-- [~] Document management: recipe and prep sheets, collections, file export.
+- [ ] **Realtime sync is not working, and the attempt was reverted.** Reads
+      are still hydrate-once at startup plus a refresh when the tab regains
+      focus, so a colleague's edit made while you are watching the same screen
+      does not appear on its own.
+
+      Attempted and backed out rather than shipped, because a sync that
+      silently delivers nothing is worse than none: it invites people to trust
+      a screen that is quietly stale, which is a costing error waiting to
+      happen. What was established, for whoever picks it up:
+
+      * The tables must be in the `supabase_realtime` publication, and need
+        `replica identity full` so row-level security can filter deletes.
+      * The socket needs the session token via `realtime.setAuth()`. It is a
+        separate connection from the REST client and does not inherit it;
+        without it every change is filtered out by RLS.
+      * The realtime service caches the publication at boot, so it has to be
+        restarted after the publication changes.
+      * With all three done the channel subscribes without error and still
+        delivers no events. Not diagnosed further.
+
+      Verified along the way that the fetch path itself is fine: a change made
+      directly in the database appears immediately on reload.
+
+- [ ] A Playwright session token is present in git history at `3bbcc97`.
+      Removing it rewrites history and needs a force-push, which is the
+      repository owner's call and has not been given.
+
+## Backlog
+
+- [ ] **Organization switcher.** `auth_default_org_id()` now prefers an
+      organisation somebody was invited into over one created at sign-up, and
+      sign-up no longer creates an organisation for an invited address. So the
+      common case is right. A user genuinely in two organisations still cannot
+      choose between them, and there is no UI for it.
+- [ ] **Notifications.** Nothing is sent anywhere. An invitation is not
+      emailed, an approval request does not reach the approver, a purchase
+      order marked "ordered" transmits nothing to the supplier. Every one of
+      these needs a channel decision before it can be built.
+- [ ] **Field-level audit history.** Recipe status transitions, stock
+      movements and approvals are append-only ledgers. Everything else records
+      only its current state, so "who changed this price, and when" is not
+      answerable outside those three.
+- [ ] **The primary entity's own UPDATE is still a separate request from the
+      cascade RPC.** The fan-out commits or does not; the row that triggered it
+      is written separately, leaving a small window where one succeeded and the
+      other did not.
+- [ ] **US 9 allergen profile.** The registry is the EU 14 (Regulation
+      1169/2011). A venue under FDA rules needs the US set, which overlaps but
+      is not a subset.
+- [ ] Cascade `refPercent` from product yield onto recipe lines. Deliberately
+      not done: ref % is editable per line in the ingredient grid, so
+      overwriting it would discard a chef's intentional trim override.
+- [ ] AI recipe import, and an AI assistant. Neither is started, and both
+      need a provider and key decision first.
+- [ ] The larger unbuilt modules, in the order they would pay off: shift
+      scheduling and attendance, supplier/vendor portal and the communication
+      cycle, contracts, onboarding and offboarding. See the procurement and HR
+      coverage notes below.
+
+## Done since the last revision
+
+- [x] Membership management: invite by email, set roles, remove people, with
+      privilege escalation refused by trigger. Was the blocker that made every
+      segregation-of-duties control unusable — they need a second person and
+      there was no way to add one.
+- [x] Products carry a `version` column and get lost-update protection, the
+      same as recipes and preparations. An earlier note claiming otherwise was
+      stale.
+- [x] Supplier and procurement module: requisitions, approvals, orders,
+      receiving, invoice matching, budgets, analytics.
+- [x] Menu engineering with real sales-mix, imported from a POS export.
+- [x] RBAC and user management, in Settings.
 
 ## Open questions for the user
 (Updated after competitive analysis pass #1 — see `docs/COMPETITIVE_ANALYSIS.md`)
