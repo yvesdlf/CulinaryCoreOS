@@ -367,11 +367,42 @@ before any test executes looks identical to a test regression.
       messages in dry run — but sending needs a Meta Business account, an
       approved message template and an access token, none of which exist.
       Everything up to the network call is proved; the network call is not.
-- [ ] **Email has no adapter.** The channel row exists; nothing sends it.
-- [ ] The remaining HR modules: performance, competency, training content,
-      quizzes, discipline. All are Phase H3 in the brief and none is started.
+- [ ] **No UI for training, competency, performance or HR cases.** The
+      schema, the marking, the certificate issue and the access rules are
+      built and proved; there is no screen for any of them. They can only be
+      driven by SQL today.
+- [ ] **The participant-can-read path on an HR case is untested.** The policy
+      requires both organisation membership and being named on the case, so
+      proving it needs a non-owner member and the organisation currently has
+      only an owner. The confidentiality direction — a colleague who is not a
+      participant sees nothing — is proved.
 
 ## Done since the last revision
+
+- [x] **Email adapter**, same shape as the WhatsApp one and for the same
+      reasons. Written against a provider's HTTP API rather than SMTP,
+      because a provider returns a message id in one request and handles
+      deliverability, which is most of the actual work. Verified in dry run
+      against a real queued message.
+- [x] **Training, quizzes, competency, performance and HR cases.**
+
+      Completing a course issues the certificate it grants, which closes a
+      real loop: Budi was refused a Chef de Partie shift for a lapsed
+      allergen certificate, passed the allergen course, and became rosterable
+      in the same test.
+
+      Quizzes are marked server-side and the correct answers are not granted
+      to `authenticated` at all — a quiz marked in the browser is a quiz
+      anybody passes by reading the page.
+
+      Performance reviews carry no numeric rating, on purpose. The brief
+      prohibits opaque scoring, and a number invites ranking people against
+      each other rather than against what the job asks.
+
+      HR cases are restricted to named participants plus owners, which is
+      narrower than anything else in the system. A grievance readable by
+      whoever opens the staff list is how an HR system becomes the thing
+      people are afraid of.
 
 - [x] **Tax rates are editable.** Rows with a name, percentage and note, one
       marked default, and a menu category can point at one. Nothing assumes a
