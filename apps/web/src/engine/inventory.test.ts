@@ -96,6 +96,15 @@ describe("the stock page", () => {
     expect(lines.find((l) => l.product.name === "Saffron")!.suggestedOrder).toBe(0);
   });
 
+  it("suggests a whole order quantity, not a floating-point tail", () => {
+    // 20 - 5.47 is 14.530000000000001 in binary floating point.
+    const [line] = buildStockLines(
+      [product("Salt", { par: 20, reorder: 8 })],
+      levels({ "id-Salt": 5.47 }),
+    );
+    expect(line.suggestedOrder).toBe(14.53);
+  });
+
   it("values stock at the current price", () => {
     const lines = buildStockLines([products[0]], levels({ "id-Salt": 3 }));
     expect(lines[0].value).toBe("15000.00");
@@ -145,6 +154,19 @@ describe("count variance", () => {
 
   it("ignores a count for a product that no longer exists", () => {
     expect(countVariances([{ productId: "gone", counted: 5 }], products, levels({}))).toEqual([]);
+  });
+
+  it("subtracts in decimal, so a measured count has no floating-point tail", () => {
+    // 4 - 20.87 is -16.869999999999997 in binary floating point. An uploaded
+    // count sheet is full of measured quantities, and a variance column
+    // reading "-15.670000000000002" reads as a broken number.
+    const v = countVariances(
+      [{ productId: "id-Salt", counted: 4 }],
+      products,
+      levels({ "id-Salt": 20.87 }),
+    );
+    expect(v[0].variance).toBe(-16.87);
+    expect(String(v[0].variance)).not.toContain("999");
   });
 });
 

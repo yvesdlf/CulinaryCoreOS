@@ -18,6 +18,9 @@ import {
   ClipboardList,
   RefreshCw,
   Search,
+  Download,
+  Upload,
+  TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +49,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRef } from "react";
+import { toCsv, parseCsv, downloadCsv, datedFilename } from "@/lib/csv";
+import {
+  buildCountSheet, parseCountSheet, COUNT_SHEET_HEADERS,
+  type CountSheetPlan,
+} from "@/engine/count-sheet";
 import { useProductStore } from "@/stores/product-store";
 import {
   buildStockLines,
@@ -681,6 +690,39 @@ function CountSheet({
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploaded, setUploaded] = useState<(CountSheetPlan & { filename: string }) | null>(null);
+
+  /*
+   * A blank sheet to walk the store with.
+   *
+   * Deliberately carries no expected quantity — see the note in the engine.
+   * Dated in the filename because a count is of a moment, and three files
+   * called "count-sheet.csv" in a downloads folder is how last month's numbers
+   * get typed in as this month's.
+   */
+  function download() {
+    downloadCsv(
+      datedFilename("count-sheet"),
+      toCsv(
+        [...COUNT_SHEET_HEADERS],
+        buildCountSheet(lines.map((l) => ({ product: l.product, unit: stockUnitOf(l) }))),
+      ),
+    );
+  }
+
+  async function handleFile(file: File) {
+    const plan = parseCountSheet(parseCsv(await file.text()), products);
+    setUploaded({ ...plan, filename: file.name });
+    // The counts land in the same state the on-screen sheet writes to, so an
+    // uploaded sheet and a typed one reach the review step by the same path
+    // and cannot disagree about what happens next.
+    setCounts((prev) => {
+      const next = { ...prev };
+      for (const c of plan.counts) next[c.productId] = String(c.counted);
+      return next;
+    });
+  }
 
   const entered = useMemo(
     () =>
@@ -714,6 +756,7 @@ function CountSheet({
     setBusy(false);
     setCounts({});
     setReview(false);
+    setUploaded(null);
   }
 
   if (lines.length === 0) {
@@ -802,10 +845,86 @@ function CountSheet({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Enter what is actually on the shelf. Leave a line blank to skip it —
-        only what you count is compared.
-      </p>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".csv,text/csv"
+        className="sr-only"
+        aria-label="Completed count sheet (CSV)"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleFile(f);
+          e.target.value = "";
+        }}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Enter what is actually on the shelf. Leave a line blank to skip it —
+          only what you count is compared. Or take a sheet to the store room
+          and bring the numbers back.
+        </p>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" onClick={download}>
+            <Download className="mr-1 size-4" aria-hidden="true" />
+            Count sheet
+          </Button>
+          <PermissionGate>
+            <Button variant="outline" onClick={() => fileInput.current?.click()}>
+              <Upload className="mr-1 size-4" aria-hidden="true" />
+              Upload counts
+            </Button>
+          </PermissionGate>
+        </div>
+      </div>
+
+      {uploaded && (
+        <div className="rounded-lg border p-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="text-sm">
+              <span className="font-medium">{uploaded.filename}</span> —{" "}
+              {uploaded.counts.length} counted
+              {uploaded.skipped > 0 && `, ${uploaded.skipped} left blank`}
+              {uploaded.problems.length > 0 &&
+                `, ${uploaded.problems.length} not read`}
+              .{" "}
+              <span className="text-muted-foreground">
+                Nothing is corrected until you review it.
+              </span>
+            </p>
+            <Button size="sm" variant="ghost" onClick={() => setUploaded(null)}>
+              Dismiss
+            </Button>
+          </div>
+
+          {uploaded.problems.length > 0 && (
+            <div
+              role="alert"
+              className="mt-3 rounded-md border border-status-warning/40 bg-status-warning-soft p-3"
+            >
+              <p className="flex items-center gap-2 text-sm font-medium text-status-warning">
+                <TriangleAlert className="size-4" aria-hidden="true" />
+                {uploaded.problems.length}{" "}
+                {uploaded.problems.length === 1 ? "line" : "lines"} could not be read
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-foreground/80">
+                {uploaded.problems.slice(0, 8).map((p, i) => (
+                  <li key={`${p.line}-${i}`}>
+                    {p.line > 0 && <>Line {p.line} · </>}
+                    {p.ingredient && <>{p.ingredient} — </>}
+                    {p.reason}
+                  </li>
+                ))}
+              </ul>
+              {uploaded.problems.length > 8 && (
+                <p className="mt-1 text-xs text-foreground/80">
+                  and {uploaded.problems.length - 8} more
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>

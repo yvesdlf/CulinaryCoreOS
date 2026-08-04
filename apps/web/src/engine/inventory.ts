@@ -98,11 +98,24 @@ export function buildStockLines(
         product,
         onHand,
         status,
-        // Never negative: a suggestion to order minus three kilos is noise.
+        /*
+         * Never negative: a suggestion to order minus three kilos is noise.
+         *
+         * Subtracted in decimal for the same reason the count variance is —
+         * `20 - 5.47` in binary floating point is 14.530000000000001, and an
+         * order column reading that beside a clean par of 20 looks like the
+         * app cannot do arithmetic.
+         */
         suggestedOrder:
           status === "ok" || status === "unmanaged"
             ? 0
-            : Math.max(0, (product.parLevel ?? 0) - onHand),
+            : Math.max(
+                0,
+                toDecimal(product.parLevel ?? 0)
+                  .minus(onHand)
+                  .toDecimalPlaces(4)
+                  .toNumber(),
+              ),
         value: toDecimal(product.cost.grossPricePerUnit)
           .times(Math.max(0, onHand))
           .toFixed(2),
@@ -146,7 +159,21 @@ export function countVariances(
     const product = byId.get(c.productId);
     if (!product) continue;
     const expected = levels.get(c.productId)?.onHand ?? 0;
-    const variance = c.counted - expected;
+    /*
+     * Subtracted in decimal, not in binary floating point.
+     *
+     * `4 - 20.87` is -16.869999999999997, and a count sheet full of measured
+     * quantities produced a variance column reading "-15.670000000000002".
+     * That is not a rounding subtlety anybody needs to see on a stock report;
+     * it reads as a broken number and undermines the figure beside it.
+     *
+     * Four places, which is finer than any unit a kitchen counts in and coarse
+     * enough that the artefact is gone.
+     */
+    const variance = toDecimal(c.counted)
+      .minus(expected)
+      .toDecimalPlaces(4)
+      .toNumber();
     if (variance === 0) continue;
     out.push({
       product,
