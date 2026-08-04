@@ -9,6 +9,7 @@ import { PriceImpact } from "@/components/products/price-impact";
 import { WhereUsed } from "@/components/shared/where-used";
 import { toast } from "sonner";
 import type { Product, NutritionPer100g, ProductStatus } from "@ccos/shared";
+import { FoodLookupPanel } from "@/components/products/food-lookup-panel";
 
 import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
 import { PageHeader } from "@/components/layout/page-header";
@@ -240,6 +241,45 @@ function ProductDetailForm() {
     [],
   );
 
+  /*
+   * Take a whole set of figures at once.
+   *
+   * Separate from setNutrition, which derives kcal from the macros as somebody
+   * types. Here the published energy value is the one worth keeping: it comes
+   * from the same composition table as the macros and accounts for fibre and
+   * polyols that the 4-4-9 sum does not.
+   */
+  const applyNutrition = useCallback((nutrition: NutritionPer100g) => {
+    setForm((prev) => ({ ...prev, nutrition: { ...nutrition } }));
+  }, []);
+
+  const applyRefPercent = useCallback((percent: number) => {
+    setForm((prev) => ({
+      ...prev,
+      yield_: {
+        ...prev.yield_,
+        refPercent: percent,
+        yieldPercent: round2(100 - percent),
+      },
+    }));
+  }, []);
+
+  /*
+   * Allergens from a lookup are added, never substituted, and always leave the
+   * product marked unverified — whatever the form said a moment ago. A name
+   * match is a prompt to read a label; it cannot clear a flag that means
+   * "nobody has read the label yet".
+   */
+  const applyAllergens = useCallback((allergens: string[]) => {
+    setAllergensText((current) => {
+      const existingIds = current.split(",").map((a) => a.trim()).filter(Boolean);
+      const merged = [...existingIds];
+      for (const a of allergens) if (!merged.includes(a)) merged.push(a);
+      return merged.join(", ");
+    });
+    setNeedsReview(true);
+  }, []);
+
   // ── Save handler ───────────────────────────────────────────────────────
 
   const verdict = useMemo(
@@ -434,6 +474,18 @@ function ProductDetailForm() {
                     placeholder="dairy, gluten, nuts (comma-separated)"
                   />
                 </FormField>
+              </div>
+
+              {/* Offered from the name alone, which is all it needs and all
+                  it is entitled to work from. */}
+              <div className="mt-4 sm:col-span-2">
+                <FoodLookupPanel
+                  productName={form.name}
+                  hasNutrition={form.nutrition.kcal > 0}
+                  onApplyNutrition={applyNutrition}
+                  onApplyAllergens={applyAllergens}
+                  onApplyRefPercent={applyRefPercent}
+                />
               </div>
 
               {/*
