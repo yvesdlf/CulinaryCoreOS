@@ -16,6 +16,7 @@ import {
   Factory,
   ChartNoAxesCombined,
   Settings,
+  ShieldUser,
   Inbox,
   UtensilsCrossed,
 } from "lucide-react";
@@ -50,6 +51,7 @@ const navItems = [
   { title: "Production", to: "/production", icon: Factory },
   { title: "Menu Engineering", to: "/menu-engineering", icon: ChartNoAxesCombined },
   { title: "Messages", to: "/messages", icon: Inbox },
+  { title: "Administration", to: "/administration", icon: ShieldUser },
   { title: "Settings", to: "/settings", icon: Settings },
 ];
 

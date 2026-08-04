@@ -2844,3 +2844,295 @@ export async function verifyHaccpRecord(id: string): Promise<void> {
   }).eq("id", id);
   if (error) fail("verifyHaccpRecord", error);
 }
+
+// ── Administration: access, parameters, hiring approval ─────────────────────
+/*
+ * The IT manager's half of the application.
+ *
+ * Everything below is read from views and written to tables that carry their
+ * own triggers, so these functions are deliberately thin. The rules — who may
+ * grant access, what a parameter may be set to, who signs a hire — are not
+ * restated here, because a rule expressed twice is a rule that will disagree
+ * with itself.
+ */
+
+export type AccessLevel = "NONE" | "READ" | "WRITE";
+
+export interface AppSection {
+  code: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  isCore: boolean;
+}
+
+export async function fetchAppSections(): Promise<AppSection[]> {
+  const { data, error } = await requireSupabase()
+    .from("app_sections").select("*").order("sort_order");
+  if (error) fail("fetchAppSections", error);
+  return (data ?? []).map((r: any) => ({
+    code: r.code, name: r.name, description: r.description,
+    sortOrder: r.sort_order ?? 0, isCore: Boolean(r.is_core),
+  }));
+}
+
+export interface AccessRow {
+  userId: string;
+  email: string;
+  role: OrgRole;
+  /** Section code to level. Every section is present. */
+  sections: Record<string, AccessLevel>;
+}
+
+/**
+ * Everyone in the venue with what they can reach.
+ *
+ * The view already resolves an owner to WRITE everywhere, so the grid shows
+ * the access that actually applies rather than the rows that happen to exist.
+ */
+export async function fetchAccessGrid(): Promise<AccessRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("member_access_grid").select("*").order("email");
+  if (error) fail("fetchAccessGrid", error);
+
+  const byUser = new Map<string, AccessRow>();
+  for (const r of (data ?? []) as any[]) {
+    let row = byUser.get(r.user_id);
+    if (!row) {
+      row = { userId: r.user_id, email: r.email, role: r.role, sections: {} };
+      byUser.set(r.user_id, row);
+    }
+    row.sections[r.section_code] = r.level as AccessLevel;
+  }
+  return [...byUser.values()];
+}
+
+/**
+ * Grant, narrow or remove access to one section for one person.
+ *
+ * NONE deletes the row rather than storing it, so the table holds grants and
+ * not a mixture of grants and denials — there is only one way to represent
+ * "no access", which keeps the grid and the database agreeing.
+ */
+export async function setSectionAccess(
+  userId: string,
+  sectionCode: string,
+  level: AccessLevel,
+): Promise<void> {
+  const db = requireSupabase();
+  if (level === "NONE") {
+    const { error } = await db.from("member_access").delete()
+      .eq("user_id", userId).eq("section_code", sectionCode);
+    if (error) fail("setSectionAccess", error);
+    return;
+  }
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("member_access").upsert(
+    {
+      user_id: userId, section_code: sectionCode, level,
+      granted_by_email: auth.user?.email ?? null, granted_at: new Date().toISOString(),
+    },
+    { onConflict: "org_id,user_id,section_code" },
+  );
+  if (error) fail("setSectionAccess", error);
+}
+
+/** What the signed-in user may reach, for the screens to reflect honestly. */
+export async function fetchMySectionAccess(): Promise<Record<string, AccessLevel>> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  if (!auth.user) return {};
+  const { data, error } = await db
+    .from("member_access_grid").select("section_code, level")
+    .eq("user_id", auth.user.id);
+  if (error) fail("fetchMySectionAccess", error);
+  const out: Record<string, AccessLevel> = {};
+  for (const r of (data ?? []) as any[]) out[r.section_code] = r.level as AccessLevel;
+  return out;
+}
+
+export interface VenueParameter {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  value: number;
+  unit: string;
+  minValue: number | null;
+  maxValue: number | null;
+  updatedByEmail: string | null;
+  updatedAt: string;
+}
+
+export async function fetchVenueParameters(): Promise<VenueParameter[]> {
+  const { data, error } = await requireSupabase()
+    .from("venue_parameters").select("*").order("code");
+  if (error) fail("fetchVenueParameters", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, code: r.code, name: r.name, description: r.description ?? null,
+    value: Number(r.value), unit: r.unit,
+    minValue: r.min_value === null ? null : Number(r.min_value),
+    maxValue: r.max_value === null ? null : Number(r.max_value),
+    updatedByEmail: r.updated_by_email ?? null, updatedAt: r.updated_at,
+  }));
+}
+
+/**
+ * The bounds are checked again by the trigger, which is what actually refuses
+ * a typo. Sending the value unvalidated would work; sending it and reporting
+ * the database's own message is what makes the refusal explainable.
+ */
+export async function saveVenueParameter(id: string, value: number): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("venue_parameters")
+    .update({ value, updated_by_email: auth.user?.email ?? null })
+    .eq("id", id);
+  if (error) fail("saveVenueParameter", error);
+}
+
+export interface ParameterChange {
+  id: string;
+  parameterCode: string;
+  oldValue: number | null;
+  newValue: number;
+  changedByEmail: string | null;
+  changedAt: string;
+}
+
+export async function fetchParameterChanges(): Promise<ParameterChange[]> {
+  const { data, error } = await requireSupabase()
+    .from("parameter_changes").select("*")
+    .order("changed_at", { ascending: false }).limit(100);
+  if (error) fail("fetchParameterChanges", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, parameterCode: r.parameter_code,
+    oldValue: r.old_value === null ? null : Number(r.old_value),
+    newValue: Number(r.new_value),
+    changedByEmail: r.changed_by_email ?? null, changedAt: r.changed_at,
+  }));
+}
+
+export interface DepartmentApprover {
+  id: string;
+  departmentId: string;
+  approverEmail: string;
+  deputyEmail: string | null;
+}
+
+export async function fetchDepartmentApprovers(): Promise<DepartmentApprover[]> {
+  const { data, error } = await requireSupabase()
+    .from("department_approvers").select("*");
+  if (error) fail("fetchDepartmentApprovers", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, departmentId: r.department_id,
+    approverEmail: r.approver_email, deputyEmail: r.deputy_email ?? null,
+  }));
+}
+
+export async function saveDepartmentApprover(input: {
+  departmentId: string;
+  approverEmail: string;
+  deputyEmail: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("department_approvers").upsert(
+    {
+      department_id: input.departmentId,
+      approver_email: input.approverEmail.trim().toLowerCase(),
+      deputy_email: input.deputyEmail?.trim().toLowerCase() || null,
+    },
+    { onConflict: "department_id" },
+  );
+  if (error) fail("saveDepartmentApprover", error);
+}
+
+export type HiringStatus =
+  | "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "FILLED" | "CANCELLED";
+
+export interface HiringRequest {
+  id: string;
+  reference: string;
+  departmentId: string;
+  jobRoleId: string | null;
+  headcount: number;
+  employmentType: string;
+  reason: string;
+  neededBy: string | null;
+  estimatedMonthlyCost: number | null;
+  status: HiringStatus;
+  requestedByEmail: string | null;
+  decidedByEmail: string | null;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+}
+
+function hiringFromRow(r: any): HiringRequest {
+  return {
+    id: r.id, reference: r.reference, departmentId: r.department_id,
+    jobRoleId: r.job_role_id ?? null, headcount: r.headcount,
+    employmentType: r.employment_type, reason: r.reason,
+    neededBy: r.needed_by ?? null,
+    estimatedMonthlyCost: r.estimated_monthly_cost === null ? null : Number(r.estimated_monthly_cost),
+    status: r.status, requestedByEmail: r.requested_by_email ?? null,
+    decidedByEmail: r.decided_by_email ?? null, decidedAt: r.decided_at ?? null,
+    decisionNote: r.decision_note ?? null, createdAt: r.created_at,
+  };
+}
+
+export async function fetchHiringRequests(): Promise<HiringRequest[]> {
+  const { data, error } = await requireSupabase()
+    .from("hiring_requests").select("*").order("created_at", { ascending: false });
+  if (error) fail("fetchHiringRequests", error);
+  return (data ?? []).map(hiringFromRow);
+}
+
+export async function createHiringRequest(input: {
+  departmentId: string;
+  jobRoleId: string | null;
+  headcount: number;
+  employmentType: string;
+  reason: string;
+  neededBy: string | null;
+  estimatedMonthlyCost: number | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  // A reference a person can quote in a conversation, unique per venue.
+  const reference = `HR-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
+  const { error } = await db.from("hiring_requests").insert({
+    reference,
+    department_id: input.departmentId,
+    job_role_id: input.jobRoleId,
+    headcount: input.headcount,
+    employment_type: input.employmentType,
+    reason: input.reason,
+    needed_by: input.neededBy,
+    estimated_monthly_cost: input.estimatedMonthlyCost,
+    status: "SUBMITTED",
+    submitted_at: new Date().toISOString(),
+    requested_by_email: auth.user?.email ?? null,
+  });
+  if (error) fail("createHiringRequest", error);
+}
+
+/**
+ * Approve or reject. The trigger decides whether the caller is entitled to,
+ * and its message names who is — so the error is passed through rather than
+ * replaced with something generic.
+ */
+export async function decideHiringRequest(
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  note: string | null,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("hiring_requests").update({
+    status,
+    decision_note: note,
+    decided_by_email: auth.user?.email ?? null,
+    decided_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) fail("decideHiringRequest", error);
+}

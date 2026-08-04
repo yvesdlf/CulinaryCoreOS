@@ -14,6 +14,7 @@ import { create } from "zustand";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { hydrateFromSupabase } from "@/stores/persistence";
+import { useAccessStore } from "@/stores/access-store";
 
 export type OrgRole = "OWNER" | "ADMIN" | "CHEF" | "VIEWER";
 
@@ -123,19 +124,32 @@ async function applySession(
 ): Promise<void> {
   if (!session) {
     set({ session: null, organizations: [], activeOrg: null, loading: false });
+    useAccessStore.getState().clear();
     return;
   }
   try {
     const organizations = await loadOrganizations();
+    /*
+     * Ask the database which organisation it will write to rather than
+     * guessing. `organizations[0]` is the oldest membership, which is the
+     * personal organisation created at sign-up for anybody who was invited —
+     * so the header named one venue while every row was written to another.
+     * auth_default_org_id() is the function the triggers actually use.
+     */
+    let activeOrg = organizations[0] ?? null;
+    const { data: defaultOrgId } = await supabase!.rpc("auth_default_org_id");
+    if (defaultOrgId) {
+      activeOrg = organizations.find((o) => o.id === defaultOrgId) ?? activeOrg;
+    }
     set({
       session,
       organizations,
-      activeOrg: organizations[0] ?? null,
+      activeOrg,
       loading: false,
       error: null,
     });
     // Only now can RLS return rows, so this is the right moment to load data.
-    await hydrateFromSupabase();
+    await Promise.all([hydrateFromSupabase(), useAccessStore.getState().load()]);
   } catch (err) {
     set({
       session,
