@@ -48,6 +48,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { parStatus } from "@/engine/inventory";
+import { toDecimal } from "@/engine/cost-engine";
+import { fetchStockLevels } from "@/data/repository";
 import { useProductStore } from "@/stores/product-store";
 import {
   canApprove,
@@ -137,6 +140,11 @@ export function PurchasingPage() {
   const [contractAttention, setContractAttention] = useState<
     Awaited<ReturnType<typeof fetchContractAttention>>
   >([]);
+  // Stock levels, so a requisition can be built from what is actually short
+  // rather than from memory.
+  const [levels, setLevels] = useState<
+    Map<string, { onHand: number; lastMovementAt: string | null }>
+  >(new Map());
   const [me, setMe] = useState<{ email: string | null; role: OrgRole } | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -162,10 +170,10 @@ export function PurchasingPage() {
         fetchBudgetPositions(),
         fetchTolerances(),
       ]);
-      const [ctr, ctrAtt] = await Promise.all([
-        fetchContracts(), fetchContractAttention(),
+      const [ctr, ctrAtt, lv] = await Promise.all([
+        fetchContracts(), fetchContractAttention(), fetchStockLevels(),
       ]);
-      setContracts(ctr); setContractAttention(ctrAtt);
+      setContracts(ctr); setContractAttention(ctrAtt); setLevels(lv);
       setRfqs(await fetchRfqs());
       setRequisitions(r);
       setOrders(o);
@@ -465,6 +473,7 @@ export function PurchasingPage() {
         <NewRequisitionDialog
           products={products}
           suppliers={suppliers}
+          levels={levels}
           costCentres={costCentres}
           existingReferences={requisitions.map((r) => r.reference)}
           onClose={() => setCreating(false)}
@@ -509,6 +518,7 @@ function NewRequisitionDialog({
   suppliers,
   costCentres,
   existingReferences,
+  levels,
   onClose,
   onCreated,
 }: {
@@ -516,6 +526,7 @@ function NewRequisitionDialog({
   suppliers: Supplier[];
   costCentres: CostCentre[];
   existingReferences: string[];
+  levels: Map<string, { onHand: number; lastMovementAt: string | null }>;
   onClose: () => void;
   onCreated: () => void | Promise<void>;
 }) {
@@ -526,6 +537,82 @@ function NewRequisitionDialog({
     { productId: string; quantity: string; unit: string; price: string }[]
   >([{ productId: "", quantity: "", unit: "KG", price: "" }]);
   const [busy, setBusy] = useState(false);
+
+  /*
+   * Order by supplier, or by category.
+   *
+   * A flat list of eleven hundred ingredients is the wrong shape for how
+   * ordering actually happens. Nobody sits down to order "things"; they order
+   * *from Gading Seafood*, because that supplier delivers on Tuesday and the
+   * order has to be in by four — or they order *the seafood*, because the
+   * section is short and they will decide who to buy it from after. Both are
+   * real, and neither is served by scrolling one alphabetical list.
+   *
+   * The filter narrows the ingredient dropdowns rather than replacing them, so
+   * anything can still be added by name when the buyer knows exactly what they
+   * want.
+   */
+  const [bySupplier, setBySupplier] = useState("");
+  const [byCategory, setByCategory] = useState("");
+
+  const categories = useMemo(
+    () =>
+      [...new Set(products.filter((p) => p.status === "ACTIVE").map((p) => p.category))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [products],
+  );
+
+  const choosable = useMemo(
+    () =>
+      products
+        .filter((p) => p.status === "ACTIVE")
+        .filter((p) => !bySupplier || p.supplierId === bySupplier)
+        .filter((p) => !byCategory || p.category === byCategory)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [products, bySupplier, byCategory],
+  );
+
+  /*
+   * What the filter says is short.
+   *
+   * The point of narrowing to a supplier is usually "what do I need from them
+   * this week", and answering it by hand means cross-referencing the stock page
+   * one line at a time. Shown as a count with one button rather than a second
+   * table: the buyer still edits every line afterwards.
+   */
+  const short = useMemo(
+    () =>
+      choosable
+        .filter((p) => p.parLevel != null)
+        .map((p) => {
+          const onHand = levels.get(p.id)?.onHand ?? 0;
+          const status = parStatus(onHand, p.parLevel, p.reorderPoint);
+          return { product: p, onHand, status };
+        })
+        .filter((x) => x.status === "out" || x.status === "reorder"),
+    [choosable, levels],
+  );
+
+  function addShortfalls() {
+    const already = new Set(rows.map((r) => r.productId).filter(Boolean));
+    const added = short
+      .filter((x) => !already.has(x.product.id))
+      .map((x) => ({
+        productId: x.product.id,
+        quantity: String(
+          toDecimal(x.product.parLevel ?? 0).minus(x.onHand).toDecimalPlaces(4).toNumber(),
+        ),
+        unit: x.product.packing.totalUnit,
+        price: String(x.product.cost.grossPricePerUnit),
+      }));
+    if (added.length === 0) {
+      toast.info("Everything here is already on the requisition");
+      return;
+    }
+    // Drop the blank starter row rather than leaving it above the additions.
+    setRows((rs) => [...rs.filter((r) => r.productId), ...added]);
+  }
 
   const reference = useMemo(
     () => nextReference("REQ", existingReferences),
@@ -619,6 +706,65 @@ function NewRequisitionDialog({
             </div>
           </div>
 
+          <div className="rounded-lg border p-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="req-by-supplier">Order from a supplier</Label>
+                <select
+                  id="req-by-supplier"
+                  className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                  value={bySupplier}
+                  onChange={(e) => setBySupplier(e.target.value)}
+                >
+                  <option value="">Any supplier</option>
+                  {suppliers.map((sup) => (
+                    <option key={sup.id} value={sup.id}>
+                      {sup.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="req-by-category">Order a category</Label>
+                <select
+                  id="req-by-category"
+                  className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                  value={byCategory}
+                  onChange={(e) => setByCategory(e.target.value)}
+                >
+                  <option value="">Any category</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                {bySupplier || byCategory
+                  ? `${choosable.length} ingredient${choosable.length === 1 ? "" : "s"} to choose from`
+                  : "Narrow the list, or pick any ingredient by name below."}
+                {short.length > 0 && (
+                  <>
+                    {" — "}
+                    <span className="text-status-warning">
+                      {short.length} at or below the reorder point
+                    </span>
+                  </>
+                )}
+              </p>
+              {short.length > 0 && (
+                <Button size="sm" variant="outline" onClick={addShortfalls}>
+                  <Plus className="size-4" />
+                  Add the {short.length} that need ordering
+                </Button>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Lines</Label>
             <div className="space-y-2">
@@ -639,13 +785,21 @@ function NewRequisitionDialog({
                   >
                     <option value="">Choose an ingredient</option>
                     {/*
-                      * Every active ingredient, not a slice of them. A native
-                      * select handles a thousand options and supports
-                      * type-ahead; truncating the list silently would mean an
-                      * ingredient simply cannot be requested.
+                      * Every active ingredient the filter allows, not a slice
+                      * of them. A native select handles a thousand options and
+                      * supports type-ahead; truncating the list silently would
+                      * mean an ingredient simply cannot be requested.
+                      *
+                      * A line already chosen stays listed even when the filter
+                      * would now exclude it, or changing the supplier after
+                      * building half a requisition blanks the rows above.
                       */}
-                    {products
-                      .filter((p) => p.status === "ACTIVE")
+                    {choosable
+                      .concat(
+                        r.productId && !choosable.some((p) => p.id === r.productId)
+                          ? products.filter((p) => p.id === r.productId)
+                          : [],
+                      )
                       .map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}

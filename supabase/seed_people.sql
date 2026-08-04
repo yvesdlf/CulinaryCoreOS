@@ -28,15 +28,19 @@ begin
   end if;
 
   -- ── Departments ───────────────────────────────────────────────────────────
+  -- The codes migration 0040 already defines, so this seed extends the
+  -- venue's departments rather than creating a second Kitchen beside them.
   insert into public.departments (org_id, code, name) values
-    (org, 'KIT', 'Kitchen'),
-    (org, 'FOH', 'Front of House'),
-    (org, 'BAR', 'Bar'),
-    (org, 'HSK', 'Housekeeping')
-  on conflict do nothing;
+    (org, 'KITCHEN', 'Kitchen'),
+    (org, 'SERVICE', 'Front of House'),
+    (org, 'BAR',     'Bar'),
+    (org, 'HSK',     'Housekeeping')
+  -- Matching idx_departments_code from 0023, which is on lower(code): an
+  -- ON CONFLICT target has to name the index's expression, not the column.
+  on conflict (org_id, lower(code)) do update set name = excluded.name;
 
-  select id into d_kitchen from public.departments where org_id=org and code='KIT';
-  select id into d_foh     from public.departments where org_id=org and code='FOH';
+  select id into d_kitchen from public.departments where org_id=org and code='KITCHEN';
+  select id into d_foh     from public.departments where org_id=org and code='SERVICE';
   select id into d_bar     from public.departments where org_id=org and code='BAR';
   select id into d_house   from public.departments where org_id=org and code='HSK';
 
@@ -85,7 +89,7 @@ begin
 
   -- Reporting lines: each department head manages their own department.
   for r in select code, head from (values
-      ('KIT','E-001'), ('FOH','E-006'), ('BAR','E-009'), ('HSK','E-011')
+      ('KITCHEN','E-001'), ('SERVICE','E-006'), ('BAR','E-009'), ('HSK','E-011')
     ) as t(code, head)
   loop
     update public.employees e
