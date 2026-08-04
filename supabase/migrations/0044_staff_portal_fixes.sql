@@ -1,0 +1,34 @@
+-- ---------------------------------------------------------------------------
+-- The section guard was refusing staff their own records
+-- ---------------------------------------------------------------------------
+-- Signing in as a commis chef and trying to use the portal refused almost
+-- everything:
+--
+--   leave refused: you do not have edit access to People
+--   clock-in refused: you do not have edit access to People
+--
+-- The section guard added in 0036 fires on every write to leave_requests,
+-- time_entries and the rest of the People section. A portal user holds no
+-- section grant — deliberately, they are not a member — so their own leave
+-- request and their own clock-in were refused by a control aimed at somebody
+-- else entirely.
+--
+-- The guard's purpose is to narrow what a *member* may reach. Somebody with no
+-- membership in the organisation the row belongs to is not being narrowed by
+-- it: the row-level policies added in 0041 are their entire access, and those
+-- are already scoped to auth_employee_id() and nothing else. So where there is
+-- no membership, the guard stands aside and RLS decides alone.
+--
+-- This is narrower than it may look. A non-member can still only insert rows
+-- some policy permits, and the only policies that permit them anything are the
+-- ones keyed to their own employee record. There is no path here to another
+-- person's row, and none to a venue they do not work at.
+--
+-- Also: notify_exam_result() raised a TRAINING notification kind that does not
+-- exist, so every exam submission failed at the last step with an enum error.
+-- Adding the value rather than reusing one — an exam result is not a
+-- certificate expiry, and reports group by this column.
+-- ---------------------------------------------------------------------------
+
+alter type notification_kind add value if not exists 'EXAM_MARKED';
+alter type notification_kind add value if not exists 'DOCUMENT_SENT';

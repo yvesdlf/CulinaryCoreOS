@@ -23,7 +23,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ShieldCheck, UserPlus, SlidersHorizontal, BriefcaseBusiness, Lock,
-  Eye, PencilLine, Check, X, TriangleAlert, History, Users, Mail,
+  Eye, PencilLine, Check, X, TriangleAlert, History, Users, Mail, MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,6 +53,7 @@ import {
   fetchDepartments, fetchDepartmentApprovers, saveDepartmentApprover,
   fetchHiringRequests, decideHiringRequest, fetchJobRoles, createHiringRequest,
   inviteToOrg, fetchInvitations, revokeInvitation,
+  fetchGeofences, saveGeofence, type Geofence,
   type AppSection, type AccessRow, type AccessLevel, type VenueParameter,
   type ParameterChange, type Department, type DepartmentApprover,
   type HiringRequest, type JobRole, type Invitation,
@@ -146,6 +147,7 @@ export function AdministrationPage() {
   const [hiring, setHiring] = useState<HiringRequest[]>([]);
   const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [geofences, setGeofences] = useState<Geofence[]>([]);
   const [myEmail, setMyEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
@@ -169,6 +171,7 @@ export function AdministrationPage() {
       setSections(s); setGrid(g); setParameters(p); setChanges(c);
       setDepartments(d); setApprovers(a); setHiring(h); setJobRoles(j);
       setInvitations(i);
+      setGeofences(await fetchGeofences());
       setSelected((cur) => cur ?? g[0]?.userId ?? null);
       const { data } = await supabase!.auth.getUser();
       setMyEmail(data.user?.email ?? null);
@@ -494,6 +497,12 @@ export function AdministrationPage() {
               />
             ))}
           </div>
+
+          <ClockingCard
+            fences={geofences}
+            disabled={!canSetParameters}
+            onSaved={load}
+          />
 
           <Card>
             <CardHeader className="pb-2">
@@ -891,7 +900,10 @@ function InviteDialog({
             <Label>Starting role</Label>
             <Select value={role} onValueChange={(v) => setRole(v as OrgRole)}>
               <SelectTrigger className="w-full" aria-label="Starting role">
-                <SelectValue />
+                {/* ROLES carries friendly names — "Staff", not "CHEF". */}
+                <SelectValue>
+                  {(v: unknown) => ROLES.find((r) => r.value === v)?.label ?? String(v)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {ROLES.map((r) => (
@@ -983,7 +995,10 @@ function RaiseHireDialog({
               onValueChange={(v) => { setDepartmentId(v ?? ""); setJobRoleId(""); }}
             >
               <SelectTrigger className="w-full" aria-label="Department">
-                <SelectValue placeholder="Choose" />
+                <SelectValue placeholder="Choose">
+                  {(v: unknown) =>
+                    departments.find((d) => d.id === v)?.name ?? "Choose"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
@@ -996,7 +1011,9 @@ function RaiseHireDialog({
             <Label>Role</Label>
             <Select value={jobRoleId} onValueChange={(v) => setJobRoleId(v ?? "")}>
               <SelectTrigger className="w-full" aria-label="Role">
-                <SelectValue placeholder={departmentId ? "Choose" : "Pick a department first"} />
+                <SelectValue placeholder={departmentId ? "Choose" : "Pick a department first"}>
+                  {(v: unknown) => jobRoles.find((j) => j.id === v)?.title ?? "Choose"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {rolesHere.map((j) => (
@@ -1144,5 +1161,137 @@ function DecideHireDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/*
+ * Where staff may clock in from.
+ *
+ * Off until a fence exists, and that is deliberate: a venue that has not drawn
+ * one should not discover that nobody can clock in. Once one is enabled, a
+ * punch from outside is refused by a trigger whose message carries the
+ * distance — the browser is never asked to decide, because a check made in the
+ * client is a check anybody can pass.
+ *
+ * "Use where I am" fills the coordinates from the device, which is the only
+ * practical way to get them: nobody knows their venue's latitude, and typing
+ * one off a map is where the digit gets dropped.
+ */
+function ClockingCard({ fences, disabled, onSaved }: {
+  fences: Geofence[];
+  disabled: boolean;
+  onSaved: () => Promise<void>;
+}) {
+  const existing = fences[0] ?? null;
+  const [name, setName] = useState(existing?.name ?? "");
+  const [lat, setLat] = useState(existing ? String(existing.latitude) : "");
+  const [lng, setLng] = useState(existing ? String(existing.longitude) : "");
+  const [radius, setRadius] = useState(String(existing?.radiusM ?? 150));
+  const [enabled, setEnabled] = useState(existing?.enabled ?? true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!existing) return;
+    setName(existing.name);
+    setLat(String(existing.latitude));
+    setLng(String(existing.longitude));
+    setRadius(String(existing.radiusM));
+    setEnabled(existing.enabled);
+  }, [existing?.id]);
+
+  function useMyPosition() {
+    if (!("geolocation" in navigator)) {
+      toast.error("This device cannot report a location");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLat(p.coords.latitude.toFixed(7));
+        setLng(p.coords.longitude.toFixed(7));
+        toast.success("Filled in from this device", {
+          description: `Accurate to about ${Math.round(p.coords.accuracy)} m.`,
+        });
+      },
+      () => toast.error("This device would not share its location"),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await saveGeofence({
+        id: existing?.id,
+        name: name.trim(),
+        latitude: Number(lat),
+        longitude: Number(lng),
+        radiusM: Number(radius),
+        enabled,
+      });
+      toast.success("Clocking area saved");
+      await onSaved();
+    } catch (err) {
+      toast.error("Not saved", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally { setSaving(false); }
+  }
+
+  const valid = name.trim() !== "" && lat !== "" && lng !== "" && Number(radius) >= 20;
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <MapPin aria-hidden="true" className="size-4" /> Where staff can clock in
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {fences.length === 0
+            ? "No area set, so a punch is accepted from anywhere. Draw one to require staff to be at the venue."
+            : enabled
+              ? "A punch from outside this area is refused, and the person is told how far away they are."
+              : "Turned off. Punches are accepted from anywhere."}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor="fence-name">Name</Label>
+            <Input id="fence-name" value={name} disabled={disabled}
+              placeholder="Manuza Beach Club"
+              onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fence-radius">Radius in metres</Label>
+            <Input id="fence-radius" type="number" min="20" max="5000"
+              value={radius} disabled={disabled}
+              onChange={(e) => setRadius(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fence-lat">Latitude</Label>
+            <Input id="fence-lat" value={lat} disabled={disabled}
+              onChange={(e) => setLat(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fence-lng">Longitude</Label>
+            <Input id="fence-lng" value={lng} disabled={disabled}
+              onChange={(e) => setLng(e.target.value)} />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={enabled} disabled={disabled}
+            onChange={(e) => setEnabled(e.target.checked)} />
+          Require staff to be at the venue to clock in
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={disabled} onClick={useMyPosition}>
+            <MapPin aria-hidden="true" /> Use where I am
+          </Button>
+          <Button disabled={disabled || !valid || saving} onClick={() => void save()}>
+            <Check aria-hidden="true" /> Save
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

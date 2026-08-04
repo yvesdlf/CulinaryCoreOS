@@ -44,7 +44,7 @@ const navItems = [
   { title: "Suppliers", to: "/suppliers", icon: Truck },
   { title: "Duplicates", to: "/duplicates", icon: CopyCheck },
   { title: "Purchasing", to: "/purchasing", icon: ShoppingCart },
-  { title: "People", to: "/people", icon: Users },
+  { title: "Human Resources", to: "/human-resources", icon: Users },
   { title: "Inventory", to: "/inventory", icon: Warehouse },
   { title: "Traceability", to: "/traceability", icon: ShieldCheck },
   { title: "Hygiene", to: "/hygiene", icon: SprayCan },

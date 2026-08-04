@@ -1,5 +1,5 @@
-import { useEffect, lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { useEffect, useState, lazy, Suspense } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { DashboardPage } from "@/pages/dashboard";
@@ -9,6 +9,8 @@ import { SubRecipesPage } from "@/pages/sub-recipes/sub-recipes-page";
 import { NotFoundPage } from "@/pages/not-found";
 import { LoginPage } from "@/pages/login";
 import { useAuthStore, useIsAuthenticated } from "@/stores/auth-store";
+import { fetchMyProfile, type MyProfile } from "@/data/repository";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 /*
  * Secondary routes load on demand.
@@ -21,6 +23,7 @@ import { useAuthStore, useIsAuthenticated } from "@/stores/auth-store";
 const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x) => ({ default: x.AllergenMatrixPage })));
 const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
 const MessagesPage = lazy(() => import("@/pages/messages").then((x) => ({ default: x.MessagesPage })));
+const StaffPortalPage = lazy(() => import("@/pages/portal").then((x) => ({ default: x.StaffPortalPage })));
 const AdministrationPage = lazy(() => import("@/pages/administration").then((x) => ({ default: x.AdministrationPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
@@ -43,11 +46,44 @@ const SubRecipeDetailPage = lazy(() => import("@/pages/sub-recipes/sub-recipe-de
 export function App() {
   const initialize = useAuthStore((s) => s.initialize);
   const loading = useAuthStore((s) => s.loading);
+  const organizations = useAuthStore((s) => s.organizations);
+  const session = useAuthStore((s) => s.session);
   const authenticated = useIsAuthenticated();
+
+  /*
+   * Which application is this?
+   *
+   * Somebody on the payroll who is not a member of the venue is a member of
+   * staff, and they get the portal. Everybody else gets the management app.
+   *
+   * Deliberately not a role check. A head chef is both — on the payroll and
+   * running the kitchen — and they should see the management app, because
+   * that is what their membership is for. The portal is for the accounts that
+   * have nothing else, which is exactly the accounts with no membership.
+   *
+   * `undefined` means "not yet asked", and is why this waits rather than
+   * flashing the wrong application for a moment on every sign-in.
+   */
+  const [profile, setProfile] = useState<MyProfile | null | undefined>(
+    isSupabaseConfigured ? undefined : null,
+  );
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    if (!session) { setProfile(null); return; }
+    let cancelled = false;
+    void fetchMyProfile()
+      .then((p) => { if (!cancelled) setProfile(p); })
+      // A failure here must not lock somebody out of the app they do have.
+      .catch(() => { if (!cancelled) setProfile(null); });
+    return () => { cancelled = true; };
+  }, [session]);
+
+  const isStaffOnly = Boolean(profile) && organizations.length === 0;
 
   // Restoring a session is a round trip. Rendering the sign-in page first would
   // flash it in front of an already-signed-in user on every refresh.
@@ -61,6 +97,29 @@ export function App() {
 
   if (!authenticated) {
     return <LoginPage />;
+  }
+
+  // Waiting on the answer, not on the data behind it.
+  if (profile === undefined) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isStaffOnly && profile) {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex min-h-svh items-center justify-center">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        }
+      >
+        <StaffPortalPage profile={profile} />
+      </Suspense>
+    );
   }
 
   return (
@@ -96,9 +155,15 @@ export function App() {
         <Route path="/menu-engineering" element={<MenuEngineeringPage />} />
         <Route path="/traceability" element={<TraceabilityPage />} />
         <Route path="/purchasing" element={<PurchasingPage />} />
-        <Route path="/people" element={<PeoplePage />} />
+        <Route path="/human-resources" element={<PeoplePage />} />
+        {/* The section was called People until it grew a staff portal.
+            Old links and bookmarks still work. */}
+        <Route path="/people" element={<Navigate to="/human-resources" replace />} />
         <Route path="/hygiene" element={<HygienePage />} />
         <Route path="/administration" element={<AdministrationPage />} />
+        {profile && (
+          <Route path="/my" element={<StaffPortalPage profile={profile} />} />
+        )}
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/duplicates" element={<DuplicatesPage />} />

@@ -17,6 +17,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
+import { Send } from "lucide-react";
+import { StaffCommsTab } from "@/components/people/staff-comms-tab";
 import { PageHeader } from "@/components/layout/page-header";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -158,8 +160,8 @@ export function PeoplePage() {
   return (
     <div>
       <PageHeader
-        title="People"
-        description="Who works here, what they are qualified to do, and what leave they have. Payroll is not calculated here — that belongs with a specialist provider."
+        title="Human Resources"
+        description="Who works here, what they are qualified to do, what they have been sent, and what leave they have. Payroll is not calculated here — that belongs with a specialist provider."
       >
         <PermissionGate>
           <Button onClick={() => setAdding(true)}>
@@ -192,6 +194,9 @@ export function PeoplePage() {
           <TabsTrigger value="competency">Competency</TabsTrigger>
           <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
           <TabsTrigger value="cases">Cases ({cases.length})</TabsTrigger>
+          <TabsTrigger value="comms">
+            <Send className="size-4" />Send to staff
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="lifecycle" className="mt-4">
@@ -448,6 +453,15 @@ export function PeoplePage() {
 
         <TabsContent value="cases" className="mt-4">
           <CasesTab cases={cases} employees={employees} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="comms" className="mt-4">
+          <StaffCommsTab
+            employees={employees}
+            departments={departments}
+            courses={courses}
+            onDone={load}
+          />
         </TabsContent>
       </Tabs>
 
