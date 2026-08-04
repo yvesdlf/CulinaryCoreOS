@@ -9,6 +9,7 @@
 
 import type { Product, SubRecipe, Recipe, Collection } from "@ccos/shared";
 import { requireSupabase } from "@/lib/supabase";
+import type { HaccpField, ImportedHaccpForm } from "@/engine/haccp-import";
 import {
   productFromRow,
   productToRow,
@@ -2780,7 +2781,29 @@ export async function updateHrCase(
 export interface HaccpForm {
   id: string; code: string; section: string; title: string;
   frequency: string; isCcp: boolean;
+  /** What this form asks for, with limits. Empty on an older form. */
+  fields: HaccpField[];
   lastCompleted: string | null; daysSince: number | null;
+}
+
+/*
+ * A stored field is JSON, so it says nothing about the keys it leaves out.
+ * A form with only an upper limit has no `min` key at all, and `undefined`
+ * is not `null` — which rendered a freezer's limits as "undefined--18 °C"
+ * and would have taken the wrong branch anywhere else that asks. Coerced once
+ * here so nothing downstream has to know the difference.
+ */
+function normaliseFields(raw: unknown): HaccpField[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((f) => f && typeof f === "object" && typeof (f as any).label === "string")
+    .map((f: any) => ({
+      label: f.label,
+      type: f.type ?? "text",
+      unit: f.unit ?? null,
+      min: f.min === undefined || f.min === null ? null : Number(f.min),
+      max: f.max === undefined || f.max === null ? null : Number(f.max),
+    }));
 }
 
 export async function fetchHaccpForms(): Promise<HaccpForm[]> {
@@ -2790,6 +2813,7 @@ export async function fetchHaccpForms(): Promise<HaccpForm[]> {
   return (data ?? []).map((r: any) => ({
     id: r.form_id, code: r.code, section: r.section, title: r.title,
     frequency: r.frequency, isCcp: Boolean(r.is_ccp),
+    fields: normaliseFields(r.fields),
     lastCompleted: r.last_completed ?? null,
     daysSince: r.days_since === null ? null : Number(r.days_since),
   }));
@@ -3135,4 +3159,54 @@ export async function decideHiringRequest(
     decided_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) fail("decideHiringRequest", error);
+}
+
+/**
+ * Write uploaded templates.
+ *
+ * A form of the same code is replaced rather than duplicated — a venue
+ * uploading a revised sheet means "this is the form now", and ending up with
+ * 3.1 twice is how a control sheet gets filled in on the wrong version.
+ * Records already written keep pointing at the form and are untouched.
+ */
+export async function saveHaccpTemplates(
+  forms: ImportedHaccpForm[],
+): Promise<{ created: number; updated: number }> {
+  const db = requireSupabase();
+  let created = 0;
+  let updated = 0;
+
+  for (const form of forms) {
+    const row = {
+      code: form.code,
+      section: form.section,
+      title: form.title,
+      frequency: form.frequency,
+      is_ccp: form.isCcp,
+      fields: form.fields,
+      active: true,
+    };
+    if (form.existingId) {
+      const { error } = await db.from("haccp_forms").update(row).eq("id", form.existingId);
+      if (error) fail("saveHaccpTemplates", error);
+      updated++;
+    } else {
+      const { error } = await db.from("haccp_forms").insert(row);
+      if (error) fail("saveHaccpTemplates", error);
+      created++;
+    }
+  }
+  return { created, updated };
+}
+
+/** Every form, including retired ones, for the template screen. */
+export async function fetchHaccpTemplates(): Promise<
+  { id: string; code: string; title: string; active: boolean }[]
+> {
+  const { data, error } = await requireSupabase()
+    .from("haccp_forms").select("id, code, title, active").order("code");
+  if (error) fail("fetchHaccpTemplates", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, code: r.code, title: r.title, active: Boolean(r.active),
+  }));
 }

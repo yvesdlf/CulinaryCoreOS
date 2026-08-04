@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, TriangleAlert, ShieldCheck, Check } from "lucide-react";
+import { ClipboardList, TriangleAlert, ShieldCheck, Check, FileUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -34,6 +34,8 @@ import {
   type HaccpForm, type HaccpRecord,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { HaccpImportDialog } from "@/components/hygiene/haccp-import-dialog";
+import { checkFieldLimits, type HaccpField } from "@/engine/haccp-import";
 
 /** How long a form of each rhythm may go before it is overdue. */
 const GRACE_DAYS: Record<string, number> = {
@@ -137,6 +139,9 @@ export function HygienePage() {
             <ClipboardList className="size-4" />All forms ({forms.length})
           </TabsTrigger>
           <TabsTrigger value="records">Records ({records.length})</TabsTrigger>
+          <TabsTrigger value="templates">
+            <FileUp className="size-4" />Templates
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="due" className="mt-4">
@@ -234,6 +239,56 @@ export function HygienePage() {
             </div>
           )}
         </TabsContent>
+        <TabsContent value="templates" className="mt-4 space-y-4">
+          <div className="rounded-lg border p-4">
+            <h2 className="text-sm font-medium">Bring in your own control sheets</h2>
+            <p className="mb-3 mt-1 max-w-3xl text-sm text-muted-foreground">
+              A venue's HACCP paperwork is its own, and it changes after every
+              audit. Upload a sheet listing the forms you keep and what each one
+              asks for — repeat the form's code down the rows and add one field
+              per row. A form whose code already exists is replaced, so a
+              revised sheet is an upload rather than a support request.
+            </p>
+            <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
+              Give a number field a <strong>min</strong> or <strong>max</strong>{" "}
+              and the app checks the reading against it when the form is filled
+              in. That is the difference between paperwork and a control: a
+              chiller log that knows 5 °C is the limit flags 9,2 °C on its own,
+              rather than waiting for a tired cook to tick a box at eleven at
+              night.
+            </p>
+            <PermissionGate>
+              <HaccpImportDialog forms={forms} onImported={load} />
+            </PermissionGate>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Code</TableHead>
+                  <TableHead>Form</TableHead>
+                  <TableHead>Section</TableHead>
+                  <TableHead>Asks for</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {forms.map((f) => (
+                  <TableRow key={f.id}>
+                    <TableCell className="font-mono text-xs">{f.code}</TableCell>
+                    <TableCell className="font-medium">{f.title}</TableCell>
+                    <TableCell className="text-muted-foreground">{f.section}</TableCell>
+                    <TableCell className="max-w-lg whitespace-normal text-xs text-muted-foreground">
+                      {f.fields.length === 0
+                        ? "one free-text note"
+                        : f.fields.map((x) => x.label).join(", ")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {filling && (
@@ -306,10 +361,31 @@ function FillDialog({ form, onClose, onDone }: {
   const [location, setLocation] = useState("");
   const [reading, setReading] = useState("");
   const [note, setNote] = useState("");
-  const [breach, setBreach] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [tickedBreach, setTickedBreach] = useState(false);
   const [breachDetail, setBreachDetail] = useState("");
   const [action, setAction] = useState("");
   const [busy, setBusy] = useState(false);
+
+  /*
+   * What the form itself says is out of limits.
+   *
+   * Derived rather than asked. A form that carries its limits should not need
+   * a person to notice that 9,2 is more than 5 at the end of a double shift —
+   * that noticing is the entire job of a control sheet, and the one thing a
+   * computer does better than a tired cook.
+   */
+  const detected = form.fields
+    .map((f) => checkFieldLimits(f, values[f.label] ?? ""))
+    .filter((x): x is string => x !== null);
+
+  // Still tickable: a form can be breached in ways it does not measure — a
+  // delivery van that was warm, a probe that read nothing because it was
+  // broken. Removing the tick would lose those.
+  const breach = tickedBreach || detected.length > 0;
+  const detail = detected.length > 0
+    ? [...detected, breachDetail.trim()].filter(Boolean).join(" ")
+    : breachDetail.trim();
 
   // The trigger refuses a breach without an action; say so before the attempt.
   const valid = coversDate !== "" && (!breach || action.trim() !== "");
@@ -345,12 +421,25 @@ function FillDialog({ form, onClose, onDone }: {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="h-reading">Reading or result</Label>
-            <Input id="h-reading" value={reading}
-              placeholder={form.isCcp ? "e.g. 3,4 °C or pH 4,1" : "What was checked"}
-              onChange={(e) => setReading(e.target.value)} />
-          </div>
+          {form.fields.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {form.fields.map((f) => (
+                <FieldInput
+                  key={f.label}
+                  field={f}
+                  value={values[f.label] ?? ""}
+                  onChange={(v) => setValues((prev) => ({ ...prev, [f.label]: v }))}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="h-reading">Reading or result</Label>
+              <Input id="h-reading" value={reading}
+                placeholder={form.isCcp ? "e.g. 3,4 °C or pH 4,1" : "What was checked"}
+                onChange={(e) => setReading(e.target.value)} />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="h-note">Notes</Label>
@@ -359,15 +448,33 @@ function FillDialog({ form, onClose, onDone }: {
           </div>
 
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={breach}
-              onChange={(e) => setBreach(e.target.checked)} />
+            <input type="checkbox" checked={tickedBreach}
+              disabled={detected.length > 0}
+              onChange={(e) => setTickedBreach(e.target.checked)} />
             Something was outside its limit
+            {detected.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                — the readings already say so
+              </span>
+            )}
           </label>
 
           {breach && (
             <div className="space-y-3 rounded-lg border border-status-danger bg-status-danger-soft p-3">
+              {detected.length > 0 && (
+                <ul className="space-y-1 text-sm font-medium text-status-danger">
+                  {detected.map((d) => (
+                    <li key={d} className="flex gap-2">
+                      <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="h-breach">What was wrong</Label>
+                <Label htmlFor="h-breach">
+                  {detected.length > 0 ? "Anything else" : "What was wrong"}
+                </Label>
                 <Input id="h-breach" value={breachDetail}
                   placeholder="Walk-in at 9,2 °C against a 5 °C limit"
                   onChange={(e) => setBreachDetail(e.target.value)} />
@@ -394,8 +501,10 @@ function FillDialog({ form, onClose, onDone }: {
               await recordHaccp({
                 formId: form.id, coversDate,
                 shift: shift.trim() || null, location: location.trim() || null,
-                values: { reading: reading.trim(), note: note.trim() },
-                breach, breachDetail: breachDetail.trim() || null,
+                values: form.fields.length > 0
+                  ? { ...values, note: note.trim() }
+                  : { reading: reading.trim(), note: note.trim() },
+                breach, breachDetail: detail || null,
                 correctiveAction: action.trim() || null,
               });
               toast.success(`${form.code} recorded`);
@@ -409,5 +518,61 @@ function FillDialog({ form, onClose, onDone }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/*
+ * One field of a form, rendered as what it is.
+ *
+ * The limits are shown beside the label rather than only enforced. Somebody
+ * reading 6 °C on a chiller with a 5 °C limit should see they are about to
+ * record a breach before they record it, not discover it in a red panel
+ * afterwards.
+ */
+function FieldInput({ field, value, onChange }: {
+  field: HaccpField;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const id = `h-field-${field.label.replace(/\s+/g, "-").toLowerCase()}`;
+  const limits =
+    field.min !== null && field.max !== null ? `${field.min}–${field.max}`
+    : field.min !== null ? `at least ${field.min}`
+    : field.max !== null ? `at most ${field.max}`
+    : null;
+  const outOfLimits = checkFieldLimits(field, value) !== null;
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>
+        {field.label}
+        {(limits || field.unit) && (
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+            {limits ? `${limits}${field.unit ? ` ${field.unit}` : ""}` : field.unit}
+          </span>
+        )}
+      </Label>
+      {field.type === "yes_no" ? (
+        <label className="flex h-8 items-center gap-2 text-sm">
+          <input
+            id={id}
+            type="checkbox"
+            checked={value === "yes"}
+            onChange={(e) => onChange(e.target.checked ? "yes" : "no")}
+          />
+          {value === "yes" ? "Yes" : "No"}
+        </label>
+      ) : (
+        <Input
+          id={id}
+          type={field.type === "number" ? "text" : field.type === "time" ? "time" : field.type === "date" ? "date" : "text"}
+          inputMode={field.type === "number" ? "decimal" : undefined}
+          value={value}
+          aria-invalid={outOfLimits}
+          className={outOfLimits ? "border-status-danger" : undefined}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </div>
   );
 }
