@@ -14,6 +14,7 @@ import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { calculateGrossQty, calculateLineCost } from "@/engine/cost-engine";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { COST_DECIMALS } from "@/lib/constants";
 import { Trash2 } from "lucide-react";
 import {
   IngredientAutocomplete,
@@ -197,10 +198,17 @@ export function IngredientLinesTable({
                   {formatNumber(line.grossQty)}
                 </TableCell>
                 <TableCell className="tabular-nums text-muted-foreground">
-                  {parseFloat(line.costPerUnit).toFixed(4)}
+                  {/*
+                    Four places, not two: a per-unit cost is often a fraction of
+                    a rupiah per gram, and at two it renders as 0,00 for half the
+                    catalogue. Formatted rather than raw toFixed, so it uses the
+                    same decimal separator as every other number on the page —
+                    "120000.0000" beside "Rp 10.800,00" reads as unfinished.
+                  */}
+                  {formatNumber(line.costPerUnit, 4)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums font-medium">
-                  {formatCurrency(parseFloat(line.lineCost))}
+                  {formatCurrency(parseFloat(line.lineCost), undefined, COST_DECIMALS)}
                 </TableCell>
                 {!readOnly && (
                   <TableCell>

@@ -146,3 +146,17 @@ export const DEFAULT_CURRENCY = "IDR";
 
 /** Locale for money/number formatting: "Rp 795.000" (dot groups, comma decimal). */
 export const CURRENCY_LOCALE = "id-ID";
+
+/**
+ * Decimal places for money in recipe costing.
+ *
+ * IDR conventionally shows none — a menu price is "Rp 350.000" and the sen has
+ * not been legal tender for decades. Costing is the exception: a dish is built
+ * from fractions of a rupiah per gram, and rounding each figure to the whole
+ * rupiah on the way makes the panel visibly fail to add up. Two places is
+ * enough to reconcile a total against its lines, which is what the panel is
+ * for.
+ *
+ * Display only. The stored values keep full precision; see cost-engine.ts.
+ */
+export const COST_DECIMALS = 2;

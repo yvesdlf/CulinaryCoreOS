@@ -51,6 +51,7 @@ import {
   deriveDietaryFlags,
 } from "@/engine/nutrition-engine";
 import { formatCurrency } from "@/lib/format";
+import { COST_DECIMALS } from "@/lib/constants";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { createRecipe, saveRecipe, removeRecipe } from "@/stores/persistence";
@@ -429,7 +430,7 @@ function RecipeDetailForm() {
             <div className="space-y-1 sm:col-span-2">
               <Label>Guest price (incl. tax)</Label>
               <div className="flex h-8 items-center rounded-lg border border-input bg-muted/40 px-2.5 text-sm tabular-nums">
-                {formatCurrency(menuPrice * (1 + taxPercent / 100))}
+                {formatCurrency(menuPrice * (1 + taxPercent / 100), undefined, COST_DECIMALS)}
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { FoodCostIndicator } from "@/components/shared/food-cost-indicator";
+import { COST_DECIMALS } from "@/lib/constants";
 import {
   calculateRecipeTotalCost,
   calculatePercentAmount,
@@ -90,25 +91,26 @@ export function CostSummaryPanel({
       </CardHeader>
       <CardContent className="space-y-2">
         <Row label="Total ingredient cost">
-          <CurrencyDisplay value={summary.totalCost} currency={currency} />
+          <CurrencyDisplay value={summary.totalCost} currency={currency} decimals={COST_DECIMALS} />
         </Row>
         <Row
           label={`+ Waste ${formatPercent(wastePercent)} + inflation ${formatPercent(inflationPercent)}`}
           subtle
         >
-          <CurrencyDisplay value={summary.marginAmount} currency={currency} />
+          <CurrencyDisplay value={summary.marginAmount} currency={currency} decimals={COST_DECIMALS} />
         </Row>
         <Separator />
         <Row label="Total cost with margin" bold>
           <CurrencyDisplay
             value={summary.totalWithMargin}
             currency={currency}
+            decimals={COST_DECIMALS}
             className="font-semibold"
           />
         </Row>
         <Separator />
         <Row label="Menu price (excl. tax)">
-          <CurrencyDisplay value={summary.priceExclVat} currency={currency} />
+          <CurrencyDisplay value={summary.priceExclVat} currency={currency} decimals={COST_DECIMALS} />
         </Row>
         <Row label="Food cost %">
           <FoodCostIndicator value={summary.foodCostPercent} />
@@ -117,6 +119,7 @@ export function CostSummaryPanel({
           <CurrencyDisplay
             value={summary.contributionMargin}
             currency={currency}
+            decimals={COST_DECIMALS}
           />
         </Row>
         <Separator />
@@ -124,6 +127,7 @@ export function CostSummaryPanel({
           <CurrencyDisplay
             value={summary.recommended25}
             currency={currency}
+            decimals={COST_DECIMALS}
             className="text-muted-foreground"
           />
         </Row>
@@ -131,6 +135,7 @@ export function CostSummaryPanel({
           <CurrencyDisplay
             value={summary.recommended30}
             currency={currency}
+            decimals={COST_DECIMALS}
             className="text-muted-foreground"
           />
         </Row>
