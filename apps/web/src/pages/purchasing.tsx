@@ -50,7 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parStatus } from "@/engine/inventory";
 import { toDecimal } from "@/engine/cost-engine";
-import { fetchStockLevels } from "@/data/repository";
+import { fetchStockLevels, fetchAllProductSuppliers } from "@/data/repository";
 import { useProductStore } from "@/stores/product-store";
 import {
   canApprove,
@@ -145,6 +145,15 @@ export function PurchasingPage() {
   const [levels, setLevels] = useState<
     Map<string, { onHand: number; lastMovementAt: string | null }>
   >(new Map());
+  /*
+   * Every supplier a product can be bought from, not just its preferred one.
+   *
+   * Filtering on products.supplier_id would show only where each thing
+   * normally comes from, which is exactly the wrong answer for the question
+   * this filter exists to answer — "what can I get from this supplier" is
+   * asked precisely when the usual one cannot deliver.
+   */
+  const [supplierLinks, setSupplierLinks] = useState<Map<string, Set<string>>>(new Map());
   const [me, setMe] = useState<{ email: string | null; role: OrgRole } | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -170,9 +179,17 @@ export function PurchasingPage() {
         fetchBudgetPositions(),
         fetchTolerances(),
       ]);
-      const [ctr, ctrAtt, lv] = await Promise.all([
+      const [ctr, ctrAtt, lv, links] = await Promise.all([
         fetchContracts(), fetchContractAttention(), fetchStockLevels(),
+        fetchAllProductSuppliers(),
       ]);
+      const bySupplier = new Map<string, Set<string>>();
+      for (const l of links) {
+        const set = bySupplier.get(l.supplierId) ?? new Set<string>();
+        set.add(l.productId);
+        bySupplier.set(l.supplierId, set);
+      }
+      setSupplierLinks(bySupplier);
       setContracts(ctr); setContractAttention(ctrAtt); setLevels(lv);
       setRfqs(await fetchRfqs());
       setRequisitions(r);
@@ -474,6 +491,7 @@ export function PurchasingPage() {
           products={products}
           suppliers={suppliers}
           levels={levels}
+          supplierLinks={supplierLinks}
           costCentres={costCentres}
           existingReferences={requisitions.map((r) => r.reference)}
           onClose={() => setCreating(false)}
@@ -519,6 +537,7 @@ function NewRequisitionDialog({
   costCentres,
   existingReferences,
   levels,
+  supplierLinks,
   onClose,
   onCreated,
 }: {
@@ -527,6 +546,8 @@ function NewRequisitionDialog({
   costCentres: CostCentre[];
   existingReferences: string[];
   levels: Map<string, { onHand: number; lastMovementAt: string | null }>;
+  /** Supplier id to the products they sell. */
+  supplierLinks: Map<string, Set<string>>;
   onClose: () => void;
   onCreated: () => void | Promise<void>;
 }) {
@@ -567,10 +588,16 @@ function NewRequisitionDialog({
     () =>
       products
         .filter((p) => p.status === "ACTIVE")
-        .filter((p) => !bySupplier || p.supplierId === bySupplier)
+        // A product counts as this supplier's if they are linked to it at
+        // all, with the old single column as a fallback for anything not yet
+        // linked.
+        .filter((p) =>
+          !bySupplier ||
+          (supplierLinks.get(bySupplier)?.has(p.id) ?? false) ||
+          p.supplierId === bySupplier)
         .filter((p) => !byCategory || p.category === byCategory)
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [products, bySupplier, byCategory],
+    [products, bySupplier, byCategory, supplierLinks],
   );
 
   /*

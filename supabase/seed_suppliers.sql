@@ -80,6 +80,29 @@ begin
 
   get diagnostics linked = row_count;
 
-  raise notice 'created % suppliers, linked % products (% suppliers in total)',
-    made, linked, (select count(*) from public.suppliers where org_id = org);
+  /*
+   * And the link rows behind that column.
+   *
+   * 0046 backfills product_suppliers from products.supplier_id, but a database
+   * rebuilt from its own migrations runs that before any product exists — so
+   * the backfill finds nothing and this seed then sets supplier_id without the
+   * link row that is supposed to be its source. The result was 730 products
+   * with a supplier and an empty link table, which is precisely the drift the
+   * mirrored column is meant to be incapable of.
+   *
+   * Preferred, because it is the only supplier on record. The price comes from
+   * what the venue currently pays, which is what that supplier charges.
+   */
+  insert into public.product_suppliers
+    (org_id, product_id, supplier_id, pack_qty, pack_unit, pack_price, is_preferred)
+  select p.org_id, p.id, p.supplier_id,
+         nullif(p.pack_qty, 0), p.pack_unit, nullif(p.buying_price_per_pack, 0), true
+    from public.products p
+   where p.org_id = org and p.supplier_id is not null
+  on conflict (product_id, supplier_id) do nothing;
+
+  raise notice 'created % suppliers, linked % products, % link rows (% suppliers in total)',
+    made, linked,
+    (select count(*) from public.product_suppliers where org_id = org),
+    (select count(*) from public.suppliers where org_id = org);
 end $$;

@@ -3641,3 +3641,126 @@ export async function fetchMyTraining(): Promise<MyTraining[]> {
     hasExam: withExam.has(r.course_id),
   }));
 }
+
+// ── Who sells a product ─────────────────────────────────────────────────────
+
+export interface ProductSupplierOption {
+  id: string;
+  productId: string;
+  supplierId: string;
+  supplierName: string;
+  supplierSku: string | null;
+  packQty: number | null;
+  packUnit: string | null;
+  packPrice: number | null;
+  /** Derived by the database, which is what makes it comparable. */
+  pricePerUnit: number | null;
+  priceUpdatedOn: string | null;
+  leadTimeDays: number | null;
+  minimumOrderQty: number | null;
+  isPreferred: boolean;
+  active: boolean;
+  note: string | null;
+  /** 1 is the cheapest per unit. */
+  priceRank: number;
+  supplierCount: number;
+}
+
+function optionFromRow(r: any): ProductSupplierOption {
+  return {
+    id: r.id, productId: r.product_id, supplierId: r.supplier_id,
+    supplierName: r.supplier_name, supplierSku: r.supplier_sku ?? null,
+    packQty: r.pack_qty === null ? null : Number(r.pack_qty),
+    packUnit: r.pack_unit ?? null,
+    packPrice: r.pack_price === null ? null : Number(r.pack_price),
+    pricePerUnit: r.price_per_unit === null ? null : Number(r.price_per_unit),
+    priceUpdatedOn: r.price_updated_on ?? null,
+    leadTimeDays: r.lead_time_days === null ? null : Number(r.lead_time_days),
+    minimumOrderQty: r.minimum_order_qty === null ? null : Number(r.minimum_order_qty),
+    isPreferred: Boolean(r.is_preferred), active: Boolean(r.active),
+    note: r.note ?? null,
+    priceRank: Number(r.price_rank ?? 1),
+    supplierCount: Number(r.supplier_count ?? 0),
+  };
+}
+
+export async function fetchProductSuppliers(
+  productId: string,
+): Promise<ProductSupplierOption[]> {
+  const { data, error } = await requireSupabase()
+    .from("product_supplier_options")
+    .select("*")
+    .eq("product_id", productId)
+    .order("price_rank");
+  if (error) fail("fetchProductSuppliers", error);
+  return (data ?? []).map(optionFromRow);
+}
+
+/** Every link in the venue, for the purchasing filter to widen itself with. */
+export async function fetchAllProductSuppliers(): Promise<
+  { productId: string; supplierId: string; isPreferred: boolean }[]
+> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase()
+        .from("product_suppliers")
+        .select("product_id, supplier_id, is_preferred")
+        .eq("active", true)
+        .range(from, to),
+    "fetchAllProductSuppliers",
+  );
+  return rows.map((r) => ({
+    productId: r.product_id, supplierId: r.supplier_id,
+    isPreferred: Boolean(r.is_preferred),
+  }));
+}
+
+export async function saveProductSupplier(input: {
+  id?: string;
+  productId: string;
+  supplierId: string;
+  supplierSku: string | null;
+  packQty: number | null;
+  packUnit: string | null;
+  packPrice: number | null;
+  leadTimeDays: number | null;
+  minimumOrderQty: number | null;
+  note: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const row = {
+    product_id: input.productId,
+    supplier_id: input.supplierId,
+    supplier_sku: input.supplierSku,
+    pack_qty: input.packQty,
+    pack_unit: input.packUnit,
+    pack_price: input.packPrice,
+    lead_time_days: input.leadTimeDays,
+    minimum_order_qty: input.minimumOrderQty,
+    note: input.note,
+  };
+  // price_per_unit is deliberately not sent — the database derives it, so two
+  // clients cannot disagree about which supplier is cheaper.
+  const { error } = input.id
+    ? await db.from("product_suppliers").update(row).eq("id", input.id)
+    : await db.from("product_suppliers").insert(row);
+  if (error) fail("saveProductSupplier", error);
+}
+
+/**
+ * Choose where the order goes.
+ *
+ * Only sets the one; the database un-prefers the previous supplier itself, so
+ * there is no window in which a product has two or none.
+ */
+export async function setPreferredSupplier(linkId: string): Promise<void> {
+  const { error } = await requireSupabase()
+    .from("product_suppliers").update({ is_preferred: true }).eq("id", linkId);
+  if (error) fail("setPreferredSupplier", error);
+}
+
+export async function removeProductSupplier(linkId: string): Promise<void> {
+  const { error } = await requireSupabase()
+    .from("product_suppliers").delete().eq("id", linkId);
+  if (error) fail("removeProductSupplier", error);
+}

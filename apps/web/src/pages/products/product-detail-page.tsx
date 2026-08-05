@@ -10,6 +10,7 @@ import { WhereUsed } from "@/components/shared/where-used";
 import { toast } from "sonner";
 import type { Product, NutritionPer100g, ProductStatus } from "@ccos/shared";
 import { FoodLookupPanel } from "@/components/products/food-lookup-panel";
+import { ProductSuppliersPanel } from "@/components/products/product-suppliers-panel";
 
 import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
 import { PageHeader } from "@/components/layout/page-header";
@@ -390,6 +391,7 @@ function ProductDetailForm() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="packing">Packing</TabsTrigger>
           <TabsTrigger value="cost-yield">Cost & Yield</TabsTrigger>
+          <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
         </TabsList>
 
@@ -910,6 +912,20 @@ function ProductDetailForm() {
         </TabsContent>
 
         {/* ── Nutrition tab ───────────────────────────────────────────────── */}
+        <TabsContent value="suppliers">
+          <Card>
+            <CardHeader>
+              <CardTitle>Who this can be bought from</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProductSuppliersPanel
+                productId={isNew ? null : (id ?? null)}
+                defaultPackUnit={form.packing.packUnit}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="nutrition">
           <Card>
             <CardHeader>
