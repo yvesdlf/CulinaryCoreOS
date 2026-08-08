@@ -37,7 +37,8 @@ import {
   type MessageChannel,
 } from "@/data/repository";
 import { useRecipeStore } from "@/stores/recipe-store";
-import { Percent, MessageSquare } from "lucide-react";
+import { Percent, MessageSquare, Sparkles } from "lucide-react";
+import { AiSettingsCard } from "@/components/ai/ai-settings-card";
 import type { OrgRole, ApprovalPolicy } from "@/engine/purchasing";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
@@ -160,6 +161,9 @@ export function SettingsPage() {
           <TabsTrigger value="invitations">Invitations ({pending.length})</TabsTrigger>
           <TabsTrigger value="tax"><Percent className="size-4" />Tax</TabsTrigger>
           <TabsTrigger value="messaging"><MessageSquare className="size-4" />Messaging</TabsTrigger>
+          <TabsTrigger value="assistant">
+            <Sparkles className="size-4" />Assistant
+          </TabsTrigger>
           <TabsTrigger value="rules">Rules</TabsTrigger>
         </TabsList>
 
@@ -311,6 +315,10 @@ export function SettingsPage() {
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="assistant" className="mt-4">
+          <AiSettingsCard />
         </TabsContent>
 
         <TabsContent value="tax" className="mt-4">
