@@ -22,9 +22,15 @@
 // typed into a supplier's system, and four digits there buys nothing. The date
 // a document was actually raised is a timestamp column.
 //
-// The sequence is NOT allocated here. See next_document_reference() in
-// migration 0047 — two people raising a requisition in the same second both
-// compute 001 if the number comes from the browser.
+// The number is issued once, when the request is raised, and every document
+// after it carries the same three digits — PR, then PO, then the goods receipt,
+// then the invoice — until it is paid and archived. A request goes to one
+// supplier, so there is exactly one of each and nothing ever needs a second
+// number.
+//
+// The sequence is NOT allocated here. See next_reference_stem() in migration
+// 0047 — two people raising a request in the same second both compute 001 if
+// the number comes from the browser.
 // ---------------------------------------------------------------------------
 
 /** Document types that carry a reference. */
@@ -47,13 +53,12 @@ export interface ReferenceParts {
   yymmdd: string;
   sequence: number;
   /**
-   * A suffix from the scheme that briefly numbered split orders -2, -3.
+   * A suffix from a scheme that briefly numbered split orders -2, -3.
    *
-   * Nothing generates one now: an order that comes from a split requisition
-   * takes the next number in its unit's own sequence, so three suppliers give
-   * 001, 002 and 003. Still parsed, because a venue that ran the earlier
-   * scheme has orders carrying it and a screen that read those as malformed
-   * would flag real paperwork as broken.
+   * Nothing generates one. A request goes to one supplier, so it never splits
+   * and there is nothing to suffix. Still parsed, because a venue that ran
+   * that scheme has orders carrying it, and reading those as malformed would
+   * flag real paperwork as broken.
    */
   split?: number | null;
 }
@@ -72,12 +77,12 @@ export function referenceStem(ref: string): string | null {
 }
 
 /**
- * The same document, under the name its new standing gives it.
+ * The same transaction, under the name its current stage gives it.
  *
- * Used for REQ to PR, which is one document changing standing. Not for the
- * purchase order: an order takes the next number in its unit's own sequence,
- * because one requisition can become three orders and they need three numbers.
- * The link back to the requisition is requisition_id.
+ * REQ to PR to PO to GRN to INV, all on one number. It is issued once when the
+ * request is raised and stays with the transaction until the invoice is paid
+ * and archived — because a request goes to one supplier, so it becomes exactly
+ * one order, one delivery and one invoice.
  */
 export function withType(ref: string, type: DocumentType | string): string | null {
   const stem = referenceStem(ref);

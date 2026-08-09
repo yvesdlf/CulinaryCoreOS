@@ -144,46 +144,31 @@ describe("one document, three names", () => {
   });
 });
 
-describe("a requisition that splits across suppliers", () => {
-  it("gives the first order the requisition's number and the rest the next ones", () => {
-    // PR-KIT-260809-001 going to three suppliers becomes PO-001 — the rule as
-    // stated — plus 002 and 003 from the same per-unit pool, because three
-    // orders cannot share one number. Allocated by the database; this is what
-    // the results look like.
-    const request = "PR-KIT-260809-001";
-    const orders = [1, 2, 3].map((sequence) =>
-      formatReference({ type: "PO", unit: "KIT", yymmdd: "260809", sequence }));
-
-    expect(orders[0]).toBe(withType(request, "PO"));
-    expect(orders).toEqual([
-      "PO-KIT-260809-001", "PO-KIT-260809-002", "PO-KIT-260809-003",
+describe("the number follows the transaction", () => {
+  it("carries from request to invoice", () => {
+    // One request, one supplier, one order, one delivery, one invoice — all on
+    // the number the request was given, until it is paid and archived.
+    const stem = referenceStem("REQ-KIT-260809-003")!;
+    expect(["PR", "PO", "GRN", "INV"].map((t) => `${t}-${stem}`)).toEqual([
+      "PR-KIT-260809-003",
+      "PO-KIT-260809-003",
+      "GRN-KIT-260809-003",
+      "INV-KIT-260809-003",
     ]);
   });
 
-  it("leaves the next request a number the split did not consume", () => {
-    // The counter is shared across the chain, so a split that used 002 and 003
-    // means the next requisition is 004. Reusing one would put two documents
-    // on the same number in a supplier's records.
-    const issued = [
-      "PR-KIT-260809-001", "PO-KIT-260809-001",
-      "PO-KIT-260809-002", "PO-KIT-260809-003",
-    ];
-    const highest = Math.max(...issued.map((r) => parseReference(r)!.sequence));
-    expect(highest).toBe(3);
-    expect(formatReference({
-      type: "REQ", unit: "KIT", yymmdd: "260809", sequence: highest + 1,
-    })).toBe("REQ-KIT-260809-004");
+  it("keeps each unit on its own numbers", () => {
+    expect(withType("PR-BAR-260809-012", "PO")).toBe("PO-BAR-260809-012");
+    expect(withType("PR-FOH-260809-047", "PO")).toBe("PO-FOH-260809-047");
   });
 
-  it("never writes the suffix the earlier scheme used", () => {
+  it("never writes the suffix an earlier scheme used", () => {
     expect(formatReference({
       type: "PO", unit: "KIT", yymmdd: "260809", sequence: 1, split: 2,
     })).toBe("PO-KIT-260809-001");
   });
 
-  it("still reads an order numbered under the earlier scheme", () => {
-    // A venue that ran it has orders carrying -2. Reading those as malformed
-    // would flag real paperwork as broken.
+  it("still reads an order numbered under that scheme", () => {
     const parts = parseReference("PO-KIT-260809-001-3")!;
     expect(parts.sequence).toBe(1);
     expect(parts.split).toBe(3);

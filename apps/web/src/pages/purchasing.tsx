@@ -675,29 +675,59 @@ function NewRequisitionDialog({
   async function submit() {
     setBusy(true);
     try {
-      await createRequisition({
-        // No reference: the database allocates it, so two people saving at
-        // once get 001 and 002 rather than colliding.
-        unitCode: unit,
-        costCentreId: costCentreId || null,
-        neededBy: neededBy || null,
-        justification: justification.trim() || null,
-        lines: rows
-          .filter((r) => r.productId && Number(r.quantity) > 0)
-          .map((r, i) => {
-            const product = products.find((p) => p.id === r.productId);
-            return {
-              productId: r.productId,
-              description: product?.name ?? null,
-              quantity: Number(r.quantity),
-              unit: r.unit,
-              estimatedUnitPrice: r.price || product?.cost.grossPricePerUnit || "0",
-              suggestedSupplierId: product?.supplierId ?? null,
-              lineNumber: i + 1,
-            };
-          }),
-      });
-      toast.success(`${reference} created as a draft`);
+      const chosen = rows
+        .filter((r) => r.productId && Number(r.quantity) > 0)
+        .map((r) => {
+          const product = products.find((p) => p.id === r.productId);
+          return {
+            productId: r.productId,
+            description: product?.name ?? null,
+            quantity: Number(r.quantity),
+            unit: r.unit,
+            estimatedUnitPrice: r.price || product?.cost.grossPricePerUnit || "0",
+            suggestedSupplierId: product?.supplierId ?? null,
+          };
+        });
+
+      /*
+       * One request per supplier.
+       *
+       * A request that covered three suppliers used to become three orders,
+       * and then the three orders needed numbers that the one request could
+       * not give them. Splitting here instead means every request has exactly
+       * one order, one delivery and one invoice, all carrying its number
+       * through to payment.
+       *
+       * Lines with no supplier yet go together into their own request — that
+       * is a real pile that needs a decision, not an error to refuse.
+       */
+      const bySupplier = new Map<string | null, typeof chosen>();
+      for (const line of chosen) {
+        const key = line.suggestedSupplierId;
+        bySupplier.set(key, [...(bySupplier.get(key) ?? []), line]);
+      }
+
+      for (const [, group] of bySupplier) {
+        await createRequisition({
+          // No reference: the database allocates it, so two people saving at
+          // once get 001 and 002 rather than colliding.
+          unitCode: unit,
+          costCentreId: costCentreId || null,
+          neededBy: neededBy || null,
+          justification: justification.trim() || null,
+          lines: group.map((l, i) => ({ ...l, lineNumber: i + 1 })),
+        });
+      }
+
+      const n = bySupplier.size;
+      toast.success(
+        n === 1
+          ? "Requisition created as a draft"
+          : `${n} requisitions created, one per supplier`,
+        n > 1
+          ? { description: "Each becomes one order, so its number follows through to the invoice." }
+          : undefined,
+      );
       await onCreated();
     } catch (err) {
       toast.error("Could not create the requisition", {
