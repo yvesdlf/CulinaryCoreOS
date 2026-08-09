@@ -59,7 +59,7 @@ import {
   draftOrdersFrom,
   type PurchaseStatus,
 } from "@/engine/purchasing";
-import { nextReferenceLocal, unitCode, withType } from "@/engine/references";
+import { nextReferenceLocal, unitCode } from "@/engine/references";
 import {
   fetchRequisitions,
   fetchPurchaseOrders,
@@ -520,7 +520,6 @@ export function PurchasingPage() {
         <RaiseOrdersDialog
           requisition={ordering}
           suppliers={suppliers}
-          costCentres={costCentres}
           existingReferences={orders.map((o) => o.reference)}
           onClose={() => setOrdering(null)}
           onDone={async () => {
@@ -1061,15 +1060,12 @@ function DecideDialog({
 function RaiseOrdersDialog({
   requisition,
   suppliers,
-  costCentres,
   existingReferences,
   onClose,
   onDone,
 }: {
   requisition: Requisition;
   suppliers: Supplier[];
-  /** Needed for the unit code the order's reference carries. */
-  costCentres: CostCentre[];
   existingReferences: string[];
   onClose: () => void;
   onDone: () => void | Promise<void>;
@@ -1094,10 +1090,6 @@ function RaiseOrdersDialog({
   const orderable = drafts.filter((d) => d.supplierId !== null);
   const unassigned = drafts.find((d) => d.supplierId === null);
 
-  // The requisition's cost centre is the unit the order belongs to.
-  const requisitionUnit = unitCode(
-    costCentres.find((c) => c.id === requisition.costCentreId)?.code,
-  );
 
   async function raise() {
     setBusy(true);
@@ -1105,16 +1097,14 @@ function RaiseOrdersDialog({
       let refs = [...existingReferences];
       for (const draft of orderable) {
         /*
-         * The order takes its requisition's stem, so PO-KIT-260809-001 is
-         * literally the same document as the REQ that authorised it.
+         * Left empty on purpose: the database numbers the order.
          *
-         * Assigned by trigger, which also adds -2, -3 where one requisition
-         * splits across suppliers. What is sent here is a placeholder the
-         * database overwrites — allocating a number from the PO counter would
-         * burn one for a value that is thrown away.
+         * It takes the next number in its unit's own daily sequence, so a
+         * requisition split across three suppliers becomes 001, 002 and 003.
+         * Working that out here would race with anybody else ordering for the
+         * same unit, and would be overwritten regardless.
          */
-        const reference =
-          withType(requisition.reference, "PO") ?? `PO-${requisitionUnit}`;
+        const reference = "";
         refs = [...refs, reference];
         await createPurchaseOrder({
           reference,

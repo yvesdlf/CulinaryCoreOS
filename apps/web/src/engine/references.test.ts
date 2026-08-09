@@ -140,24 +140,29 @@ describe("one document, three names", () => {
 });
 
 describe("a requisition that splits across suppliers", () => {
-  it("leaves the first order on the bare stem", () => {
-    // The ordinary one-supplier case reads exactly as specified.
+  it("numbers each order in its unit's own sequence", () => {
+    // Fish, cheese and dry goods from three vendors become three orders
+    // numbered 001, 002, 003 — not one number with a suffix. That gives each
+    // unit 999 orders a day.
+    const orders = [1, 2, 3].map((sequence) =>
+      formatReference({ type: "PO", unit: "KIT", yymmdd: "260809", sequence }));
+    expect(orders).toEqual([
+      "PO-KIT-260809-001", "PO-KIT-260809-002", "PO-KIT-260809-003",
+    ]);
+  });
+
+  it("never writes the suffix the earlier scheme used", () => {
     expect(formatReference({
-      type: "PO", unit: "KIT", yymmdd: "260809", sequence: 1, split: null,
+      type: "PO", unit: "KIT", yymmdd: "260809", sequence: 1, split: 2,
     })).toBe("PO-KIT-260809-001");
   });
 
-  it("numbers the rest, keeping the stem", () => {
-    expect(formatReference({
-      type: "PO", unit: "KIT", yymmdd: "260809", sequence: 1, split: 2,
-    })).toBe("PO-KIT-260809-001-2");
-  });
-
-  it("parses a split order back, stem intact", () => {
+  it("still reads an order numbered under the earlier scheme", () => {
+    // A venue that ran it has orders carrying -2. Reading those as malformed
+    // would flag real paperwork as broken.
     const parts = parseReference("PO-KIT-260809-001-3")!;
     expect(parts.sequence).toBe(1);
     expect(parts.split).toBe(3);
-    expect(referenceStem("PO-KIT-260809-001-3")).toBe("KIT-260809-001");
   });
 });
 

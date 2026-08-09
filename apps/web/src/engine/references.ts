@@ -47,13 +47,13 @@ export interface ReferenceParts {
   yymmdd: string;
   sequence: number;
   /**
-   * Which order of a split requisition this is, where there was a split.
+   * A suffix from the scheme that briefly numbered split orders -2, -3.
    *
-   * A requisition covering three suppliers becomes three orders, and they
-   * cannot share one number. The first keeps the bare stem; the rest take 2, 3.
-   *
-   * Optional when formatting — most documents never split, and requiring it
-   * everywhere would be noise at every call site.
+   * Nothing generates one now: an order that comes from a split requisition
+   * takes the next number in its unit's own sequence, so three suppliers give
+   * 001, 002 and 003. Still parsed, because a venue that ran the earlier
+   * scheme has orders carrying it and a screen that read those as malformed
+   * would flag real paperwork as broken.
    */
   split?: number | null;
 }
@@ -71,7 +71,14 @@ export function referenceStem(ref: string): string | null {
   return `${parts.unit}-${parts.yymmdd}-${String(parts.sequence).padStart(3, "0")}`;
 }
 
-/** The same document, under the name its new standing gives it. */
+/**
+ * The same document, under the name its new standing gives it.
+ *
+ * Used for REQ to PR, which is one document changing standing. Not for the
+ * purchase order: an order takes the next number in its unit's own sequence,
+ * because one requisition can become three orders and they need three numbers.
+ * The link back to the requisition is requisition_id.
+ */
 export function withType(ref: string, type: DocumentType | string): string | null {
   const stem = referenceStem(ref);
   return stem ? `${type}-${stem}` : null;
@@ -104,8 +111,8 @@ export function formatReference(parts: ReferenceParts): string {
   // Past that it widens rather than wrapping — a duplicate reference is worse
   // than an ugly one, and the unique index would refuse it anyway.
   const seq = String(parts.sequence).padStart(3, "0");
-  const split = parts.split && parts.split > 1 ? `-${parts.split}` : "";
-  return `${parts.type}-${parts.unit}-${parts.yymmdd}-${seq}${split}`;
+  // `split` is not written back. See the note on the field.
+  return `${parts.type}-${parts.unit}-${parts.yymmdd}-${seq}`;
 }
 
 const REFERENCE_PATTERN = /^([A-Z]{2,4})-([A-Z0-9]{2,4})-(\d{6})-(\d{3,})(?:-(\d+))?$/;
