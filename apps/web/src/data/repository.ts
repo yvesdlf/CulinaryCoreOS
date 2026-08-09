@@ -1086,8 +1086,9 @@ export async function fetchRequisitions(): Promise<Requisition[]> {
 }
 
 export async function createRequisition(input: {
-  /** Optional. Left out, the database allocates one from the cost centre. */
+  /** Optional. Left out, the database allocates a stem from the cost centre. */
   reference?: string;
+  referenceStem?: string;
   costCentreId: string | null;
   /** The unit code for the reference, where the caller knows it. */
   unitCode?: string;
@@ -1097,14 +1098,21 @@ export async function createRequisition(input: {
 }): Promise<Requisition> {
   const db = requireSupabase();
   const { data: auth } = await db.auth.getUser();
-  // Allocated now rather than when the dialog opened, so a cancelled draft
-  // does not burn a number and leave a gap somebody asks about.
-  const reference =
-    input.reference ?? (await allocateReference("REQ", input.unitCode ?? "GEN"));
+  /*
+   * A stem, not a reference.
+   *
+   * The `reference` column is derived from it by trigger and renamed as the
+   * document is approved, so what is sent here is only a starting value.
+   * Allocated now rather than when the dialog opened, so a cancelled draft does
+   * not burn a number and leave a gap somebody asks about.
+   */
+  const stem = input.referenceStem ?? (await allocateStem(input.unitCode ?? "GEN"));
+  const reference = input.reference ?? `REQ-${stem}`;
   const { data, error } = await db
     .from("requisitions")
     .insert({
       reference,
+      reference_stem: stem,
       cost_centre_id: input.costCentreId,
       needed_by: input.neededBy,
       justification: input.justification,
@@ -3787,6 +3795,22 @@ export async function removeProductSupplier(linkId: string): Promise<void> {
  * is burnt if the person changes their mind, which leaves gaps a buyer will
  * ask about.
  */
+/**
+ * Allocate the stem a document keeps for its whole life.
+ *
+ * KIT-260809-001. The prefix is not part of it: the same document is called
+ * REQ-KIT-260809-001 while it is being asked for, PR-KIT-260809-001 once it is
+ * approved, and PO-KIT-260809-001 once it is ordered — and it is the stem
+ * staying put that ties those three together.
+ */
+export async function allocateStem(unit: string): Promise<string> {
+  const { data, error } = await requireSupabase().rpc("next_reference_stem", {
+    p_unit: unit,
+  });
+  if (error) fail("allocateStem", error);
+  return data as string;
+}
+
 export async function allocateReference(
   type: string,
   unit: string,

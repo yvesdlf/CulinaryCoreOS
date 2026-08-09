@@ -59,7 +59,7 @@ import {
   draftOrdersFrom,
   type PurchaseStatus,
 } from "@/engine/purchasing";
-import { nextReferenceLocal, unitCode } from "@/engine/references";
+import { nextReferenceLocal, unitCode, withType } from "@/engine/references";
 import {
   fetchRequisitions,
   fetchPurchaseOrders,
@@ -1104,9 +1104,17 @@ function RaiseOrdersDialog({
     try {
       let refs = [...existingReferences];
       for (const draft of orderable) {
-        // The order inherits the requisition's unit, so a kitchen requisition
-        // becomes a kitchen purchase order and the pair can be found together.
-        const reference = await allocateReference("PO", requisitionUnit);
+        /*
+         * The order takes its requisition's stem, so PO-KIT-260809-001 is
+         * literally the same document as the REQ that authorised it.
+         *
+         * Assigned by trigger, which also adds -2, -3 where one requisition
+         * splits across suppliers. What is sent here is a placeholder the
+         * database overwrites — allocating a number from the PO counter would
+         * burn one for a value that is thrown away.
+         */
+        const reference =
+          withType(requisition.reference, "PO") ?? `PO-${requisitionUnit}`;
         refs = [...refs, reference];
         await createPurchaseOrder({
           reference,

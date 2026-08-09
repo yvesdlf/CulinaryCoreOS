@@ -28,10 +28,11 @@
 // ---------------------------------------------------------------------------
 
 /** Document types that carry a reference. */
-export type DocumentType = "REQ" | "PO" | "GRN" | "INV" | "RFQ" | "HR";
+export type DocumentType = "REQ" | "PR" | "PO" | "GRN" | "INV" | "RFQ" | "HR";
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   REQ: "Requisition",
+  PR: "Purchase request",
   PO: "Purchase order",
   GRN: "Goods received",
   INV: "Supplier invoice",
@@ -45,6 +46,35 @@ export interface ReferenceParts {
   /** The date the document was raised, as yymmdd. */
   yymmdd: string;
   sequence: number;
+  /**
+   * Which order of a split requisition this is, where there was a split.
+   *
+   * A requisition covering three suppliers becomes three orders, and they
+   * cannot share one number. The first keeps the bare stem; the rest take 2, 3.
+   *
+   * Optional when formatting — most documents never split, and requiring it
+   * everywhere would be noise at every call site.
+   */
+  split?: number | null;
+}
+
+/**
+ * The part that belongs to the document rather than to its current standing.
+ *
+ * KIT-260809-001 out of REQ-KIT-260809-001. This is what stays put while the
+ * prefix moves from REQ to PR to PO, and what ties an order back to the
+ * requisition it came from by eye rather than by join.
+ */
+export function referenceStem(ref: string): string | null {
+  const parts = parseReference(ref);
+  if (!parts) return null;
+  return `${parts.unit}-${parts.yymmdd}-${String(parts.sequence).padStart(3, "0")}`;
+}
+
+/** The same document, under the name its new standing gives it. */
+export function withType(ref: string, type: DocumentType | string): string | null {
+  const stem = referenceStem(ref);
+  return stem ? `${type}-${stem}` : null;
 }
 
 /**
@@ -74,17 +104,22 @@ export function formatReference(parts: ReferenceParts): string {
   // Past that it widens rather than wrapping — a duplicate reference is worse
   // than an ugly one, and the unique index would refuse it anyway.
   const seq = String(parts.sequence).padStart(3, "0");
-  return `${parts.type}-${parts.unit}-${parts.yymmdd}-${seq}`;
+  const split = parts.split && parts.split > 1 ? `-${parts.split}` : "";
+  return `${parts.type}-${parts.unit}-${parts.yymmdd}-${seq}${split}`;
 }
 
-const REFERENCE_PATTERN = /^([A-Z]{2,4})-([A-Z0-9]{2,4})-(\d{6})-(\d{3,})$/;
+const REFERENCE_PATTERN = /^([A-Z]{2,4})-([A-Z0-9]{2,4})-(\d{6})-(\d{3,})(?:-(\d+))?$/;
 /** The scheme this replaced. Kept so old documents still parse. */
 const LEGACY_PATTERN = /^([A-Z]{2,4})-(\d{4})-(\d{3,})$/;
 
 export function parseReference(ref: string): ReferenceParts | null {
   const m = REFERENCE_PATTERN.exec(ref.trim().toUpperCase());
   if (!m) return null;
-  return { type: m[1], unit: m[2], yymmdd: m[3], sequence: Number(m[4]) };
+  return {
+    type: m[1], unit: m[2], yymmdd: m[3],
+    sequence: Number(m[4]),
+    split: m[5] ? Number(m[5]) : null,
+  };
 }
 
 /**
@@ -131,7 +166,7 @@ export function nextReferenceLocal(
     if (parts.type !== type || parts.unit !== unit || parts.yymmdd !== day) return max;
     return Math.max(max, parts.sequence);
   }, 0);
-  return formatReference({ type, unit, yymmdd: day, sequence: highest + 1 });
+  return formatReference({ type, unit, yymmdd: day, sequence: highest + 1, split: null });
 }
 
 /**
@@ -146,4 +181,22 @@ export function nextReferenceLocal(
 export function unitFromReference(ref: string | null | undefined): string {
   if (!ref) return "GEN";
   return parseReference(ref)?.unit ?? "GEN";
+}
+
+
+/**
+ * What a requisition is called at its current status.
+ *
+ * It is a request while somebody is writing it or deciding on it. The moment
+ * it is approved it stops being a request from a kitchen and becomes an
+ * authorised purchase request, and its number says so. A rejected or cancelled
+ * one stays a REQ, because it never became anything else.
+ *
+ * Mirrors requisition_prefix() in migration 0048, which is what actually
+ * renames the row. This is for screens that need the label before a round trip.
+ */
+export function prefixForRequisitionStatus(status: string): "REQ" | "PR" {
+  return ["DRAFT", "SUBMITTED", "REJECTED", "CANCELLED"].includes(status)
+    ? "REQ"
+    : "PR";
 }

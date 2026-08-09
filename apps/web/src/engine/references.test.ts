@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   unitCode, yymmdd, formatReference, parseReference,
   isLegacyReference, referenceDate, nextReferenceLocal,
+  referenceStem, withType, prefixForRequisitionStatus,
 } from "./references";
 
 /**
@@ -80,13 +81,13 @@ describe("parseReference", () => {
   it("reads back what it wrote", () => {
     const ref = formatReference({ type: "REQ", unit: "KIT", yymmdd: "260809", sequence: 2 });
     expect(parseReference(ref)).toEqual({
-      type: "REQ", unit: "KIT", yymmdd: "260809", sequence: 2,
+      type: "REQ", unit: "KIT", yymmdd: "260809", sequence: 2, split: null,
     });
   });
 
   it("handles a two-letter unit", () => {
     expect(parseReference("PO-IT-260809-014")).toEqual({
-      type: "PO", unit: "IT", yymmdd: "260809", sequence: 14,
+      type: "PO", unit: "IT", yymmdd: "260809", sequence: 14, split: null,
     });
   });
 
@@ -99,6 +100,64 @@ describe("parseReference", () => {
   it("tolerates lower case and surrounding space", () => {
     // Somebody types a reference into a search box off a printed sheet.
     expect(parseReference("  req-kit-260809-002  ")?.sequence).toBe(2);
+  });
+});
+
+describe("one document, three names", () => {
+  it("keeps the stem while the prefix moves", () => {
+    // REQ-KIT-260809-001 -> PR-KIT-260809-001 -> PO-KIT-260809-001.
+    // The stem is what ties the order back to the request that authorised it.
+    const raised = "REQ-KIT-260809-001";
+    expect(referenceStem(raised)).toBe("KIT-260809-001");
+    expect(withType(raised, "PR")).toBe("PR-KIT-260809-001");
+    expect(withType(withType(raised, "PR")!, "PO")).toBe("PO-KIT-260809-001");
+  });
+
+  it("gives every stage the same stem", () => {
+    const stems = ["REQ-KIT-260809-007", "PR-KIT-260809-007", "PO-KIT-260809-007"]
+      .map(referenceStem);
+    expect(new Set(stems).size).toBe(1);
+  });
+
+  it("names a requisition by its status", () => {
+    expect(prefixForRequisitionStatus("DRAFT")).toBe("REQ");
+    expect(prefixForRequisitionStatus("SUBMITTED")).toBe("REQ");
+    expect(prefixForRequisitionStatus("APPROVED")).toBe("PR");
+    expect(prefixForRequisitionStatus("ORDERED")).toBe("PR");
+  });
+
+  it("leaves a refused requisition a requisition", () => {
+    // It never became a purchase request, so calling it one would misdescribe
+    // what happened.
+    expect(prefixForRequisitionStatus("REJECTED")).toBe("REQ");
+    expect(prefixForRequisitionStatus("CANCELLED")).toBe("REQ");
+  });
+
+  it("returns null for a reference with no stem to take", () => {
+    expect(referenceStem("REQ-2026-0001")).toBeNull();
+    expect(withType("nonsense", "PO")).toBeNull();
+  });
+});
+
+describe("a requisition that splits across suppliers", () => {
+  it("leaves the first order on the bare stem", () => {
+    // The ordinary one-supplier case reads exactly as specified.
+    expect(formatReference({
+      type: "PO", unit: "KIT", yymmdd: "260809", sequence: 1, split: null,
+    })).toBe("PO-KIT-260809-001");
+  });
+
+  it("numbers the rest, keeping the stem", () => {
+    expect(formatReference({
+      type: "PO", unit: "KIT", yymmdd: "260809", sequence: 1, split: 2,
+    })).toBe("PO-KIT-260809-001-2");
+  });
+
+  it("parses a split order back, stem intact", () => {
+    const parts = parseReference("PO-KIT-260809-001-3")!;
+    expect(parts.sequence).toBe(1);
+    expect(parts.split).toBe(3);
+    expect(referenceStem("PO-KIT-260809-001-3")).toBe("KIT-260809-001");
   });
 });
 
