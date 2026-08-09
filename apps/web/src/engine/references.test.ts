@@ -104,13 +104,18 @@ describe("parseReference", () => {
 });
 
 describe("one document, three names", () => {
-  it("keeps the stem while the prefix moves", () => {
-    // REQ-KIT-260809-001 -> PR-KIT-260809-001 -> PO-KIT-260809-001.
-    // The stem is what ties the order back to the request that authorised it.
-    const raised = "REQ-KIT-260809-001";
-    expect(referenceStem(raised)).toBe("KIT-260809-001");
-    expect(withType(raised, "PR")).toBe("PR-KIT-260809-001");
-    expect(withType(withType(raised, "PR")!, "PO")).toBe("PO-KIT-260809-001");
+  it("keeps the number the request was given, all the way to the order", () => {
+    // REQ-KIT-260809-003 -> PR-KIT-260809-003 -> PO-KIT-260809-003.
+    // The number is issued once, when the requisition is raised.
+    const raised = "REQ-KIT-260809-003";
+    expect(referenceStem(raised)).toBe("KIT-260809-003");
+    expect(withType(raised, "PR")).toBe("PR-KIT-260809-003");
+    expect(withType(withType(raised, "PR")!, "PO")).toBe("PO-KIT-260809-003");
+  });
+
+  it("does the same for any unit, at any number", () => {
+    expect(withType("PR-BAR-260809-012", "PO")).toBe("PO-BAR-260809-012");
+    expect(withType("PR-FOH-260809-047", "PO")).toBe("PO-FOH-260809-047");
   });
 
   it("gives every stage the same stem", () => {
@@ -140,15 +145,34 @@ describe("one document, three names", () => {
 });
 
 describe("a requisition that splits across suppliers", () => {
-  it("numbers each order in its unit's own sequence", () => {
-    // Fish, cheese and dry goods from three vendors become three orders
-    // numbered 001, 002, 003 — not one number with a suffix. That gives each
-    // unit 999 orders a day.
+  it("gives the first order the requisition's number and the rest the next ones", () => {
+    // PR-KIT-260809-001 going to three suppliers becomes PO-001 — the rule as
+    // stated — plus 002 and 003 from the same per-unit pool, because three
+    // orders cannot share one number. Allocated by the database; this is what
+    // the results look like.
+    const request = "PR-KIT-260809-001";
     const orders = [1, 2, 3].map((sequence) =>
       formatReference({ type: "PO", unit: "KIT", yymmdd: "260809", sequence }));
+
+    expect(orders[0]).toBe(withType(request, "PO"));
     expect(orders).toEqual([
       "PO-KIT-260809-001", "PO-KIT-260809-002", "PO-KIT-260809-003",
     ]);
+  });
+
+  it("leaves the next request a number the split did not consume", () => {
+    // The counter is shared across the chain, so a split that used 002 and 003
+    // means the next requisition is 004. Reusing one would put two documents
+    // on the same number in a supplier's records.
+    const issued = [
+      "PR-KIT-260809-001", "PO-KIT-260809-001",
+      "PO-KIT-260809-002", "PO-KIT-260809-003",
+    ];
+    const highest = Math.max(...issued.map((r) => parseReference(r)!.sequence));
+    expect(highest).toBe(3);
+    expect(formatReference({
+      type: "REQ", unit: "KIT", yymmdd: "260809", sequence: highest + 1,
+    })).toBe("REQ-KIT-260809-004");
   });
 
   it("never writes the suffix the earlier scheme used", () => {
