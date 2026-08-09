@@ -48,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { allocateReference } from "@/data/repository";
 import { parStatus } from "@/engine/inventory";
 import { toDecimal } from "@/engine/cost-engine";
 import { fetchStockLevels, fetchAllProductSuppliers } from "@/data/repository";
@@ -56,9 +57,9 @@ import {
   canApprove,
   requiredRoleFor,
   draftOrdersFrom,
-  nextReference,
   type PurchaseStatus,
 } from "@/engine/purchasing";
+import { nextReferenceLocal, unitCode } from "@/engine/references";
 import {
   fetchRequisitions,
   fetchPurchaseOrders,
@@ -519,6 +520,7 @@ export function PurchasingPage() {
         <RaiseOrdersDialog
           requisition={ordering}
           suppliers={suppliers}
+          costCentres={costCentres}
           existingReferences={orders.map((o) => o.reference)}
           onClose={() => setOrdering(null)}
           onDone={async () => {
@@ -641,9 +643,21 @@ function NewRequisitionDialog({
     setRows((rs) => [...rs.filter((r) => r.productId), ...added]);
   }
 
+  /*
+   * A preview, not an allocation.
+   *
+   * It shows what the reference will most likely be so the person raising it
+   * can quote the number before saving. The one actually stored is allocated
+   * by the database at save time, and may differ if somebody else saves first
+   * — which is exactly the case that used to produce a duplicate.
+   */
+  const unit = useMemo(
+    () => unitCode(costCentres.find((c) => c.id === costCentreId)?.code),
+    [costCentres, costCentreId],
+  );
   const reference = useMemo(
-    () => nextReference("REQ", existingReferences),
-    [existingReferences],
+    () => nextReferenceLocal("REQ", unit, existingReferences),
+    [existingReferences, unit],
   );
 
   const valid = rows.some(
@@ -663,7 +677,9 @@ function NewRequisitionDialog({
     setBusy(true);
     try {
       await createRequisition({
-        reference,
+        // No reference: the database allocates it, so two people saving at
+        // once get 001 and 002 rather than colliding.
+        unitCode: unit,
         costCentreId: costCentreId || null,
         neededBy: neededBy || null,
         justification: justification.trim() || null,
@@ -1045,12 +1061,15 @@ function DecideDialog({
 function RaiseOrdersDialog({
   requisition,
   suppliers,
+  costCentres,
   existingReferences,
   onClose,
   onDone,
 }: {
   requisition: Requisition;
   suppliers: Supplier[];
+  /** Needed for the unit code the order's reference carries. */
+  costCentres: CostCentre[];
   existingReferences: string[];
   onClose: () => void;
   onDone: () => void | Promise<void>;
@@ -1075,12 +1094,19 @@ function RaiseOrdersDialog({
   const orderable = drafts.filter((d) => d.supplierId !== null);
   const unassigned = drafts.find((d) => d.supplierId === null);
 
+  // The requisition's cost centre is the unit the order belongs to.
+  const requisitionUnit = unitCode(
+    costCentres.find((c) => c.id === requisition.costCentreId)?.code,
+  );
+
   async function raise() {
     setBusy(true);
     try {
       let refs = [...existingReferences];
       for (const draft of orderable) {
-        const reference = nextReference("PO", refs);
+        // The order inherits the requisition's unit, so a kitchen requisition
+        // becomes a kitchen purchase order and the pair can be found together.
+        const reference = await allocateReference("PO", requisitionUnit);
         refs = [...refs, reference];
         await createPurchaseOrder({
           reference,

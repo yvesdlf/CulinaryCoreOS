@@ -1086,18 +1086,25 @@ export async function fetchRequisitions(): Promise<Requisition[]> {
 }
 
 export async function createRequisition(input: {
-  reference: string;
+  /** Optional. Left out, the database allocates one from the cost centre. */
+  reference?: string;
   costCentreId: string | null;
+  /** The unit code for the reference, where the caller knows it. */
+  unitCode?: string;
   neededBy: string | null;
   justification: string | null;
   lines: Omit<RequisitionLineRow, "id" | "lineTotal">[];
 }): Promise<Requisition> {
   const db = requireSupabase();
   const { data: auth } = await db.auth.getUser();
+  // Allocated now rather than when the dialog opened, so a cancelled draft
+  // does not burn a number and leave a gap somebody asks about.
+  const reference =
+    input.reference ?? (await allocateReference("REQ", input.unitCode ?? "GEN"));
   const { data, error } = await db
     .from("requisitions")
     .insert({
-      reference: input.reference,
+      reference,
       cost_centre_id: input.costCentreId,
       needed_by: input.neededBy,
       justification: input.justification,
@@ -3763,4 +3770,31 @@ export async function removeProductSupplier(linkId: string): Promise<void> {
   const { error } = await requireSupabase()
     .from("product_suppliers").delete().eq("id", linkId);
   if (error) fail("removeProductSupplier", error);
+}
+
+// ── Document references ─────────────────────────────────────────────────────
+
+/**
+ * Allocate the next reference for a document type and business unit.
+ *
+ * The number comes from the database, which holds a lock for the duration of
+ * the statement. Computing it in the browser — reading every existing
+ * reference and adding one — gives two people raising a requisition in the
+ * same second the same number, and the unique index refuses the second one at
+ * the moment they are trying to place an order.
+ *
+ * Called at save time, not when a dialog opens. A reference allocated on open
+ * is burnt if the person changes their mind, which leaves gaps a buyer will
+ * ask about.
+ */
+export async function allocateReference(
+  type: string,
+  unit: string,
+): Promise<string> {
+  const { data, error } = await requireSupabase().rpc("next_document_reference", {
+    p_type: type,
+    p_unit: unit,
+  });
+  if (error) fail("allocateReference", error);
+  return data as string;
 }

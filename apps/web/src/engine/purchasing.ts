@@ -235,19 +235,10 @@ export function draftOrdersFrom(lines: RequisitionLine[]): DraftOrder[] {
     );
 }
 
-/** Next reference in a per-year sequence, e.g. REQ-2026-0007. */
-export function nextReference(
-  prefix: string,
-  existing: string[],
-  year = new Date().getFullYear(),
-): string {
-  const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
-  const highest = existing.reduce((max, ref) => {
-    const m = pattern.exec(ref);
-    return m ? Math.max(max, Number(m[1])) : max;
-  }, 0);
-  return `${prefix}-${year}-${String(highest + 1).padStart(4, "0")}`;
-}
+// Reference numbers moved to engine/references.ts when the scheme gained a
+// business unit and a date. The sequence is now allocated by the database,
+// because computing it here raced: two people saving in the same second both
+// read the same list and both produced the same number.
 
 // ── Receiving against an order ──────────────────────────────────────────────
 

@@ -28,7 +28,8 @@ import {
   matchInvoice, exceptionValue, checkBudget,
   type MatchException, type Tolerances, type BudgetPosition,
 } from "@/engine/invoice-matching";
-import { nextReference } from "@/engine/purchasing";
+import { nextReferenceLocal, unitFromReference } from "@/engine/references";
+import { allocateReference } from "@/data/repository";
 import {
   recordGoodsReceipt, createSupplierInvoice, setInvoiceStatus,
   type PurchaseOrder, type GoodsReceiptRow, type SupplierInvoice, type Supplier,
@@ -169,8 +170,16 @@ function ReceiveDialog({
   onClose: () => void;
   onDone: () => void | Promise<void>;
 }) {
+  /*
+   * A preview. The stored reference is allocated by the database on save.
+   *
+   * The unit comes from the order being received against, so a receipt and
+   * the order it settles carry the same three letters and sort together.
+   */
+  const unit = unitFromReference(order.reference);
   const reference = useMemo(
-    () => nextReference("GRN", existingReferences), [existingReferences],
+    () => nextReferenceLocal("GRN", unit, existingReferences),
+    [existingReferences, unit],
   );
   const [deliveryNote, setDeliveryNote] = useState("");
   const [temperature, setTemperature] = useState("");
@@ -204,7 +213,10 @@ function ReceiveDialog({
     setBusy(true);
     try {
       await recordGoodsReceipt({
-        reference,
+        // Allocated now, not when the dialog opened. Two people receiving
+        // different deliveries at the same moment would otherwise both take
+        // the number the preview showed them.
+        reference: await allocateReference("GRN", unit),
         purchaseOrderId: order.id,
         supplierId: order.supplierId,
         deliveryNote: deliveryNote.trim() || null,
@@ -1472,7 +1484,9 @@ function NewRfqDialog({ suppliers, products, existing, onClose, onDone }: {
   products: { id: string; name: string; packing: { totalUnit: string } }[];
   existing: string[]; onClose: () => void; onDone: () => void | Promise<void>;
 }) {
-  const reference = useMemo(() => nextReference("RFQ", existing), [existing]);
+  // A request for quotation is not raised against one unit — it is how a
+  // venue finds out what something costs before deciding who needs it.
+  const reference = useMemo(() => nextReferenceLocal("RFQ", "GEN", existing), [existing]);
   const [title, setTitle] = useState("");
   const [neededBy, setNeededBy] = useState("");
   const [closesAt, setClosesAt] = useState("");
@@ -1565,7 +1579,8 @@ function NewRfqDialog({ suppliers, products, existing, onClose, onDone }: {
             setBusy(true);
             try {
               await createRfq({
-                reference, title: title.trim(),
+                reference: await allocateReference("RFQ", "GEN"),
+                title: title.trim(),
                 neededBy: neededBy || null,
                 closesAt: closesAt ? `${closesAt}T23:59:59Z` : null,
                 lines: rows.filter((r) => r.productId && Number(r.quantity) > 0)
