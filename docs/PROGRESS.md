@@ -6,29 +6,33 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `ec2c054` · CI green (typecheck/unit/build · a11y+keyboard+screen-reader
-against a live database · costing reconciliation) · 179 unit tests · 89 browser
-tests.
+**Head:** `546abcd` · 46 migrations · 424 unit tests · 4 browser spec files ·
+80 tables / 305 policies / 89 functions, rebuilt from empty on 2026-08-08.
+
+> **CI status is unverified from this machine.** `gh` was only installed on
+> 2026-08-08 and is not yet authenticated, so no run has been read since
+> `ec2c054`. Treat the CI claim in older entries as stale rather than green.
 
 ## Where the app stands
 
-CulinaryCoreOS is a working recipe and costing system. It holds the full
-ingredient chain (ingredients -> preparations -> dishes), costs it to five
-decimal places, cascades a price change through everything built on it,
-declares allergens, enforces a recipe approval workflow, and produces the
-printed sheets a kitchen actually uses.
+CulinaryCoreOS is a working hospitality platform, no longer only a costing
+tool. It holds the full ingredient chain (ingredients -> preparations ->
+dishes), costs it to five decimal places, cascades a price change through
+everything built on it, declares allergens, enforces a recipe approval
+workflow, and produces the printed sheets a kitchen uses.
 
-Stock is now tracked against par levels, with receipts, waste and counts
-recorded on an append-only ledger.
+Around that now sit: stock with counts and an append-only ledger; procurement
+end to end from requisition to three-way invoice matching; a vendor portal with
+sealed-bid RFQs; HACCP control sheets a venue can upload its own version of;
+Human Resources with rota, leave, training and exams; a staff portal every
+employee signs in to; and an administration page where per-section access is
+granted and the protected numbers are set.
 
-Expected covers now turn into a prep list and a pull list, with what is
-already on the shelf subtracted.
+The line the whole system is built on: **every control is enforced in the
+database and proved by SQL that tries to break it.** See `AGENTS.md`.
 
-Sales can be imported from a POS export and the menu classified into Stars,
-Plowhorses, Puzzles and Dogs.
-
-Not started: procurement, AI import, reporting, and the wider platform
-modules in DOC1.
+Not started: AI import, the wider reporting suite, and the native shells
+(Capacitor/Tauri) in DOC1.
 
 ## Done
 
@@ -515,6 +519,82 @@ before any test executes looks identical to a test regression.
       receiving, invoice matching, budgets, analytics.
 - [x] Menu engineering with real sales-mix, imported from a POS export.
 - [x] RBAC and user management, in Settings.
+
+### Access control and administration
+- [x] **Per-section access.** Twelve sections, each person set to no access,
+      read only or full edit, enforced by a trigger on every table the section
+      owns rather than by hiding menu items.
+
+      Migration 0036 shipped this with an ownership check that named no
+      organisation. Sign-up creates an organisation and makes the new user its
+      owner, so every user passed it and a member granted READ could write.
+      0037 scoped it. The same hole existed twice in the hiring guard, which
+      made department routing advisory. Both proved by test before and after.
+
+- [x] Protected parameters with bounds and a full change log — target food
+      cost, waste allowances, tax, and the spend above which an order needs an
+      administrator or an owner.
+- [x] Hiring approved by the department that pays for the person, with a named
+      deputy. Self-approval refused.
+- [x] Accounts added by invitation only. Nobody, including an administrator,
+      sets or reads somebody else's password — which is what makes an approval
+      in this system attributable to a person.
+
+### The staff portal
+- [x] **Every member of staff has an account**, and it is deliberately *not* an
+      organisation membership. A portal user is denied by every existing policy
+      by default; access exists only where a migration opens a door keyed to
+      their own employee record. Proved: a commis chef sees 0 products, 0
+      suppliers, 0 orders, 0 HR cases and exactly one employee row — his own.
+- [x] Clock in and out with an optional geofence. A punch from outside is
+      refused by a trigger naming the distance; one with no location is
+      accepted and flagged rather than silently trusted.
+- [x] Inbox for newsletters, rota, training material and policies. Opening
+      marks read; acknowledging is a separate press, because "I opened this"
+      and "I have read and understood this" answer different questions.
+- [x] Exams graded in the database. The questions come from a view that does
+      not select the answers, and there is no policy on `quiz_questions` for a
+      candidate at all — so a score cannot be computed anywhere the candidate
+      can reach. Results go to HR and to the named line manager.
+- [x] Leave applications with a sick-note photograph. Health data under GDPR
+      Article 9, so it is readable by the person and by whoever administers
+      People, and by nobody else. Proved: a colleague sees zero.
+
+### Hygiene
+- [x] **A venue can upload its own HACCP templates** as CSV, with a preview
+      before anything saves and header synonyms so a kitchen's own wording
+      imports.
+- [x] A form carries its own fields and limits, so a chiller log that knows
+      5 °C reports "read 9.2 °C, above its limit of 5 °C" without anybody
+      ticking a box — and the trigger then refuses the record until somebody
+      says what was done about it.
+
+### Inventory
+- [x] **Periodic count sheets** download as CSV and upload back filled in. The
+      sheet deliberately carries no expected quantity: a person who can see
+      "expected 4" writes 4, and a test asserts the rendered sheet contains no
+      stock figure so the column cannot be added back by accident.
+- [x] A blank on a returned sheet is skipped, not zeroed.
+
+### Products and purchasing
+- [x] **Nutrition and allergens looked up from a product's name.** It proposes,
+      never asserts: allergens always arrive with the product marked unverified,
+      and silence is never turned into a free-from claim.
+- [x] **A product can be bought from more than one supplier**, with each
+      vendor's code, pack size, price and lead time, ranked on cost per unit
+      derived by the database. Preference and price are kept apart — the screen
+      says when you are ordering from the dearer one and does not reorder.
+- [x] Ordering narrowed by supplier or by product category, with one button to
+      add everything at or below its reorder point.
+
+### Known gaps
+- [ ] CI unread since `ec2c054`; `gh` newly installed and not authenticated.
+- [ ] Never deployed. `DEPLOY.md` is untested.
+- [ ] `pnpm lint` fails — eslint is not installed.
+- [ ] Realtime sync was built, could not be made to work, and was deliberately
+      reverted rather than shipped. Undiagnosed.
+- [ ] The WhatsApp and email adapters have never made a real network call.
+- [ ] Written-answer marking has schema and no screen.
 
 ## Open questions for the user
 (Updated after competitive analysis pass #1 — see `docs/COMPETITIVE_ANALYSIS.md`)

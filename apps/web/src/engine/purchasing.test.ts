@@ -4,7 +4,6 @@ import {
   canApprove,
   canTransition,
   draftOrdersFrom,
-  nextReference,
   lineProgress,
   statusFromReceipts,
   type ApprovalPolicy,
@@ -194,25 +193,6 @@ describe("splitting a requisition into orders", () => {
       line({ id: "b", suggestedSupplierId: "big", estimatedUnitPrice: "900000" }),
     ]);
     expect(orders[0].supplierId).toBe("big");
-  });
-});
-
-describe("references", () => {
-  it("starts a year at one", () => {
-    expect(nextReference("REQ", [], 2026)).toBe("REQ-2026-0001");
-  });
-
-  it("continues from the highest, not the count", () => {
-    // Deleting a document must not cause the next one to reuse its number.
-    expect(nextReference("REQ", ["REQ-2026-0001", "REQ-2026-0009"], 2026)).toBe(
-      "REQ-2026-0010",
-    );
-  });
-
-  it("ignores other years and other prefixes", () => {
-    expect(
-      nextReference("PO", ["REQ-2026-0099", "PO-2025-0044"], 2026),
-    ).toBe("PO-2026-0001");
   });
 });
 

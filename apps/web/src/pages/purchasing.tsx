@@ -48,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { allocateReference } from "@/data/repository";
 import { parStatus } from "@/engine/inventory";
 import { toDecimal } from "@/engine/cost-engine";
 import { fetchStockLevels, fetchAllProductSuppliers } from "@/data/repository";
@@ -56,9 +57,9 @@ import {
   canApprove,
   requiredRoleFor,
   draftOrdersFrom,
-  nextReference,
   type PurchaseStatus,
 } from "@/engine/purchasing";
+import { nextReferenceLocal, unitCode } from "@/engine/references";
 import {
   fetchRequisitions,
   fetchPurchaseOrders,
@@ -641,9 +642,21 @@ function NewRequisitionDialog({
     setRows((rs) => [...rs.filter((r) => r.productId), ...added]);
   }
 
+  /*
+   * A preview, not an allocation.
+   *
+   * It shows what the reference will most likely be so the person raising it
+   * can quote the number before saving. The one actually stored is allocated
+   * by the database at save time, and may differ if somebody else saves first
+   * — which is exactly the case that used to produce a duplicate.
+   */
+  const unit = useMemo(
+    () => unitCode(costCentres.find((c) => c.id === costCentreId)?.code),
+    [costCentres, costCentreId],
+  );
   const reference = useMemo(
-    () => nextReference("REQ", existingReferences),
-    [existingReferences],
+    () => nextReferenceLocal("REQ", unit, existingReferences),
+    [existingReferences, unit],
   );
 
   const valid = rows.some(
@@ -662,27 +675,59 @@ function NewRequisitionDialog({
   async function submit() {
     setBusy(true);
     try {
-      await createRequisition({
-        reference,
-        costCentreId: costCentreId || null,
-        neededBy: neededBy || null,
-        justification: justification.trim() || null,
-        lines: rows
-          .filter((r) => r.productId && Number(r.quantity) > 0)
-          .map((r, i) => {
-            const product = products.find((p) => p.id === r.productId);
-            return {
-              productId: r.productId,
-              description: product?.name ?? null,
-              quantity: Number(r.quantity),
-              unit: r.unit,
-              estimatedUnitPrice: r.price || product?.cost.grossPricePerUnit || "0",
-              suggestedSupplierId: product?.supplierId ?? null,
-              lineNumber: i + 1,
-            };
-          }),
-      });
-      toast.success(`${reference} created as a draft`);
+      const chosen = rows
+        .filter((r) => r.productId && Number(r.quantity) > 0)
+        .map((r) => {
+          const product = products.find((p) => p.id === r.productId);
+          return {
+            productId: r.productId,
+            description: product?.name ?? null,
+            quantity: Number(r.quantity),
+            unit: r.unit,
+            estimatedUnitPrice: r.price || product?.cost.grossPricePerUnit || "0",
+            suggestedSupplierId: product?.supplierId ?? null,
+          };
+        });
+
+      /*
+       * One request per supplier.
+       *
+       * A request that covered three suppliers used to become three orders,
+       * and then the three orders needed numbers that the one request could
+       * not give them. Splitting here instead means every request has exactly
+       * one order, one delivery and one invoice, all carrying its number
+       * through to payment.
+       *
+       * Lines with no supplier yet go together into their own request — that
+       * is a real pile that needs a decision, not an error to refuse.
+       */
+      const bySupplier = new Map<string | null, typeof chosen>();
+      for (const line of chosen) {
+        const key = line.suggestedSupplierId;
+        bySupplier.set(key, [...(bySupplier.get(key) ?? []), line]);
+      }
+
+      for (const [, group] of bySupplier) {
+        await createRequisition({
+          // No reference: the database allocates it, so two people saving at
+          // once get 001 and 002 rather than colliding.
+          unitCode: unit,
+          costCentreId: costCentreId || null,
+          neededBy: neededBy || null,
+          justification: justification.trim() || null,
+          lines: group.map((l, i) => ({ ...l, lineNumber: i + 1 })),
+        });
+      }
+
+      const n = bySupplier.size;
+      toast.success(
+        n === 1
+          ? "Requisition created as a draft"
+          : `${n} requisitions created, one per supplier`,
+        n > 1
+          ? { description: "Each becomes one order, so its number follows through to the invoice." }
+          : undefined,
+      );
       await onCreated();
     } catch (err) {
       toast.error("Could not create the requisition", {
@@ -1075,12 +1120,21 @@ function RaiseOrdersDialog({
   const orderable = drafts.filter((d) => d.supplierId !== null);
   const unassigned = drafts.find((d) => d.supplierId === null);
 
+
   async function raise() {
     setBusy(true);
     try {
       let refs = [...existingReferences];
       for (const draft of orderable) {
-        const reference = nextReference("PO", refs);
+        /*
+         * Left empty on purpose: the database numbers the order.
+         *
+         * It takes the next number in its unit's own daily sequence, so a
+         * requisition split across three suppliers becomes 001, 002 and 003.
+         * Working that out here would race with anybody else ordering for the
+         * same unit, and would be overwritten regardless.
+         */
+        const reference = "";
         refs = [...refs, reference];
         await createPurchaseOrder({
           reference,

@@ -20,7 +20,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Clock, CalendarDays, GraduationCap, Inbox, LogOut, MapPin,
+  Clock, CalendarDays, GraduationCap, Inbox, LogOut, MapPin, House,
   Check, TriangleAlert, Paperclip, FileText, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,10 +42,13 @@ import {
   fetchMyProfile, fetchMyDocuments, markDocumentRead, fetchMyTraining,
   fetchMyExam, submitExam, fetchMyShifts, fetchMyOpenPunch, clockIn, clockOut,
   fetchMyLeave, fetchLeaveTypes, requestLeave, signedFileUrl,
+  fetchCalendar, fetchMyRequests, fetchBoardPosts,
+  type CalendarEntry, type StaffRequest, type BoardPost,
   type MyProfile, type MyDocument, type MyTraining, type MyExamQuestion,
   type MyShift, type MyLeave, type ExamResult,
 } from "@/data/repository";
 import type { LeaveType } from "@/engine/people";
+import { PortalHome } from "@/components/portal/home";
 import { useAuthStore } from "@/stores/auth-store";
 
 const KIND_LABEL: Record<string, string> = {
@@ -87,6 +90,10 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
   const [reading, setReading] = useState<MyDocument | null>(null);
   const [sitting, setSitting] = useState<MyTraining | null>(null);
   const [applying, setApplying] = useState(false);
+  const [calendar, setCalendar] = useState<CalendarEntry[]>([]);
+  const [requests, setRequests] = useState<StaffRequest[]>([]);
+  const [board, setBoard] = useState<BoardPost[]>([]);
+  const [tab, setTab] = useState("home");
 
   async function load() {
     setLoading(true);
@@ -97,6 +104,20 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
       ]);
       setDocuments(d); setTraining(t); setShifts(s);
       setLeave(l); setLeaveTypes(lt); setOpenPunch(p);
+
+      /*
+       * The home screen's own data, fetched separately and allowed to fail.
+       *
+       * A venue with no holidays entered and nothing on the board should still
+       * get a working portal — losing "coming up" is not a reason to show an
+       * error where somebody's rota should be.
+       */
+      const [cal, reqs, posts] = await Promise.all([
+        fetchCalendar().catch(() => []),
+        fetchMyRequests().catch(() => []),
+        fetchBoardPosts().catch(() => []),
+      ]);
+      setCalendar(cal); setRequests(reqs); setBoard(posts);
     } catch (err) {
       toast.error("Could not load your details", {
         description: err instanceof Error ? err.message : String(err),
@@ -105,11 +126,6 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
   }
 
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-
-  const unread = documents.filter((d) => !d.readAt);
-  const toAcknowledge = documents.filter((d) => d.requiresAcknowledgement && !d.acknowledgedAt);
-  const outstanding = training.filter((t) => !t.completedOn);
-  const nextShift = shifts.find((s) => new Date(s.endsAt) > new Date());
 
   async function punch() {
     setPunching(true);
@@ -154,44 +170,15 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
         </Button>
       </header>
 
-      {/* Clocking leads, because it is the thing done most and the thing done
-          in a hurry. */}
-      <Card className={openPunch ? "border-primary" : undefined}>
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 py-5">
-          <div>
-            <p className="font-medium">
-              {openPunch ? "You are clocked in" : "You are not clocked in"}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {openPunch
-                ? `Since ${new Date(openPunch.clockInAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                : nextShift
-                  ? `Next shift ${new Date(nextShift.startsAt).toLocaleString([], {
-                      weekday: "short", hour: "2-digit", minute: "2-digit",
-                    })}`
-                  : "No shift scheduled."}
-            </p>
-          </div>
-          <Button size="lg" disabled={punching} onClick={() => void punch()}>
-            {punching ? <Loader2 className="animate-spin" aria-hidden="true" />
-              : <Clock aria-hidden="true" />}
-            {openPunch ? "Clock out" : "Clock in"}
-          </Button>
-        </CardContent>
-      </Card>
 
-      {(unread.length > 0 || toAcknowledge.length > 0 || outstanding.length > 0) && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Stat label="Unread" value={unread.length} icon={Inbox} />
-          <Stat label="To acknowledge" value={toAcknowledge.length} icon={Check}
-            warn={toAcknowledge.length > 0} />
-          <Stat label="Training outstanding" value={outstanding.length} icon={GraduationCap}
-            warn={outstanding.length > 0} />
-        </div>
-      )}
 
-      <Tabs defaultValue="inbox" className="mt-6">
+
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v ?? "home")} className="mt-6">
         <TabsList>
+          <TabsTrigger value="home">
+            <House aria-hidden="true" /> Home
+          </TabsTrigger>
           <TabsTrigger value="inbox">
             <Inbox aria-hidden="true" /> Inbox ({documents.length})
           </TabsTrigger>
@@ -203,6 +190,30 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
           </TabsTrigger>
           <TabsTrigger value="leave">Leave ({leave.length})</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="home" className="mt-4">
+          <PortalHome
+            profile={profile}
+            documents={documents}
+            training={training}
+            shifts={shifts}
+            leave={leave}
+            leaveTypes={leaveTypes}
+            calendar={calendar}
+            requests={requests}
+            board={board}
+            openPunch={openPunch}
+            punching={punching}
+            /* Approvals are a manager's view and are not built yet; the
+               section appears the moment there is something to put in it. */
+            toApprove={[]}
+            onPunch={() => void punch()}
+            onOpenTab={setTab}
+            onRequestLeave={() => setApplying(true)}
+            onNewRequest={() => setApplying(true)}
+            onOpenDocument={setReading}
+          />
+        </TabsContent>
 
         <TabsContent value="inbox" className="mt-4 space-y-2">
           {loading ? (
@@ -348,22 +359,6 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
         onDone={load}
       />
     </div>
-  );
-}
-
-function Stat({ label, value, icon: Icon, warn }: {
-  label: string; value: number; icon: typeof Inbox; warn?: boolean;
-}) {
-  return (
-    <Card className={warn && value > 0 ? "border-status-warning/50" : undefined}>
-      <CardContent className="flex items-center gap-3 py-4">
-        <Icon className="size-5 text-muted-foreground" aria-hidden="true" />
-        <div>
-          <p className="text-xl font-semibold tabular-nums">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 

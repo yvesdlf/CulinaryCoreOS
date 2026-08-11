@@ -1086,18 +1086,33 @@ export async function fetchRequisitions(): Promise<Requisition[]> {
 }
 
 export async function createRequisition(input: {
-  reference: string;
+  /** Optional. Left out, the database allocates a stem from the cost centre. */
+  reference?: string;
+  referenceStem?: string;
   costCentreId: string | null;
+  /** The unit code for the reference, where the caller knows it. */
+  unitCode?: string;
   neededBy: string | null;
   justification: string | null;
   lines: Omit<RequisitionLineRow, "id" | "lineTotal">[];
 }): Promise<Requisition> {
   const db = requireSupabase();
   const { data: auth } = await db.auth.getUser();
+  /*
+   * A stem, not a reference.
+   *
+   * The `reference` column is derived from it by trigger and renamed as the
+   * document is approved, so what is sent here is only a starting value.
+   * Allocated now rather than when the dialog opened, so a cancelled draft does
+   * not burn a number and leave a gap somebody asks about.
+   */
+  const stem = input.referenceStem ?? (await allocateStem(input.unitCode ?? "GEN"));
+  const reference = input.reference ?? `REQ-${stem}`;
   const { data, error } = await db
     .from("requisitions")
     .insert({
-      reference: input.reference,
+      reference,
+      reference_stem: stem,
       cost_centre_id: input.costCentreId,
       needed_by: input.neededBy,
       justification: input.justification,
@@ -3763,4 +3778,243 @@ export async function removeProductSupplier(linkId: string): Promise<void> {
   const { error } = await requireSupabase()
     .from("product_suppliers").delete().eq("id", linkId);
   if (error) fail("removeProductSupplier", error);
+}
+
+// ── Document references ─────────────────────────────────────────────────────
+
+/**
+ * Allocate the next reference for a document type and business unit.
+ *
+ * The number comes from the database, which holds a lock for the duration of
+ * the statement. Computing it in the browser — reading every existing
+ * reference and adding one — gives two people raising a requisition in the
+ * same second the same number, and the unique index refuses the second one at
+ * the moment they are trying to place an order.
+ *
+ * Called at save time, not when a dialog opens. A reference allocated on open
+ * is burnt if the person changes their mind, which leaves gaps a buyer will
+ * ask about.
+ */
+/**
+ * Allocate the stem a document keeps for its whole life.
+ *
+ * KIT-260809-001. The prefix is not part of it: the same document is called
+ * REQ-KIT-260809-001 while it is being asked for, PR-KIT-260809-001 once it is
+ * approved, and PO-KIT-260809-001 once it is ordered — and it is the stem
+ * staying put that ties those three together.
+ */
+export async function allocateStem(unit: string): Promise<string> {
+  const { data, error } = await requireSupabase().rpc("next_reference_stem", {
+    p_unit: unit,
+  });
+  if (error) fail("allocateStem", error);
+  return data as string;
+}
+
+export async function allocateReference(
+  type: string,
+  unit: string,
+): Promise<string> {
+  const { data, error } = await requireSupabase().rpc("next_document_reference", {
+    p_type: type,
+    p_unit: unit,
+  });
+  if (error) fail("allocateReference", error);
+  return data as string;
+}
+
+// ── The HR home screen ──────────────────────────────────────────────────────
+
+export interface CalendarEntry {
+  kind: "HOLIDAY" | "BIRTHDAY" | "LEAVE";
+  onDate: string;
+  title: string;
+  detail: string | null;
+  employeeId: string | null;
+}
+
+/**
+ * Holidays, birthdays and approved leave, merged by the database.
+ *
+ * One query rather than three because a calendar wants one list in date order,
+ * and three lists merged in the browser is three chances to sort them
+ * differently.
+ */
+export async function fetchCalendar(): Promise<CalendarEntry[]> {
+  const { data, error } = await requireSupabase()
+    .from("venue_calendar").select("*").order("on_date");
+  if (error) fail("fetchCalendar", error);
+  return (data ?? []).map((r: any) => ({
+    kind: r.kind, onDate: r.on_date, title: r.title,
+    detail: r.detail || null, employeeId: r.employee_id ?? null,
+  }));
+}
+
+export interface PublicHoliday {
+  id: string; name: string; holidayOn: string; closed: boolean; note: string | null;
+}
+
+export async function fetchPublicHolidays(): Promise<PublicHoliday[]> {
+  const { data, error } = await requireSupabase()
+    .from("public_holidays").select("*").order("holiday_on");
+  if (error) fail("fetchPublicHolidays", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, name: r.name, holidayOn: r.holiday_on,
+    closed: Boolean(r.closed), note: r.note ?? null,
+  }));
+}
+
+export type StaffRequestKind =
+  | "SHIFT_CHANGE" | "LOAN" | "FINAL_EXIT" | "DOCUMENT_LETTER"
+  | "EXPENSE_CLAIM" | "OTHER";
+
+export interface StaffRequest {
+  id: string;
+  employeeId: string;
+  kind: StaffRequestKind;
+  subject: string;
+  detail: string | null;
+  fields: Record<string, unknown>;
+  status: string;
+  decidedByEmail: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+}
+
+function staffRequestFromRow(r: any): StaffRequest {
+  return {
+    id: r.id, employeeId: r.employee_id, kind: r.kind, subject: r.subject,
+    detail: r.detail ?? null,
+    fields: (r.fields && typeof r.fields === "object" ? r.fields : {}) as Record<string, unknown>,
+    status: r.status, decidedByEmail: r.decided_by_email ?? null,
+    decisionNote: r.decision_note ?? null, createdAt: r.created_at,
+  };
+}
+
+export async function fetchMyRequests(): Promise<StaffRequest[]> {
+  const { data, error } = await requireSupabase()
+    .from("staff_requests").select("*").order("created_at", { ascending: false });
+  if (error) fail("fetchMyRequests", error);
+  return (data ?? []).map(staffRequestFromRow);
+}
+
+export async function raiseStaffRequest(input: {
+  employeeId: string;
+  orgId: string;
+  kind: StaffRequestKind;
+  subject: string;
+  detail: string | null;
+  fields: Record<string, unknown>;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("staff_requests").insert({
+    org_id: input.orgId,
+    employee_id: input.employeeId,
+    kind: input.kind,
+    subject: input.subject,
+    detail: input.detail,
+    fields: input.fields,
+    status: "SUBMITTED",
+  });
+  if (error) fail("raiseStaffRequest", error);
+}
+
+/**
+ * Decide somebody else's request.
+ *
+ * `decided_by_email` is deliberately not sent. The database records the caller,
+ * and anything sent here would be discarded — see migration 0054, where a
+ * client-supplied address let a decision be filed under the employee's own
+ * name.
+ */
+export async function decideStaffRequest(
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  note: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("staff_requests")
+    .update({ status, decision_note: note })
+    .eq("id", id);
+  if (error) fail("decideStaffRequest", error);
+}
+
+export type BoardPostKind = "FOR_SALE" | "WANTED" | "EVENT" | "NOTICE";
+
+export interface BoardPost {
+  id: string;
+  employeeId: string;
+  kind: BoardPostKind;
+  title: string;
+  body: string | null;
+  price: number | null;
+  contact: string | null;
+  eventOn: string | null;
+  status: string;
+  approvedByEmail: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+}
+
+function boardPostFromRow(r: any): BoardPost {
+  return {
+    id: r.id, employeeId: r.employee_id, kind: r.kind, title: r.title,
+    body: r.body ?? null,
+    price: r.price === null || r.price === undefined ? null : Number(r.price),
+    contact: r.contact ?? null, eventOn: r.event_on ?? null,
+    status: r.status, approvedByEmail: r.approved_by_email ?? null,
+    decisionNote: r.decision_note ?? null, createdAt: r.created_at,
+  };
+}
+
+export async function fetchBoardPosts(): Promise<BoardPost[]> {
+  const { data, error } = await requireSupabase()
+    .from("board_posts").select("*").order("created_at", { ascending: false });
+  if (error) fail("fetchBoardPosts", error);
+  return (data ?? []).map(boardPostFromRow);
+}
+
+/**
+ * Put something on the board.
+ *
+ * Status is not sent: the database forces PENDING on insert whatever a client
+ * asks for, because a board that published first and moderated later would put
+ * a colleague's phone number in front of the venue before anybody read it.
+ */
+export async function createBoardPost(input: {
+  employeeId: string;
+  orgId: string;
+  kind: BoardPostKind;
+  title: string;
+  body: string | null;
+  price: number | null;
+  contact: string | null;
+  eventOn: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("board_posts").insert({
+    org_id: input.orgId,
+    employee_id: input.employeeId,
+    kind: input.kind,
+    title: input.title,
+    body: input.body,
+    price: input.price,
+    contact: input.contact,
+    event_on: input.eventOn,
+  });
+  if (error) fail("createBoardPost", error);
+}
+
+export async function moderateBoardPost(
+  id: string,
+  status: "PUBLISHED" | "REJECTED",
+  note: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("board_posts")
+    .update({ status, decision_note: note })
+    .eq("id", id);
+  if (error) fail("moderateBoardPost", error);
+}
+
+export async function withdrawBoardPost(id: string): Promise<void> {
+  const { error } = await requireSupabase().from("board_posts")
+    .update({ status: "WITHDRAWN" }).eq("id", id);
+  if (error) fail("withdrawBoardPost", error);
 }
