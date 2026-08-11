@@ -3822,3 +3822,199 @@ export async function allocateReference(
   if (error) fail("allocateReference", error);
   return data as string;
 }
+
+// ── The HR home screen ──────────────────────────────────────────────────────
+
+export interface CalendarEntry {
+  kind: "HOLIDAY" | "BIRTHDAY" | "LEAVE";
+  onDate: string;
+  title: string;
+  detail: string | null;
+  employeeId: string | null;
+}
+
+/**
+ * Holidays, birthdays and approved leave, merged by the database.
+ *
+ * One query rather than three because a calendar wants one list in date order,
+ * and three lists merged in the browser is three chances to sort them
+ * differently.
+ */
+export async function fetchCalendar(): Promise<CalendarEntry[]> {
+  const { data, error } = await requireSupabase()
+    .from("venue_calendar").select("*").order("on_date");
+  if (error) fail("fetchCalendar", error);
+  return (data ?? []).map((r: any) => ({
+    kind: r.kind, onDate: r.on_date, title: r.title,
+    detail: r.detail || null, employeeId: r.employee_id ?? null,
+  }));
+}
+
+export interface PublicHoliday {
+  id: string; name: string; holidayOn: string; closed: boolean; note: string | null;
+}
+
+export async function fetchPublicHolidays(): Promise<PublicHoliday[]> {
+  const { data, error } = await requireSupabase()
+    .from("public_holidays").select("*").order("holiday_on");
+  if (error) fail("fetchPublicHolidays", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, name: r.name, holidayOn: r.holiday_on,
+    closed: Boolean(r.closed), note: r.note ?? null,
+  }));
+}
+
+export type StaffRequestKind =
+  | "SHIFT_CHANGE" | "LOAN" | "FINAL_EXIT" | "DOCUMENT_LETTER"
+  | "EXPENSE_CLAIM" | "OTHER";
+
+export interface StaffRequest {
+  id: string;
+  employeeId: string;
+  kind: StaffRequestKind;
+  subject: string;
+  detail: string | null;
+  fields: Record<string, unknown>;
+  status: string;
+  decidedByEmail: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+}
+
+function staffRequestFromRow(r: any): StaffRequest {
+  return {
+    id: r.id, employeeId: r.employee_id, kind: r.kind, subject: r.subject,
+    detail: r.detail ?? null,
+    fields: (r.fields && typeof r.fields === "object" ? r.fields : {}) as Record<string, unknown>,
+    status: r.status, decidedByEmail: r.decided_by_email ?? null,
+    decisionNote: r.decision_note ?? null, createdAt: r.created_at,
+  };
+}
+
+export async function fetchMyRequests(): Promise<StaffRequest[]> {
+  const { data, error } = await requireSupabase()
+    .from("staff_requests").select("*").order("created_at", { ascending: false });
+  if (error) fail("fetchMyRequests", error);
+  return (data ?? []).map(staffRequestFromRow);
+}
+
+export async function raiseStaffRequest(input: {
+  employeeId: string;
+  orgId: string;
+  kind: StaffRequestKind;
+  subject: string;
+  detail: string | null;
+  fields: Record<string, unknown>;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("staff_requests").insert({
+    org_id: input.orgId,
+    employee_id: input.employeeId,
+    kind: input.kind,
+    subject: input.subject,
+    detail: input.detail,
+    fields: input.fields,
+    status: "SUBMITTED",
+  });
+  if (error) fail("raiseStaffRequest", error);
+}
+
+/**
+ * Decide somebody else's request.
+ *
+ * `decided_by_email` is deliberately not sent. The database records the caller,
+ * and anything sent here would be discarded — see migration 0054, where a
+ * client-supplied address let a decision be filed under the employee's own
+ * name.
+ */
+export async function decideStaffRequest(
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  note: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("staff_requests")
+    .update({ status, decision_note: note })
+    .eq("id", id);
+  if (error) fail("decideStaffRequest", error);
+}
+
+export type BoardPostKind = "FOR_SALE" | "WANTED" | "EVENT" | "NOTICE";
+
+export interface BoardPost {
+  id: string;
+  employeeId: string;
+  kind: BoardPostKind;
+  title: string;
+  body: string | null;
+  price: number | null;
+  contact: string | null;
+  eventOn: string | null;
+  status: string;
+  approvedByEmail: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+}
+
+function boardPostFromRow(r: any): BoardPost {
+  return {
+    id: r.id, employeeId: r.employee_id, kind: r.kind, title: r.title,
+    body: r.body ?? null,
+    price: r.price === null || r.price === undefined ? null : Number(r.price),
+    contact: r.contact ?? null, eventOn: r.event_on ?? null,
+    status: r.status, approvedByEmail: r.approved_by_email ?? null,
+    decisionNote: r.decision_note ?? null, createdAt: r.created_at,
+  };
+}
+
+export async function fetchBoardPosts(): Promise<BoardPost[]> {
+  const { data, error } = await requireSupabase()
+    .from("board_posts").select("*").order("created_at", { ascending: false });
+  if (error) fail("fetchBoardPosts", error);
+  return (data ?? []).map(boardPostFromRow);
+}
+
+/**
+ * Put something on the board.
+ *
+ * Status is not sent: the database forces PENDING on insert whatever a client
+ * asks for, because a board that published first and moderated later would put
+ * a colleague's phone number in front of the venue before anybody read it.
+ */
+export async function createBoardPost(input: {
+  employeeId: string;
+  orgId: string;
+  kind: BoardPostKind;
+  title: string;
+  body: string | null;
+  price: number | null;
+  contact: string | null;
+  eventOn: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("board_posts").insert({
+    org_id: input.orgId,
+    employee_id: input.employeeId,
+    kind: input.kind,
+    title: input.title,
+    body: input.body,
+    price: input.price,
+    contact: input.contact,
+    event_on: input.eventOn,
+  });
+  if (error) fail("createBoardPost", error);
+}
+
+export async function moderateBoardPost(
+  id: string,
+  status: "PUBLISHED" | "REJECTED",
+  note: string | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("board_posts")
+    .update({ status, decision_note: note })
+    .eq("id", id);
+  if (error) fail("moderateBoardPost", error);
+}
+
+export async function withdrawBoardPost(id: string): Promise<void> {
+  const { error } = await requireSupabase().from("board_posts")
+    .update({ status: "WITHDRAWN" }).eq("id", id);
+  if (error) fail("withdrawBoardPost", error);
+}
