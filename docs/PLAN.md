@@ -1,320 +1,268 @@
-# The plan
+# The roadmap
 
-> Rewritten 2026-09-19 at `121153f`. This is the only ordering in the
-> repository — earlier versions of this file, plus the sequencing sections of
-> `PLATFORM.md` and `UI_REVIEW.md`, are folded in here. Three documents each
-> claiming to say what comes next is how they drift apart.
+> Written 2026-09-19 at `6ae2e6f`. This is the only ordering in the
+> repository. `PROGRESS.md` says what exists, `PLATFORM.md` says what shape it
+> should take, `UI_REVIEW.md` is an outside critique of the screens.
 >
-> Companions: `PROGRESS.md` is what exists, `PLATFORM.md` is the shape it
-> should take, `UI_REVIEW.md` is a received critique.
+> Written to be read by whoever is paying for it, not only by whoever is
+> building it. Where a technical name matters it is in brackets.
+>
+> Sizes are rough: **S** a day or two · **M** about a week · **L** two to
+> four weeks. They assume one person working on it.
 
 ---
 
-## 1. The gaps
+## Part A — Every gap, and how it gets closed
 
-Grouped by what kind of thing is missing, because the kinds need different
-treatment. Ordered within each group by consequence.
+Thirty-four things. Nothing is hidden in here; if it is not on this list it is
+either done or nobody has noticed it.
 
-### 1.1 Process — how we know anything still works
+### A1 · Can we trust it to keep working? (Stage 0)
 
-| Gap | Why it matters |
-|---|---|
-| **No repeatable proof of any database control** | Roughly forty triggers carry the system's honesty — segregation of duties, certificate gating, meter resets, room release, sheet capacity, the section grid. Every one was proved once, by hand, in a scratch file nobody kept. CI rebuilds the schema and runs the browser suites and checks none of them. A control nobody re-proves is a control that can be deleted by accident and noticed by an auditor. |
-| `pnpm lint` fails | eslint is not installed. A lint script that cannot run reports green by never reporting. |
-| Never deployed | `DEPLOY.md` has never been executed and is therefore fiction. |
-| `main` is 17 commits behind | Everything lives on one branch and one open PR. |
+| # | What is wrong | What that means in practice | How it gets fixed |
+|---|---|---|---|
+| 1 | **About forty safety rules are never re-checked** | Rules like *you cannot approve your own purchase order*, *you cannot send an uncertified technician to a gas job*, *you cannot mark a room clean while engineering has it open*. Each was tested once, by hand. If somebody breaks one next month, nothing notices until it matters. | Turn each hand-test into an automatic one that runs on every change, alongside the 537 that already do. |
+| 2 | Code style checker not installed | The command exists and fails, so it reports nothing and looks fine. | Install it. |
+| 3 | **Never put online** | It runs on one laptop. No supplier, technician or manager outside the building has ever opened it. | Deploy it. The instructions exist and have never been run, so they are guesswork until they are. |
+| 4 | Work sitting on a side branch | Seventeen commits are on a branch and an open pull request, not on the main line. | Merge it. |
 
-### 1.2 Structure — what stops the platform being a platform
+### A2 · The structure underneath (Stage 1)
 
-| Gap | Why it matters |
-|---|---|
-| **Two organisation trees** | `departments` (HR) and `cost_centres` (money) are separate tables. Three of five departments have no cost centre; one cost centre has no department. Employees and shifts hang off one, orders and budgets off the other, so "what did the bar spend on staff" is unanswerable. |
-| **No unit scope on access** | A section is on or off for the whole venue, so "purchasing sees its own staff" cannot be expressed, and neither can any role narrower than the organisation. |
-| **No department contract** | Adding Security or Bakery today means deciding case by case what they get. See §2. |
-| `repository.ts` is 4.627 lines | 9% of the front end in one file. Not a bug; the clearest structural smell. |
+| # | What is wrong | What that means in practice | How it gets fixed |
+|---|---|---|---|
+| 5 | **Two separate lists of departments** | One list for staff, one for money, and they disagree — three departments have no money code, one money code has no department. So *"what did the bar spend on wages"* cannot be asked at all. | Merge them into one list of business units. Thirteen places refer to them, so it is done carefully and behind its own tests. |
+| 6 | **Permissions are all-or-nothing** | You can give somebody access to "People", but not to "the kitchen's people". So a head chef either manages everybody's staff records or nobody's. | Add *which department* to each permission. Blank means all, so nothing anybody has today stops working. |
+| 7 | **No standard way to add a department** | Adding Security or a bakery is a custom job every time. | Write the recipe once — see Part C. |
+| 8 | One very large file | `repository.ts` is 4.627 lines, 9% of the front end. Not broken, but slow to work in and easy to break. | Split it by area. Mechanical, and the compiler catches mistakes. |
 
-### 1.3 Facts — data that simply is not there
+### A3 · Information the platform simply does not have (Stage 2)
 
-| Gap | Consequence |
-|---|---|
-| **No pay rate** | Hours are recorded, corrected and argued over. Without a rate there is no labour cost, so no unit P&L, so no CFO or CEO view. |
-| **No revenue per unit per day** | Only dish-level `net_sales` on imported POS periods. |
-| **No production completion records** | Blocks theoretical-vs-actual usage, one-step-forward traceability, and PM completion evidence — three items that each look separate and are one. |
-| **No media storage** | No photograph on a fault report, on waste, or on an inspection. |
-| **No occupancy source** | Housekeeping records it by hand and says so on the page. |
+| # | What is wrong | What that means in practice | How it gets fixed |
+|---|---|---|---|
+| 9 | **No pay rates** | Hours are recorded properly — clocked in, clocked out, corrections and all. There is nowhere to put a wage, so there is no labour cost, so there is no profit figure for anything. | Add rates with start dates, so last month stays calculated at last month's rate. **Needs your decision — D1.** |
+| 10 | **No daily takings** | The platform knows what everything cost and nothing about what came in. | Either somebody types the day's takings, or it reads them from the till. **Needs your decision — D2.** |
+| 11 | **No record of what the kitchen actually made** | So *what should have been used* cannot be compared with *what was used* — the number that finds over-portioning, waste and theft. Also blocks tracing a batch forward to the plate. | Record production against the prep list. One job, three problems solved. |
+| 12 | **No photos or video anywhere** | A fault cannot be reported with a picture, waste cannot be evidenced, an inspection cannot be illustrated. | Add file storage, with the same privacy rules as the record it belongs to, and a cap on video length. |
 
-### 1.4 Communication — the platform cannot tell anybody anything
+### A4 · The platform cannot tell anybody anything (Stage 3)
 
-| Gap | State |
-|---|---|
-| **Notifications** | Events are raised by trigger and delivered nowhere. An invitation is not emailed, an approver is never told, an order marked "ordered" transmits nothing. |
-| **Handover** | No shift-to-shift note anywhere. It lives in WhatsApp — exactly where this platform is trying to stop things living. |
-| **Escalation** | A document nobody acts on sits forever. |
-| Adapters unproven | WhatsApp, email and the AI assistant have never made a real network call. |
+| # | What is wrong | What that means in practice | How it gets fixed |
+|---|---|---|---|
+| 13 | **Nothing is ever sent to anyone** | An invitation is not emailed. An approver is never told there is something waiting. An order marked "sent" transmits nothing to the supplier. | The events are already generated internally — they just go nowhere. Build the part that actually sends, email first. |
+| 14 | **No shift handover** | What broke, who is coming, which guest is unhappy — all of it lives in WhatsApp, which is exactly what this is meant to replace. | Build it. Small, and probably the most-used screen in the product. |
+| 15 | **Nothing chases an ignored request** | A request nobody answers sits forever. | Escalate up the department tree after a set time. |
+| 16 | WhatsApp, email and the AI assistant have never connected | All three are written and none has made a single real call. | Prove each against a live account. |
 
-### 1.5 Controls with known holes
+### A5 · Known faults and half-finished things (Stage 5)
 
-Realtime sync built and reverted, undiagnosed. Field-level audit history for
-everything outside the six ledgers. The cascade RPC and the row that triggers
-it are still two requests. No organisation switcher. US allergen profile.
+| # | What is wrong | What that means in practice | How it gets fixed |
+|---|---|---|---|
+| 17 | **Live updating does not work** | A colleague's change does not appear on your screen until you reload. It was built, could not be made to work, and was removed rather than shipped broken. | Retry once it is online — the local setup is the remaining suspect. |
+| 18 | Only six records keep a history | Stock, approvals, recipe status, rooms, work orders, meters. Everything else answers "what is it now", not "who changed this price". | Extend change history to the rest. |
+| 19 | A two-step save that could half-fail | Recalculating everything is safe; the row that triggered it saves separately. | Make it one step. |
+| 20 | No way to switch organisation | Somebody genuinely in two cannot choose. | Add the switcher. |
+| 21 | US allergen list missing | The list is the EU fourteen. A US venue needs a different set. | Add it. |
 
-### 1.6 Reach — capabilities not yet present
+### A6 · Things the platform cannot yet do (Stages 4–5)
 
-Finance beyond a matched invoice: payments, unit P&L, export to an accounting
-package. Menus with sections. A beverage cost basis. Multi-location stock,
-which blocks engineering stores. Stewarding, IT, Front office, Marketing,
-Security, Bakery as units. Hygiene scoped per unit. AI import. Native shells.
+| # | What is missing | What that means in practice | How it gets fixed |
+|---|---|---|---|
+| 22 | **Finance stops at a matched invoice** | Nothing pays it, nothing posts it, nothing produces a profit figure. | Payments, profit per department, and an export to an accounting package rather than building an accounting package. |
+| 23 | **Bar has no pour cost** | A bottle is costed like an ingredient. The gap between 28 measures and what the till says is the whole of beverage control. | Add a second cost basis. Same calculation as #11, built once. |
+| 24 | **Hygiene is kitchen-only** | The bar, housekeeping and stewarding have no forms of their own, though they all have legal obligations. | Scope forms per department, and make a failed check raise an engineering job by itself. |
+| 25 | Only one stock location | A workshop store is not the kitchen store, so engineering spares cannot be held. | Add locations and transfers. |
+| 26 | No menus as a thing | Dishes exist; a menu with sections, its own costing and its own allergen summary does not. | Build it. |
+| 27 | Missing departments | Security, bakery, stewarding, IT, front office, marketing. | If Part C is right, these are data entry, not building. |
+| 28 | Occupancy is typed in | Housekeeping is driven by who is arriving and leaving, and that normally comes from a booking system. | Decide whether to connect to one. **D4.** |
+| 29 | No phone or tablet app | The shells exist and are empty. The first real need is scanning a QR code on a machine. | Build when #12 and #27 land. |
 
-### 1.7 Interface
+### A7 · The screens (Stage 0.5)
 
-`UI_REVIEW.md` in full: flat twenty-item sidebar, eleven tabs on People,
-one-sentence empty states, no role-aware dashboard, density and elevation
-drifted from DOC4.
-
----
-
-## 2. Future-proofing: the department contract
-
-The test for whether the platform is a platform: **can Security, Bakery or a
-Café be added without writing a migration?**
-
-Today, no. The answer is a contract — a written list of what any unit gets for
-free, and the only three places a unit is allowed to differ.
-
-### 2.1 What every unit gets, without code
-
-Once §3 Stage 1 exists, one row in `business_units` buys all of this:
-
-| | From |
-|---|---|
-| Identity, a parent, a manager, a 3-letter code | `business_units` |
-| A cost centre, a budget, approval thresholds | it **is** the cost centre |
-| Its own document numbers — `WO-SEC-260919-001` | the shared sequence, which has abbreviated units since 0047 |
-| People: rota, leave, attendance, certifications, competency | People, scoped |
-| Places it owns, and every asset at them | the location tree |
-| Buying: its own suppliers, requisitions, approvals, receipts, invoices | Purchasing, scoped |
-| Compliance: its own forms and its own overdue list | Hygiene, scoped |
-| The five raise rights, in and out | the document spine |
-| One dashboard tile | rendered from the access grid |
-
-### 2.2 The three places a unit may differ
-
-Everything else is configuration. These three are the only extension points,
-and each is deliberately small.
-
-**a. Its cost basis.** Food cost % for a kitchen, pour cost % for a bar, cost
-per occupied room for housekeeping, cost per cover for service, cost per
-labour hour for security. One pluggable metric per unit: a numerator, a
-denominator, a target. Not a module.
-
-**b. Its own kind of document.** A security incident, a bakery batch, a guest
-complaint. This is the one that would otherwise produce a table per
-department, so it gets a single mechanism — see §2.3.
-
-**c. Its own compliance forms.** Already data: the venue uploads its own HACCP
-sheets today, numbered as its own paperwork numbers them.
-
-### 2.3 One intake, many departments
-
-The platform already has five things that are the same shape wearing different
-names: a work order, a HACCP breach, an HR case, a staff request, a hiring
-request. Each is *something happened or somebody wants something → route it →
-somebody owns it → close it with evidence.*
-
-Rather than a sixth table for security incidents and a seventh for guest
-complaints, build **one report intake**: a type, a raiser, a unit, a place, an
-asset, media, a severity, a routing rule, and an append-only status ledger.
-
-Crucially it is an **intake layer, not a replacement.** A specialised module
-converts a report into its own document — maintenance turns a fault report
-into a work order with an asset and a schedule. The existing modules keep
-everything they have; what they gain is one front door.
-
-With that in place:
-
-- **Security** = a unit + reports of type `INCIDENT` + patrol logs as
-  compliance forms + CCTV in the asset register + a rota. **No new table.**
-- **Bakery** = a unit + preparations with batch yields and production planning,
-  both of which exist + its own HACCP forms + food cost basis. **No new table.**
-- **Café** = a unit; or, if it is the whole business, an organisation with one
-  unit and four capabilities on. **No new table.**
-
-That is the future-proofing, and it is falsifiable: if adding Security needs a
-migration, the model is wrong.
+| # | What is wrong | How it gets fixed |
+|---|---|---|
+| 30 | Sidebar is twenty items in one flat list | Group into six: Today, Culinary, Supply, Operations, People, System. |
+| 31 | Two pages have far too many tabs | People has eleven, Purchasing six. Replace with a side menu inside the page. |
+| 32 | Empty screens say one sentence | Explain what the screen is for, offer the action that fills it, show what it will look like. About fifteen of them. |
+| 33 | No overview screen per role | An owner, a finance manager and a head chef all get the same food-cost page. | One screen that shows what *you* are responsible for — Stage 4. |
+| 34 | Visual polish has drifted | Identical white cards, no hierarchy. The colours and shadows it needs are already defined and unused. | One deliberate pass, one commit. |
 
 ---
 
-## 3. What has to be done, in order
+## Part B — The stages
 
-Each item says what it is and, briefly, how.
+Each stage says what you can do at the end of it that you could not do before.
 
-### Stage 0 — Make the current state defensible (days)
+### Stage 0 · Make it safe to work on — **M**
 
-**0.1 Commit the SQL proofs as a suite, and run them in CI.** *The single most
-valuable item in this document.* Take the ad-hoc proofs written for
-purchasing, HR, maintenance, housekeeping and the section audit, turn them
-into a `supabase/tests/` directory, and run them after `supabase db reset` in
-the job that already exists. Two rules learned the hard way: assert **rows
-changed**, not that no error was raised, and read the row back — an `UPDATE`
-matching nothing raises nothing, and a trigger may silently correct what it
-did not refuse.
+- [ ] Turn the forty hand-tested safety rules into automatic tests *(gap 1)*
+- [ ] Install the code style checker *(2)*
+- [ ] Merge the outstanding branch *(4)*
+- [ ] Put it online for real *(3)*
 
-**0.2 Install eslint.** One dependency.
+**You get:** confidence that nothing already built can break silently, and a
+version other people can actually open. **Nothing here needs a decision.**
 
-**0.3 Merge PR #1.** `main` has not moved since August.
+### Stage 0.5 · Make it feel like a product — **M**, runs alongside Stage 0
 
-**0.4 Deploy.** Nothing downstream — realtime, notifications, mobile, a
-supplier or technician outside the building — can be finished on a laptop.
+- [ ] Group the sidebar *(30)*
+- [ ] Replace the two overloaded tab bars with side menus *(31)*
+- [ ] Rewrite the fifteen empty screens *(32)*
+- [ ] Add venue, date, service and covers to the top bar
+- [ ] Tables: photos, status chips, filters that stay put
+- [ ] The visual pass — background, headers, spacing, shadows *(34)*
 
-### Stage 0.5 — The cheap half of the interface (days, any time)
+**You get:** something you would be comfortable demonstrating.
+**Nothing here needs a decision.**
 
-Independent of everything else, so it can run in parallel and should, because
-it is the part anybody can see. Detail in §4.
+### Stage 1 · One list of departments, and who sees what — **L**
 
-Sidebar grouping · People and Purchasing vertical navigation · empty states ·
-top-bar context · table density and chips · the token pass.
+- [ ] Merge the two department lists into one *(5)*
+- [ ] Add "which department" to permissions *(6)*
+- [ ] Write the add-a-department recipe *(7)* — Part C
+- [ ] Split the oversized file *(8)*
 
-### Stage 1 — The spine (the riskiest work here)
+**You get:** the ability to say "this person manages the kitchen's staff and
+nothing else", the ability to ask what any department spent on anything, and a
+standard way to add the next one. **This is the riskiest work in the plan** and
+is why Stage 0 comes first.
 
-**1.1 `business_units`.** One table that is the department, the cost centre
-and the owner of locations. Thirteen tables of foreign keys. Method: create it,
-backfill from both trees, keep `departments` and `cost_centres` as views until
-every reference has moved, then drop them. It gets its own branch and its own
-proof suite before anything is dropped.
+### Stage 2 · The missing numbers — **M**
 
-**1.2 The scope axis.** `member_scope(person, unit)` beside the existing
-`member_access(person, section, level)`. Read together: the section says what
-kind of thing, the unit says whose. No scope means every unit, never none, so
-no existing grant becomes worthless on the day it ships. Enforced by extending
-`require_section_write` and adding a `unit_visible()` predicate to the policies
-of tables that carry a unit.
+- [ ] Pay rates *(9)* — **needs D1**
+- [ ] Daily takings *(10)* — **needs D2**
+- [ ] Production records *(11)*
+- [ ] Photo and video storage *(12)*
 
-**1.3 The department contract as a function.** `seed_business_unit(org, code,
-capabilities)` — the §2.1 list, created in one call. This is what makes §2
-true rather than aspirational.
+**You get:** profit per department, the used-versus-should-have-used figure,
+and the ability to photograph a fault.
 
-### Stage 2 — The facts (each unblocks several things)
+### Stage 3 · The platform can talk — **L**
 
-**2.1 Pay rates,** with effective dates and a history, in the restricted table
-beside the other personal data — last month's payroll must stay computed at
-last month's rate, the same reasoning that keeps last month's waste valued at
-last month's price. *Subject to the decision in §6.*
+- [ ] Send things by email *(13)*
+- [ ] One front door for reports — see Part C *(and 12)*
+- [ ] Shift handover *(14)*
+- [ ] Chase what nobody answers *(15)*
+- [ ] Prove WhatsApp and the assistant against live accounts *(16)*
 
-**2.2 Revenue per unit per day.** Manual daily takings is a day's work and
-unblocks the entire executive layer; POS integration is the right answer and
-needs a POS named.
+**You get:** an approver who knows there is something waiting, a supplier who
+receives the order, a porter who can photograph a leaking tap and be told when
+it is fixed, and handover that stops living in WhatsApp.
 
-**2.3 Production completion records.** One feature, three items closed:
-theoretical-vs-actual usage, one-step-forward traceability, PM evidence.
+### Stage 4 · Dashboards, and departments as data — **M**
 
-**2.4 Media storage.** A Supabase Storage bucket per organisation, RLS on the
-objects mirroring the parent document's, a hard cap on video length and a
-retention policy. Photographs of a fault are cheap; video is not.
+- [ ] The one overview screen, showing what you are responsible for *(33)*
+- [ ] Hygiene per department, and failed checks raising jobs *(24)*
+- [ ] Bar pour cost *(23)*
+- [ ] Finance: payments and profit per department *(22)*
+- [ ] Add Security, Stewarding, IT, Bakery **as data** *(27)*
 
-### Stage 3 — Communication
+**You get:** the owner's view, the finance view, the chef's view — all the same
+screen, showing different things. And the proof that Part C works.
 
-**3.1 Notifications, email first.** The events already exist and are raised by
-trigger, so this is a worker draining a queue, not new plumbing. WhatsApp
-needs a Meta Business account that does not exist and would still need email
-underneath.
+### Stage 5 · The long tail — ongoing
 
-**3.2 The report intake** (§2.3), starting with fault reporting, which is the
-first thing to need 2.4 and makes 3.1 unavoidable — a report nobody is told
-about is a suggestion box.
-
-**3.3 Handover.** Small, used every shift, and the thing the platform
-currently loses to WhatsApp.
-
-**3.4 Escalation.** What stops 3.2 becoming a pile.
-
-### Stage 4 — One dashboard, rendered from the grid
-
-Not seven dashboards. One component that renders what the person's capability
-× scope says they are accountable for. Depends on 1.2 for scope and on 2.1/2.2
-for anything carrying money. **The general manager view is buildable before
-2.1 and 2.2**; only margin and labour tiles are blocked.
-
-### Stage 5 — Capabilities, as units
-
-Hygiene scoped per unit, and the failed-check-raises-a-job link — the highest
-value cross-module link available. Then Beverage with its pour cost basis,
-Finance, Stewarding, IT, Marketing, Front office. Each should be a
-configuration exercise; each one that is not is a bug in §2.
-
-### Stage 6 — The long tail
-
-Multi-location stock, then engineering stores. Menus with sections. Field-level
-audit. Realtime, on a deployed instance. Organisation switcher. US allergens.
-AI import. Native shells.
+Multi-location stock *(25)* · menus *(26)* · change history everywhere *(18)* ·
+live updating *(17)* · one-step save *(19)* · organisation switcher *(20)* ·
+US allergens *(21)* · phone app *(29)* · booking-system connection *(28)*.
 
 ---
 
-## 4. The interface, and how
+## Part C — How the platform is future-proofed
 
-From `UI_REVIEW.md`, with a method for each. Everything in Stage 0.5 except
-the last line.
+**The test:** adding Security, a bakery or a second café should be filling in a
+form. If it needs a programmer, the design is wrong.
 
-| What | How |
-|---|---|
-| **Sidebar grouped by work area** | Six groups — Today, Culinary, Supply, Operations, People, System. Data change to `navItems`, plus a group header component. Later, filtered by the access grid. |
-| **People and Purchasing: vertical navigation** | Eleven tabs is past what a tab row carries. A left rail inside the page, grouped by purpose — the reviewer's Concept 2. The tab content components do not change. |
-| **Empty states** | A sentence of explanation, one primary action, and a description of what will appear once there is data. There are about fifteen. |
-| **Top-bar context** | Venue, date, service, covers. Covers exist in Production; the venue is the organisation; service is derived from the clock. |
-| **Tables** | Avatars, status chips, sticky filters, a density toggle. The chips already have semantic tokens. |
-| **The token pass** | Warm off-white background, page headers, compact metric cards, elevation from the four DOC4 shadow steps. **One commit.** |
-| **Role-aware dashboard** | Stage 4. Platform work, not visual work. |
+### What a new department gets automatically
 
-Three constraints, repeated here because they decide the cost:
+One entry in the department list, and all of this works without code:
 
-1. **WCAG AA is enforced in CI in both themes.** A background change moves the
-   contrast denominator for every token on every page, and PROGRESS already
-   records tokens tuned against one background only as a defect that shipped.
-2. **The visual snapshots are all invalidated by a restyle.** Do it as one
-   commit whose snapshot diff is reviewed, not accepted.
-3. **Hiding an action is not authorisation.** Role-aware navigation hides for
-   clarity; the database refuses the write regardless.
+- [ ] Its own code, its manager, and where it sits under another department
+- [ ] Its own budget and spending limits — it *is* the money code, not a copy of one
+- [ ] Its own document numbers — `WO-SEC-260919-001` for Security's first job today
+- [ ] Its people: rota, leave, attendance, certificates, training
+- [ ] The places it looks after, and every piece of equipment in them
+- [ ] Its own suppliers, and the full ordering chain through the same approvals
+- [ ] Its own compliance forms and its own list of what is overdue
+- [ ] The ability to raise a request to any other department, and receive theirs
+- [ ] A tile on the overview screen
+- [ ] Permissions that can be limited to it
+
+### The only three things that differ each time
+
+**1. How it measures itself.** Food cost for a kitchen, pour cost for a bar,
+cost per room cleaned, cost per patrol hour. One number over another, against a
+target. Filled in, not built.
+
+**2. Its own kind of paperwork.** A security incident, a bakery batch, a guest
+complaint. This is the one that would otherwise mean building something new
+every time — so it gets **one front door** instead.
+
+The platform already has five things that are the same shape with different
+names: a maintenance job, a hygiene breach, an HR case, a staff request, a
+hiring request. Every one is *something happened, or somebody wants something →
+send it to the right department → somebody owns it → close it with evidence.*
+
+So: one place anybody can raise anything, with a photo, a place and a time,
+and a rule that routes it. It does not replace what exists — Maintenance still
+turns a fault report into a proper job with equipment and a schedule. It just
+means every department shares the same front door.
+
+**3. Its own checks.** Already just data — a venue uploads its own forms today.
+
+### Tested against your three examples
+
+| Department | What it needs | New code? |
+|---|---|---|
+| **Security** | A department, incident reports, patrol logs as forms, CCTV in the equipment list, a rota | **None** |
+| **Bakery** | A department, batch recipes and production planning *(both already exist)*, its own hygiene forms, food cost | **None** |
+| **Café** | A department. Or, if it is a separate business, its own account with one department | **None** |
+
+If any of those turns out to need a migration, Part C is wrong — and it is
+better to find that out at department three than at department eight.
 
 ---
 
-## 5. Why this order
+## Part D — Decisions, and when they are actually needed
 
-The realignment, stated as reasons rather than a list.
+Nothing before Stage 2 needs any of these.
 
-**Proof before features.** Stage 0.1 comes first because everything after it
-adds triggers to a system with no regression test for triggers. Building Stage
-1 on top of forty unproven controls means the migration that merges the org
-trees cannot be shown to have preserved them.
+**D1 · Should the platform know what people are paid?** *(needed for gap 9)*
+Holding rates gives you labour cost and real profit per department. It also
+means the most sensitive data you own sits in it. A middle option — rates used
+only for calculating cost, with actual payroll staying wherever it is now —
+gives the numbers without the platform becoming a payroll system.
 
-**Structure before facts.** Pay rates and revenue are more exciting than
-`business_units`, but attaching money to a cost centre tree that disagrees with
-the department tree means doing it twice.
+**D2 · How does it learn the daily takings?** *(needed for gap 10)*
+Somebody types them, which works within a day of building it. Or it reads them
+from the till, which is better and needs the till system named. Starting with
+typing loses nothing.
 
-**Facts before dashboards.** An executive dashboard drawn over a missing
-labour cost looks finished and answers nothing.
+**D3 · One venue, or a group?** *(needed at Stage 1)*
+If an owner should open one screen and see every venue, that changes how the
+data is stacked at the very bottom — cheap now, expensive later. If each venue
+is its own separate world, nothing changes.
 
-**Communication after facts, before capabilities.** A new department that
-cannot tell anybody anything is a folder.
+**D4 · Housekeeping and the booking system.** *(Stage 5)*
+Who is arriving and leaving normally comes from a booking system. Until one is
+connected, occupancy is typed in and the screen says so.
 
-**Interface in parallel, in two halves.** The cheap half depends on nothing
-and should not wait behind a database migration. The role-aware half is Stage
-4 by definition.
-
-**Departments last, and that is the point.** If §2 is right, they cost
-configuration. If they turn out to cost migrations, the spine was built wrong
-and that is worth finding out before there are six of them.
+**D5 · The reduced tax rate**, still unanswered, and now affecting the bar as
+well as the food menu.
 
 ---
 
-## 6. Decisions this needs
+## Part E — Recommendation
 
-- **Pay rates here, or hours out to a payroll provider?** Holding rates means
-  holding the most sensitive data in the product and taking on payroll's
-  compliance surface. Holding none means no labour cost and no unit P&L. The
-  middle — rates for costing only, payroll elsewhere — is probably right.
-- **Revenue: a POS integration, or manual daily takings?** Manual is a day and
-  unblocks everything; integration needs a POS named.
-- **Is a venue the unit of sale, or an enterprise?** Decides whether the unit
-  tree has one root or many.
-- **Front office: integrate with a PMS, or become one?**
-- **The reduced VAT rate**, still open, and now blocking a bar rather than
-  only a food menu.
+**Continue with what is built.** The expensive part — the rules that stop
+people doing the wrong thing — is correct, and three more bugs were found in
+it this week by trying to break it. Starting again means finding all of those
+again.
+
+What is wrong is fixable without throwing anything away: two lists to merge,
+permissions to narrow, numbers to add, one large file to split. None of it
+requires rethinking the foundations.
+
+**The one thing that would change that:** if the answer to D3 is "a group,
+seeing every venue on one screen, from day one", then the very bottom layer is
+built on the wrong assumption, and that is the single case where starting
+again would be cheaper than correcting it.
