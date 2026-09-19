@@ -450,9 +450,13 @@ Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
       Verified along the way that the fetch path itself is fine: a change made
       directly in the database appears immediately on reload.
 
-- [ ] A Playwright session token is present in git history at `3bbcc97`.
-      Removing it rewrites history and needs a force-push, which is the
-      repository owner's call and has not been given.
+- [x] **The Playwright session token is not in this history.** This item
+      claimed one sat at `3bbcc97` and that clearing it needed a force-push
+      nobody had authorised. `3bbcc97` is not a commit in this repository, and
+      a scan of all 85 commits finds no `tests/.auth/` path in any tree and no
+      token string in any blob. `.gitignore` has excluded `**/tests/.auth/`
+      since the near-miss that prompted the rule. Nothing to rewrite — which
+      matters, because the repository is public.
 
 ## Backlog
 
