@@ -6,10 +6,18 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `d62cb38`+ · 56 migrations · 537 unit tests · 5 browser spec files ·
+**Head:** `121153f` · 57 migrations · 537 unit tests · 5 browser spec files ·
 98 tables / 373 policies / 118 functions, rebuilt from empty on 2026-09-19.
-Typecheck, unit tests, the axe sweep and the keyboard suite all green the same
-day.
+Typecheck, 537 unit tests, 72 browser tests and the axe sweep all green the
+same day. 49.500 lines of TypeScript, 13.100 of SQL.
+
+> **The database controls have no repeatable tests.** Every "proved in SQL"
+> claim in this file was proved once, by hand, in a scratch file that was not
+> kept. CI rebuilds the schema from empty and runs the browser suites, and
+> checks not one of the forty-odd triggers this system's honesty rests on. A
+> control that is not re-proved on every push is a control that can be
+> removed by accident. This is the largest process gap in the project and it
+> is now first in `PLAN.md`.
 
 > **CI is green, and now readable.** `gh` is authenticated and this working
 > copy had simply lost its `origin`; it was re-pointed at
@@ -331,6 +339,45 @@ a markdown file. The failing step was `supabase/setup-cli@v1`, not a test:
 `version: latest` resolves the newest release on every run, and that network
 lookup can simply fail. Pinned to 2.109.1. Worth remembering that a job dying
 before any test executes looks identical to a test regression.
+
+## Access control: the sixteen tables the grid never covered
+
+- [x] **Audited every table with no section guard**, against a probe user with
+      the CHEF role and every section explicitly NONE, reading each row back
+      afterwards rather than trusting that the write had raised no error.
+      Sixteen were writable. Four, by outcome:
+      `job_roles.required_certifications` emptied — the array the rota and
+      work-order assignment both read before letting anybody near a shift;
+      `quiz_questions.correct_index` changed by the candidate;
+      `board_posts.status` set to PUBLISHED, which 0053 had claimed no client
+      path could do; and `leave_types.annual_entitlement_days` set to 99 on
+      every type.
+- [x] **Thirteen configuration tables now carry the guard**, under the section
+      that owns them — including `department_approvers` under Parameters,
+      because who may approve spend is a finance setting rather than an HR one.
+- [x] **`parameter_changes` loses its UPDATE grant.** It records the value
+      before and after every change to a protected number, and a record the
+      same person can rewrite afterwards is not a record.
+- [x] **Three self-service tables get an owner rule instead of a guard**,
+      because a blanket guard would break the staff portal for the people it
+      exists for: a sick note belongs to the person whose leave it is, and only
+      the person a document was sent to may acknowledge it — acknowledgement
+      is evidence they were told, not a box a colleague may tick.
+- [x] Messaging gained the section it never had.
+- [x] Re-proved after the fix, and self-service re-proved still working.
+
+## Documents
+
+- [x] `PLATFORM.md` — what the application has become: eight shared facts, a
+      tree of units, capabilities rather than venue types, and a role as a
+      capability at a scope. Replaces an earlier version that sorted customers
+      into venue profiles, which was a tiering model wearing an analysis
+      costume.
+- [x] `UI_REVIEW.md` — a third-party interface review, assessed rather than
+      transcribed. Noted, not scheduled.
+- [x] Route slugs were rendering as page titles — "human-resources",
+      "housekeeping". Five routes had no label and fell through to the raw
+      path segment.
 
 ## Maintenance (EMS)
 
@@ -834,8 +881,19 @@ Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
       add everything at or below its reorder point.
 
 ### Known gaps
-- [ ] **`main` is behind.** Eleven commits sit on
+- [ ] **No repeatable proof of any database control.** See the note at the
+      top. Roughly forty triggers, each proved once by hand.
+- [ ] **`main` is behind.** Seventeen commits sit on
       `chore/pr-workflow-and-docs` and on open PR #1, green, unmerged.
+- [ ] **`repository.ts` is 4.627 lines**, 9% of the front end in one file.
+      Not a bug, and the clearest structural smell in the codebase.
+- [ ] **Two organisation trees.** `departments` (HR) and `cost_centres`
+      (money) are separate, three of five departments have no cost centre and
+      one cost centre has no department. "What did the bar spend on staff" is
+      unanswerable. See `PLATFORM.md`.
+- [ ] **No pay rate and no unit revenue anywhere in the schema.** Hours are
+      recorded; rates are not, so there is no labour cost and no unit profit
+      and loss.
 - [ ] Never deployed. `DEPLOY.md` is untested.
 - [ ] `pnpm lint` fails — eslint is not installed.
 - [ ] Realtime sync was built, could not be made to work, and was deliberately

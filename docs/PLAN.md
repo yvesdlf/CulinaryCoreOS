@@ -1,271 +1,320 @@
-# Plan: what to build next
+# The plan
 
-> Written 2026-09-19 at `294deca`. Companion to `PROGRESS.md`, which records
-> what exists. This records what does not, in the order it should be built and
-> with the reason for that order. Every item here traces to a gap named in
-> `PROGRESS.md`, except the last two sections, which are new scope.
-
-## The idea the order is based on
-
-Most of what is missing is not missing for want of effort. Four things are
-blocked behind one prerequisite each, and building the prerequisite collapses
-several items at once:
-
-| Prerequisite | What it unblocks |
-|---|---|
-| Production completion records | Theoretical-vs-actual usage (INV-FUNC-005), one-step-forward traceability (Art. 18), PM completion evidence |
-| A second person in the organisation | The HR-case participant policy, and every segregation-of-duties test that needs two humans |
-| One notification channel | Invitations, approval requests, sending a purchase order, proving the WhatsApp and email adapters |
-| A deployed instance | Realtime sync, mobile, anything a supplier or a technician touches from outside the building |
-| Multiple stock locations | Engineering spare parts, linen stores, anything EMS or housekeeping holds |
-
-So the sequence below is not "easiest first". It is "unblocks the most, first".
+> Rewritten 2026-09-19 at `121153f`. This is the only ordering in the
+> repository — earlier versions of this file, plus the sequencing sections of
+> `PLATFORM.md` and `UI_REVIEW.md`, are folded in here. Three documents each
+> claiming to say what comes next is how they drift apart.
+>
+> Companions: `PROGRESS.md` is what exists, `PLATFORM.md` is the shape it
+> should take, `UI_REVIEW.md` is a received critique.
 
 ---
 
-## Phase 0 — Close what is already open
+## 1. The gaps
 
-Small, and all of it removes a lie or a block rather than adding a feature.
+Grouped by what kind of thing is missing, because the kinds need different
+treatment. Ordered within each group by consequence.
 
-- [ ] **Merge PR #1.** Thirteen commits sit on `chore/pr-workflow-and-docs`,
-      CI green. `main` has not moved since 2026-08-11. Note that the workflow
-      fires on `pull_request` and on pushes to `main` only — a branch pushed
-      with no PR open is checked by nothing, so long-lived branches are a
-      blind spot rather than a safe harbour.
-- [ ] **Install eslint.** `pnpm lint` fails because it is not there. A lint
-      script that cannot run is worse than no lint script: it reports green by
-      never reporting.
-- [ ] **Put a second person in the organisation.** One owner is why the
-      participant-can-read path on an HR case is still untested, and it caps
-      what any segregation-of-duties test can prove. A seeded non-owner member
-      is a fixture, not a feature, and it unblocks a category of test.
-- [ ] **Make one real assistant call.** Three providers are wired up and the
-      allergen guardrail is tested, but no request has ever left the browser.
-      One key, one call, one screenshot, and the claim becomes true.
-- [ ] **Decide the reduced VAT rate.** Deliberately null. Most EU member
-      states put restaurant food on a reduced rate and alcohol on the
-      standard, so 21% is right for a drinks list and overstates every food
-      line. This needs the member state, which needs the launch market — see
-      the open questions at the end of `PROGRESS.md`.
+### 1.1 Process — how we know anything still works
 
-## Phase 1 — Deploy it
-
-Nothing below this line can be finished on a laptop.
-
-- [ ] **Deploy.** `DEPLOY.md` has never been executed and is therefore
-      fiction until it is. A hosted Supabase project and a static host for the
-      web app.
-- [ ] **Re-attempt realtime on the hosted instance.** The revert note lists
-      three things already established: tables in the `supabase_realtime`
-      publication, `replica identity full` so RLS can filter deletes, and
-      `realtime.setAuth()` on the socket because it does not inherit the REST
-      client's token. With all three done locally the channel subscribes and
-      delivers nothing. The local realtime container is the remaining
-      untested variable — hosted either reproduces it, which is a real bug
-      worth filing upstream, or it does not, which means the diagnosis was the
-      container all along.
-
-## Phase 2 — Notifications
-
-The largest single gap in the product: an invitation is not emailed, an
-approver is never told, a purchase order marked "ordered" transmits nothing.
-
-The leverage here is that **the events already exist**. The communication
-cycle raises them by trigger rather than from the pages, so this is a worker
-that drains a queue, not new event plumbing.
-
-- [ ] **Pick one channel and finish it: email.** WhatsApp needs a Meta
-      Business account, an approved template and an access token, none of
-      which exist, and it will still need email underneath for anyone without
-      WhatsApp. Email is the one that unblocks the most for the least.
-- [ ] **Send a purchase order to its supplier**, with the vendor portal
-      acknowledgement closing the loop that is already built and already
-      proved in SQL.
-- [ ] Then, and only then, revisit WhatsApp — the adapter is written and
-      drains correctly in dry run; what it has never had is a network.
-
-## Phase 3 — Production records
-
-The keystone. One feature, three unblocked.
-
-- [ ] **Log what was actually produced**: which preparation, what batch size,
-      when, by whom, against which prep list.
-- [ ] **Theoretical vs actual usage (INV-FUNC-005).** What the recipes say
-      should have been consumed, against what the ledger says was. This is the
-      number that finds theft, over-portioning and a mis-costed recipe, and it
-      is the single most valuable report the system does not have.
-- [ ] **One step forward (Regulation 178/2002 Art. 18).** Which service or
-      batch consumed a lot. One step back is done; forward has always been
-      blocked on exactly this.
-
-Deliberately not included: scheduling with dates, cooks and equipment
-conflicts (PRO-FUNC-002 proper), and kitchen display (PRO-FUNC-003). Both are
-"Could Have" and need a calendar and realtime infrastructure that would dwarf
-the module. Completion logging is the useful third of PRO-FUNC-002 and can be
-had without either.
-
-## Phase 4 — Menus
-
-The rest of SRS Phase 6, and the last obvious hole in the core product.
-
-- [ ] Menus with sections, menu-level costing, and menu allergen and nutrition
-      summaries. Menu engineering already classifies dishes; there is still no
-      object called a menu.
-
-## Phase 5 — Engineering Maintenance System (EMS) — **built**
-
-> Built on 2026-09-19 as migration 0055, ahead of the order below. The
-> sequencing argument still stands and is worth keeping visible: a work order
-> that notifies nobody is a paper form, so **Phase 2 is now the thing holding
-> this module back**, not the other way round. What exists is proved in SQL;
-> what it cannot yet do is tell anybody anything.
->
-> Built: the location tree, asset register, work orders on the existing
-> reference and approval machinery, the PM scheduler, meters, and the
-> management views. Assignment is refused for an uncertified or absent
-> technician; sign-off is refused for the person who did the work.
->
-> Still not built, as planned: photographs, QR scanning, the Capacitor shell,
-> and engineering stock — which still needs multi-location inventory first.
-
-### Original reasoning
-
-New scope. The reference point is [emshotels.net](https://emshotels.net) —
-work orders, preventive maintenance, a digital logbook, asset management by QR
-code, energy and utility monitoring, engineering stock and an AI assistant,
-sold to Indonesian hotels, resorts and villas at 4.8M–12.5M IDR per year by
-room count.
-
-### Why this is a smaller job than it looks
-
-Roughly two thirds of EMS is composition of things CCOS already has:
-
-| EMS needs | CCOS already has |
+| Gap | Why it matters |
 |---|---|
-| Work orders with approval and sign-off | Requisition machinery: per-unit daily reference numbering (`WO-KIT-260919-001` costs nothing to add), amount-based authority, and a trigger that refuses self-approval |
-| Preventive maintenance schedules | HACCP control sheets — recurring forms that lead with what is overdue, require evidence, and refuse a recorded breach with no corrective action. A PM schedule is the same object with a different noun |
-| Asset history that cannot be rewritten | The append-only ledger pattern, used three times already |
-| Certificate and warranty expiry | Supplier certificates surfaced 30 days ahead |
-| Technicians, their tickets and their hours | HR: employees, rota, attendance, and a competency matrix. Rostering already refuses somebody whose certification has lapsed — the same trigger refuses assigning a gas job to an unticketed technician |
-| Utility cost allocation | The cost engine, decimal money, and cost centres |
-| Contractors and parts suppliers | Suppliers as records, with terms and lead times |
+| **No repeatable proof of any database control** | Roughly forty triggers carry the system's honesty — segregation of duties, certificate gating, meter resets, room release, sheet capacity, the section grid. Every one was proved once, by hand, in a scratch file nobody kept. CI rebuilds the schema and runs the browser suites and checks none of them. A control nobody re-proves is a control that can be deleted by accident and noticed by an auditor. |
+| `pnpm lint` fails | eslint is not installed. A lint script that cannot run reports green by never reporting. |
+| Never deployed | `DEPLOY.md` has never been executed and is therefore fiction. |
+| `main` is 17 commits behind | Everything lives on one branch and one open PR. |
 
-### What is genuinely new
+### 1.2 Structure — what stops the platform being a platform
 
-- **An asset register.** Modelled like products: identity, location, supplier,
-  commissioning date, warranty, documents.
-- **A general PM scheduler.** Generalising the HACCP form scheduler from
-  "this venue's control sheets" to "anything with a due date and an owner".
-- **Meter readings.** Electricity, water, LPG, fuel — the stock-movement
-  ledger shape exactly: append-only, timestamped, attributed.
-- **Photo storage.** Nothing in CCOS stores an image today; waste photo
-  documentation was explicitly not built. Supabase Storage, with the same
-  tenancy rules as everything else.
-- **QR scanning, and therefore the mobile shell.** A technician scans a plant
-  room asset on a phone. This is the first requirement that genuinely needs
-  the Capacitor wrapper, which has been scaffolded and unbuilt since day one.
-- **Engineering stock**, which needs **multiple stock locations and
-  transfers** (INV-FUNC-006) — currently not built, and a hard prerequisite.
-  A workshop store is not the kitchen store.
+| Gap | Why it matters |
+|---|---|
+| **Two organisation trees** | `departments` (HR) and `cost_centres` (money) are separate tables. Three of five departments have no cost centre; one cost centre has no department. Employees and shifts hang off one, orders and budgets off the other, so "what did the bar spend on staff" is unanswerable. |
+| **No unit scope on access** | A section is on or off for the whole venue, so "purchasing sees its own staff" cannot be expressed, and neither can any role narrower than the organisation. |
+| **No department contract** | Adding Security or Bakery today means deciding case by case what they get. See §2. |
+| `repository.ts` is 4.627 lines | 9% of the front end in one file. Not a bug; the clearest structural smell. |
 
-### Sequencing within EMS
+### 1.3 Facts — data that simply is not there
 
-1. Asset register and QR labels (web first — a printed label works before the
-   scanner does).
-2. Work orders on the existing reference and approval machinery.
-3. PM scheduler, generalised out of the HACCP forms.
-4. Meter readings and utility cost per cost centre.
-5. Multi-location stock, then engineering stock on top of it.
-6. Capacitor shell, camera, photos.
+| Gap | Consequence |
+|---|---|
+| **No pay rate** | Hours are recorded, corrected and argued over. Without a rate there is no labour cost, so no unit P&L, so no CFO or CEO view. |
+| **No revenue per unit per day** | Only dish-level `net_sales` on imported POS periods. |
+| **No production completion records** | Blocks theoretical-vs-actual usage, one-step-forward traceability, and PM completion evidence — three items that each look separate and are one. |
+| **No media storage** | No photograph on a fault report, on waste, or on an inspection. |
+| **No occupancy source** | Housekeeping records it by hand and says so on the page. |
 
-Steps 1–4 are worth having on their own and need no mobile app.
+### 1.4 Communication — the platform cannot tell anybody anything
 
-### The honest caveat
+| Gap | State |
+|---|---|
+| **Notifications** | Events are raised by trigger and delivered nowhere. An invitation is not emailed, an approver is never told, an order marked "ordered" transmits nothing. |
+| **Handover** | No shift-to-shift note anywhere. It lives in WhatsApp — exactly where this platform is trying to stop things living. |
+| **Escalation** | A document nobody acts on sits forever. |
+| Adapters unproven | WhatsApp, email and the AI assistant have never made a real network call. |
 
-EMSHotels is a standalone product with 150+ properties. Building EMS inside
-CCOS is a bet that one platform across kitchen, purchasing, HR and engineering
-beats two good products with an integration between them. That bet is
-reasonable — the shared spine is real: one supplier list, one employee record,
-one cost centre, one approval rule — but it is a bet, and it should be made
-deliberately rather than by drifting into it. A work order that notifies
-nobody is a paper form, so **EMS should not start before Phase 2**.
+### 1.5 Controls with known holes
 
-## Phase 6 — Housekeeping — **built, against this plan's own advice**
+Realtime sync built and reverted, undiagnosed. Field-level audit history for
+everything outside the six ledgers. The cascade RPC and the row that triggers
+it are still two requests. No organisation switcher. US allergen profile.
 
-> Built on 2026-09-19 as migration 0056. This section had recommended buying
-> Flexkeeping rather than building, on the grounds that housekeeping runs on
-> room status and room status comes from a PMS. That reasoning was not wrong
-> and the gap it named is real: **occupancy in this module is recorded, not
-> known.** Somebody types it, and every screen says how old the figure is.
->
-> What building it bought, and what a purchased product could not have: a room
-> cannot be released as clean while engineering has an open emergency or high
-> priority job against it, and a sheet cannot exceed the attendant's rostered
-> minutes. Both cross module boundaries that two separate products cannot
-> reach across.
->
-> The honest position: this is a good housekeeping module with no PMS behind
-> it. If the venue runs one, an integration that sets occupancy is the single
-> highest-value thing to add, and it is a project of its own.
+### 1.6 Reach — capabilities not yet present
 
-### The market, as surveyed before building
+Finance beyond a matched invoice: payments, unit P&L, export to an accounting
+package. Menus with sections. A beverage cost basis. Multi-location stock,
+which blocks engineering stores. Stewarding, IT, Front office, Marketing,
+Security, Bakery as units. Hygiene scoped per unit. AI import. Native shells.
 
-Asked for: an application of the same kind, for housekeepers.
+### 1.7 Interface
 
-**It is not EMSHotels.** Their feature list is engineering only — work orders,
-PM, assets, logbook, energy, engineering stock. There is no housekeeping,
-room attendant, linen or lost-and-found module. The counterpart has to come
-from somewhere else.
-
-### The candidates
-
-| Product | Shape | Fit |
-|---|---|---|
-| **[Flexkeeping](https://flexkeeping.com/products/housekeeping-software)** | Housekeeping, maintenance and staff collaboration suites in one platform. Automated room assignment, live room status, digital SOPs, multilingual, mobile, PMS integrations | The closest thing to "EMS, but for housekeeping". Its maintenance suite also overlaps EMSHotels, so it is a candidate to replace rather than sit beside it |
-| **[Optii](https://hoteltechreport.com/compare/flexkeeping-housekeeping-vs-optii-housekeeping)** | Housekeeping optimisation and labour forecasting | Aimed at larger, more complex operations. Strongest where labour cost is the problem being solved |
-| **[hotelkit](https://hoteltechreport.com/compare/flexkeeping-collaborations-vs-hotelkit-collaboration)** | Internal communication first, with housekeeping and facility modules around it | Most integrations (41). Good if the real complaint is that nobody knows anything |
-| **[Quore](https://facilio.com/blog/best-hotel-facilities-management-software/)** | All-in-one engineering and operations | Built around US franchise brand standards; that is its strength and its limit |
-| **[Xenia](https://www.xenia.team/hospitality-ops/housekeeping-room-turnover)** | Generic frontline operations, checklists and work orders | Cheapest and most general. Least hotel-shaped |
-
-**Recommendation: Flexkeeping**, and evaluate it against EMSHotels rather than
-alongside it. One platform covering both housekeeping and maintenance is worth
-more than two, and the comparison is cheap to run — both offer trials.
-
-### Why this one should be bought and EMS should be built
-
-Housekeeping is driven by room status: who is arriving, who is departing, who
-is staying over. That comes from a property management system.
-
-**CCOS has no concept of a room, a reservation or a guest, and is not a PMS.**
-A native housekeeping module would have to invent room inventory and then
-integrate with whatever PMS the property runs, before writing a line of
-housekeeping logic. EMS needs none of that — an asset, a work order and a
-technician are all things CCOS can already describe.
-
-That asymmetry was the argument: **build EMS, buy housekeeping.** The decision
-taken was to build both. The PMS gap did not go away by building around it —
-it moved from "a reason not to start" to "the one thing this module is missing",
-which is a better place for it to be, and visible on the page rather than in a
-plan nobody rereads.
+`UI_REVIEW.md` in full: flat twenty-item sidebar, eleven tabs on People,
+one-sentence empty states, no role-aware dashboard, density and elevation
+drifted from DOC4.
 
 ---
 
-## Carried, not scheduled
+## 2. Future-proofing: the department contract
 
-Real, understood, and not worth a phase of their own yet.
+The test for whether the platform is a platform: **can Security, Bakery or a
+Café be added without writing a migration?**
 
-- **Organisation switcher.** The common case is right; a user genuinely in two
-  organisations still cannot choose.
-- **Field-level audit history.** Three ledgers are append-only. Everything
-  else answers "what is it now" and not "who changed this price".
-- **The cascade's own UPDATE is a separate request from the RPC.** The fan-out
-  commits or does not; the row that triggered it is written separately, so a
-  small window exists where one succeeded and the other did not.
-- **US 9 allergen profile.** The registry is the EU 14. A venue under FDA
-  rules needs a set that overlaps but is not a subset.
-- **AI recipe import.** The provider abstraction now exists, so this is a
-  prompt, a preview screen and the refusal-to-invent-products rule the sheet
-  importer already enforces.
-- **Written-answer marking** has schema and no screen.
-- **The wider reporting suite**, and the **native shells** — the macOS Tauri
-  wrapper has no requirement pulling on it the way EMS pulls on Capacitor.
+Today, no. The answer is a contract — a written list of what any unit gets for
+free, and the only three places a unit is allowed to differ.
+
+### 2.1 What every unit gets, without code
+
+Once §3 Stage 1 exists, one row in `business_units` buys all of this:
+
+| | From |
+|---|---|
+| Identity, a parent, a manager, a 3-letter code | `business_units` |
+| A cost centre, a budget, approval thresholds | it **is** the cost centre |
+| Its own document numbers — `WO-SEC-260919-001` | the shared sequence, which has abbreviated units since 0047 |
+| People: rota, leave, attendance, certifications, competency | People, scoped |
+| Places it owns, and every asset at them | the location tree |
+| Buying: its own suppliers, requisitions, approvals, receipts, invoices | Purchasing, scoped |
+| Compliance: its own forms and its own overdue list | Hygiene, scoped |
+| The five raise rights, in and out | the document spine |
+| One dashboard tile | rendered from the access grid |
+
+### 2.2 The three places a unit may differ
+
+Everything else is configuration. These three are the only extension points,
+and each is deliberately small.
+
+**a. Its cost basis.** Food cost % for a kitchen, pour cost % for a bar, cost
+per occupied room for housekeeping, cost per cover for service, cost per
+labour hour for security. One pluggable metric per unit: a numerator, a
+denominator, a target. Not a module.
+
+**b. Its own kind of document.** A security incident, a bakery batch, a guest
+complaint. This is the one that would otherwise produce a table per
+department, so it gets a single mechanism — see §2.3.
+
+**c. Its own compliance forms.** Already data: the venue uploads its own HACCP
+sheets today, numbered as its own paperwork numbers them.
+
+### 2.3 One intake, many departments
+
+The platform already has five things that are the same shape wearing different
+names: a work order, a HACCP breach, an HR case, a staff request, a hiring
+request. Each is *something happened or somebody wants something → route it →
+somebody owns it → close it with evidence.*
+
+Rather than a sixth table for security incidents and a seventh for guest
+complaints, build **one report intake**: a type, a raiser, a unit, a place, an
+asset, media, a severity, a routing rule, and an append-only status ledger.
+
+Crucially it is an **intake layer, not a replacement.** A specialised module
+converts a report into its own document — maintenance turns a fault report
+into a work order with an asset and a schedule. The existing modules keep
+everything they have; what they gain is one front door.
+
+With that in place:
+
+- **Security** = a unit + reports of type `INCIDENT` + patrol logs as
+  compliance forms + CCTV in the asset register + a rota. **No new table.**
+- **Bakery** = a unit + preparations with batch yields and production planning,
+  both of which exist + its own HACCP forms + food cost basis. **No new table.**
+- **Café** = a unit; or, if it is the whole business, an organisation with one
+  unit and four capabilities on. **No new table.**
+
+That is the future-proofing, and it is falsifiable: if adding Security needs a
+migration, the model is wrong.
+
+---
+
+## 3. What has to be done, in order
+
+Each item says what it is and, briefly, how.
+
+### Stage 0 — Make the current state defensible (days)
+
+**0.1 Commit the SQL proofs as a suite, and run them in CI.** *The single most
+valuable item in this document.* Take the ad-hoc proofs written for
+purchasing, HR, maintenance, housekeeping and the section audit, turn them
+into a `supabase/tests/` directory, and run them after `supabase db reset` in
+the job that already exists. Two rules learned the hard way: assert **rows
+changed**, not that no error was raised, and read the row back — an `UPDATE`
+matching nothing raises nothing, and a trigger may silently correct what it
+did not refuse.
+
+**0.2 Install eslint.** One dependency.
+
+**0.3 Merge PR #1.** `main` has not moved since August.
+
+**0.4 Deploy.** Nothing downstream — realtime, notifications, mobile, a
+supplier or technician outside the building — can be finished on a laptop.
+
+### Stage 0.5 — The cheap half of the interface (days, any time)
+
+Independent of everything else, so it can run in parallel and should, because
+it is the part anybody can see. Detail in §4.
+
+Sidebar grouping · People and Purchasing vertical navigation · empty states ·
+top-bar context · table density and chips · the token pass.
+
+### Stage 1 — The spine (the riskiest work here)
+
+**1.1 `business_units`.** One table that is the department, the cost centre
+and the owner of locations. Thirteen tables of foreign keys. Method: create it,
+backfill from both trees, keep `departments` and `cost_centres` as views until
+every reference has moved, then drop them. It gets its own branch and its own
+proof suite before anything is dropped.
+
+**1.2 The scope axis.** `member_scope(person, unit)` beside the existing
+`member_access(person, section, level)`. Read together: the section says what
+kind of thing, the unit says whose. No scope means every unit, never none, so
+no existing grant becomes worthless on the day it ships. Enforced by extending
+`require_section_write` and adding a `unit_visible()` predicate to the policies
+of tables that carry a unit.
+
+**1.3 The department contract as a function.** `seed_business_unit(org, code,
+capabilities)` — the §2.1 list, created in one call. This is what makes §2
+true rather than aspirational.
+
+### Stage 2 — The facts (each unblocks several things)
+
+**2.1 Pay rates,** with effective dates and a history, in the restricted table
+beside the other personal data — last month's payroll must stay computed at
+last month's rate, the same reasoning that keeps last month's waste valued at
+last month's price. *Subject to the decision in §6.*
+
+**2.2 Revenue per unit per day.** Manual daily takings is a day's work and
+unblocks the entire executive layer; POS integration is the right answer and
+needs a POS named.
+
+**2.3 Production completion records.** One feature, three items closed:
+theoretical-vs-actual usage, one-step-forward traceability, PM evidence.
+
+**2.4 Media storage.** A Supabase Storage bucket per organisation, RLS on the
+objects mirroring the parent document's, a hard cap on video length and a
+retention policy. Photographs of a fault are cheap; video is not.
+
+### Stage 3 — Communication
+
+**3.1 Notifications, email first.** The events already exist and are raised by
+trigger, so this is a worker draining a queue, not new plumbing. WhatsApp
+needs a Meta Business account that does not exist and would still need email
+underneath.
+
+**3.2 The report intake** (§2.3), starting with fault reporting, which is the
+first thing to need 2.4 and makes 3.1 unavoidable — a report nobody is told
+about is a suggestion box.
+
+**3.3 Handover.** Small, used every shift, and the thing the platform
+currently loses to WhatsApp.
+
+**3.4 Escalation.** What stops 3.2 becoming a pile.
+
+### Stage 4 — One dashboard, rendered from the grid
+
+Not seven dashboards. One component that renders what the person's capability
+× scope says they are accountable for. Depends on 1.2 for scope and on 2.1/2.2
+for anything carrying money. **The general manager view is buildable before
+2.1 and 2.2**; only margin and labour tiles are blocked.
+
+### Stage 5 — Capabilities, as units
+
+Hygiene scoped per unit, and the failed-check-raises-a-job link — the highest
+value cross-module link available. Then Beverage with its pour cost basis,
+Finance, Stewarding, IT, Marketing, Front office. Each should be a
+configuration exercise; each one that is not is a bug in §2.
+
+### Stage 6 — The long tail
+
+Multi-location stock, then engineering stores. Menus with sections. Field-level
+audit. Realtime, on a deployed instance. Organisation switcher. US allergens.
+AI import. Native shells.
+
+---
+
+## 4. The interface, and how
+
+From `UI_REVIEW.md`, with a method for each. Everything in Stage 0.5 except
+the last line.
+
+| What | How |
+|---|---|
+| **Sidebar grouped by work area** | Six groups — Today, Culinary, Supply, Operations, People, System. Data change to `navItems`, plus a group header component. Later, filtered by the access grid. |
+| **People and Purchasing: vertical navigation** | Eleven tabs is past what a tab row carries. A left rail inside the page, grouped by purpose — the reviewer's Concept 2. The tab content components do not change. |
+| **Empty states** | A sentence of explanation, one primary action, and a description of what will appear once there is data. There are about fifteen. |
+| **Top-bar context** | Venue, date, service, covers. Covers exist in Production; the venue is the organisation; service is derived from the clock. |
+| **Tables** | Avatars, status chips, sticky filters, a density toggle. The chips already have semantic tokens. |
+| **The token pass** | Warm off-white background, page headers, compact metric cards, elevation from the four DOC4 shadow steps. **One commit.** |
+| **Role-aware dashboard** | Stage 4. Platform work, not visual work. |
+
+Three constraints, repeated here because they decide the cost:
+
+1. **WCAG AA is enforced in CI in both themes.** A background change moves the
+   contrast denominator for every token on every page, and PROGRESS already
+   records tokens tuned against one background only as a defect that shipped.
+2. **The visual snapshots are all invalidated by a restyle.** Do it as one
+   commit whose snapshot diff is reviewed, not accepted.
+3. **Hiding an action is not authorisation.** Role-aware navigation hides for
+   clarity; the database refuses the write regardless.
+
+---
+
+## 5. Why this order
+
+The realignment, stated as reasons rather than a list.
+
+**Proof before features.** Stage 0.1 comes first because everything after it
+adds triggers to a system with no regression test for triggers. Building Stage
+1 on top of forty unproven controls means the migration that merges the org
+trees cannot be shown to have preserved them.
+
+**Structure before facts.** Pay rates and revenue are more exciting than
+`business_units`, but attaching money to a cost centre tree that disagrees with
+the department tree means doing it twice.
+
+**Facts before dashboards.** An executive dashboard drawn over a missing
+labour cost looks finished and answers nothing.
+
+**Communication after facts, before capabilities.** A new department that
+cannot tell anybody anything is a folder.
+
+**Interface in parallel, in two halves.** The cheap half depends on nothing
+and should not wait behind a database migration. The role-aware half is Stage
+4 by definition.
+
+**Departments last, and that is the point.** If §2 is right, they cost
+configuration. If they turn out to cost migrations, the spine was built wrong
+and that is worth finding out before there are six of them.
+
+---
+
+## 6. Decisions this needs
+
+- **Pay rates here, or hours out to a payroll provider?** Holding rates means
+  holding the most sensitive data in the product and taking on payroll's
+  compliance surface. Holding none means no labour cost and no unit P&L. The
+  middle — rates for costing only, payroll elsewhere — is probably right.
+- **Revenue: a POS integration, or manual daily takings?** Manual is a day and
+  unblocks everything; integration needs a POS named.
+- **Is a venue the unit of sale, or an enterprise?** Decides whether the unit
+  tree has one root or many.
+- **Front office: integrate with a PMS, or become one?**
+- **The reduced VAT rate**, still open, and now blocking a bar rather than
+  only a food menu.

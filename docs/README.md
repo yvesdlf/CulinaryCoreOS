@@ -5,7 +5,7 @@
 | File | What it is |
 | --- | --- |
 | [PROGRESS.md](PROGRESS.md) | **Start here.** What is built, what is not, and the known gaps. |
-| [PLAN.md](PLAN.md) | What to build next, in order, and why that order. |
+| [PLAN.md](PLAN.md) | **The only ordering.** Gaps, the department contract, what to do and why in that order. |
 | [PLATFORM.md](PLATFORM.md) | What the app has become: units, capabilities, and how departments read each other's facts. |
 | [UI_REVIEW.md](UI_REVIEW.md) | A third-party interface review, assessed. Noted, not scheduled. |
 | [DECISIONS.md](DECISIONS.md) | Decision log — the choices and why. |
