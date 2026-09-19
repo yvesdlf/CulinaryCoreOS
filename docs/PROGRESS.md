@@ -10,13 +10,16 @@
 84 tables / 323 policies, rebuilt from empty on 2026-08-11. Tests and
 typecheck re-run and green on 2026-09-19.
 
-> **CI has never run on this work.** The repository has no git remote at all
-> — `git remote -v` is empty, every branch is local-only, and nothing has
-> been pushed anywhere. `.github/workflows/ci.yml` exists and its `on:` block
-> is correct, but with no remote it has never been triggered for a single one
-> of these commits. `gh` is now authenticated as `yvesdlf`, which changes
-> nothing while there is nowhere to push to. Treat every CI claim in this file
-> as describing a workflow file rather than a run that happened.
+> **CI is green, and now readable.** `gh` is authenticated and this working
+> copy had simply lost its `origin`; it was re-pointed at
+> `github.com/yvesdlf/CulinaryCoreOS` on 2026-09-19. The work sits on open
+> PR #1, where CI has in fact been running all along — 58 runs, and a success
+> on every one of the nine commits from `43bd350` through `626bc24`, the last
+> on 2026-08-11. The caveat this replaces said no run had been read since
+> `ec2c054`; the runs existed, nobody was looking at them.
+>
+> Note the workflow only fires on `pull_request` and on pushes to `main`, so
+> a commit pushed to a branch with no PR open is not checked by anything.
 
 ## Where the app stands
 
@@ -712,8 +715,8 @@ Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
       add everything at or below its reorder point.
 
 ### Known gaps
-- [ ] **No git remote.** Every branch is local to this machine, `main` is
-      nine commits behind, and CI has therefore never run on any of this work.
+- [ ] **`main` is behind.** Eleven commits sit on
+      `chore/pr-workflow-and-docs` and on open PR #1, green, unmerged.
 - [ ] Never deployed. `DEPLOY.md` is untested.
 - [ ] `pnpm lint` fails — eslint is not installed.
 - [ ] Realtime sync was built, could not be made to work, and was deliberately

@@ -58,6 +58,6 @@ In development, and working. 54 migrations, 84 tables, 501 unit tests, and a
 web app of 22 routed pages covering costing, allergens, inventory, purchasing,
 traceability, hygiene, production, menu engineering and Human Resources.
 
-Not deployed anywhere, and the repository has no git remote yet, so CI has
-never run. See `docs/PROGRESS.md` for what is built, what is not, and how each
-claim was checked.
+Not deployed anywhere. CI is green on the open pull request. See
+`docs/PROGRESS.md` for what is built, what is not, and how each claim was
+checked.
