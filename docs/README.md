@@ -5,6 +5,7 @@
 | File | What it is |
 | --- | --- |
 | [PROGRESS.md](PROGRESS.md) | **Start here.** What is built, what is not, and the known gaps. |
+| [PLAN.md](PLAN.md) | What to build next, in order, and why that order. |
 | [DECISIONS.md](DECISIONS.md) | Decision log — the choices and why. |
 | [SETUP.md](SETUP.md) | Running the app and the local Supabase stack. |
 | [NAMING.md](NAMING.md) | Naming rationale (CulinaryCoreOS / CCOS). |
