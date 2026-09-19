@@ -7,6 +7,7 @@
 | [PROGRESS.md](PROGRESS.md) | **Start here.** What is built, what is not, and the known gaps. |
 | [PLAN.md](PLAN.md) | What to build next, in order, and why that order. |
 | [PLATFORM.md](PLATFORM.md) | What the app has become: units, capabilities, and how departments read each other's facts. |
+| [UI_REVIEW.md](UI_REVIEW.md) | A third-party interface review, assessed. Noted, not scheduled. |
 | [DECISIONS.md](DECISIONS.md) | Decision log — the choices and why. |
 | [SETUP.md](SETUP.md) | Running the app and the local Supabase stack. |
 | [NAMING.md](NAMING.md) | Naming rationale (CulinaryCoreOS / CCOS). |

@@ -35,6 +35,17 @@ const routeLabels: Record<string, string> = {
   suppliers: "Suppliers",
   duplicates: "Duplicates",
   collections: "Collections",
+  /*
+   * A route with no entry here falls through to its own slug, so the
+   * breadcrumb read "human-resources" and "housekeeping" in lower case with a
+   * hyphen. Every route the sidebar can reach needs a line, and adding one
+   * without it is the easiest omission in this file to make.
+   */
+  "human-resources": "Human Resources",
+  maintenance: "Maintenance",
+  housekeeping: "Housekeeping",
+  administration: "Administration",
+  my: "My Work",
   print: "Sheet",
   new: "New",
 };
