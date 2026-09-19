@@ -6,9 +6,10 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `626bc24` · 54 migrations · 501 unit tests · 4 browser spec files ·
-84 tables / 323 policies, rebuilt from empty on 2026-08-11. Tests and
-typecheck re-run and green on 2026-09-19.
+**Head:** `d62cb38`+ · 56 migrations · 537 unit tests · 5 browser spec files ·
+98 tables / 373 policies / 118 functions, rebuilt from empty on 2026-09-19.
+Typecheck, unit tests, the axe sweep and the keyboard suite all green the same
+day.
 
 > **CI is green, and now readable.** `gh` is authenticated and this working
 > copy had simply lost its `origin`; it was re-pointed at
@@ -44,6 +45,12 @@ whole life — REQ becomes PR becomes PO becomes GRN becomes INV, allocated by
 the database rather than computed in a browser; an AI assistant runs on every
 page against the user's own API key; and Human Resources has the data model
 and the home screen for staff self-service.
+
+Two new sections now sit beside the kitchen ones: **Maintenance** — assets,
+planned maintenance, work orders and utility meters — and **Housekeeping** —
+the room board, assignment sheets, inspections and lost property. Both are
+wired to HR for who may be sent, to Purchasing for what they order, and to
+each other for whether a room may be sold.
 
 Not started: AI recipe import, the wider reporting suite, and the native
 shells (Capacitor/Tauri) in DOC1.
@@ -324,6 +331,118 @@ a markdown file. The failing step was `supabase/setup-cli@v1`, not a test:
 `version: latest` resolves the newest release on every run, and that network
 lookup can simply fail. Pinned to 2.109.1. Worth remembering that a job dying
 before any test executes looks identical to a test regression.
+
+## Maintenance (EMS)
+
+Assets, planned maintenance, work orders and meters. Roughly two thirds of it
+is composition: a work order is the requisition machinery with a different
+noun, and a maintenance plan is the HACCP control sheet with a different noun.
+
+- [x] **One location tree for the whole venue**, not one per module, so
+      "everything that ever happened in Villa 3" is one question. Guarded
+      against cycles by walking up the tree rather than comparing to the
+      parent — the cheap check catches A→A and the expensive failure is
+      A→B→A, which hangs every recursive query instead of erroring.
+- [x] **Asset register** with location, supplier, commissioning date,
+      warranty, criticality and the certifications a job on it needs — the
+      same vocabulary as job roles, deliberately, because a second one would
+      mean a technician certified in one place and not the other.
+- [x] **Work orders numbered in the existing per-unit daily sequence**
+      (`WO-KIT-260919-001`), allocated by the database. Their own document
+      type rather than the purchasing chain's shared stem: a work order is not
+      a later name for a requisition.
+- [x] **Assignment is refused, not warned about**, when the technician is on
+      approved leave, no longer employed, or has no current certificate for
+      the trade — checked against the day the work is *due*, not today, so a
+      job next month cannot go to a ticket that expires next week. Proved in
+      SQL: `Made Teknisi is not certified for this work on 22 Sep: ELECTRICAL`.
+- [x] **The person who did the work cannot sign it off**, on the caller's JWT
+      rather than on a field the client sends. A completion must also say what
+      was done — forty rows saying "done" cannot explain why the same pump has
+      failed four times.
+- [x] **A plan advances on sign-off, never on completion.** Advancing on
+      completion would let one technician clear a year of statutory
+      inspections by marking them done.
+- [x] **Meters with an append-only reading ledger.** Consumption is computed
+      by trigger, so two clients cannot disagree about an interval. A
+      cumulative meter reading lower than the last is refused unless the reset
+      is declared and explained, and consumption across a reset is left null
+      rather than guessed — a silent drop is how a month of utility cost goes
+      missing.
+- [x] **Parts are requisitioned through the existing chain**, linked back to
+      the job. A stores process only engineering can see is how a venue stops
+      knowing what it owns.
+- [x] Views for what management reads: `maintenance_due`, `asset_health`
+      (faults, downtime and parts spend against purchase cost) and
+      `maintenance_manning` (open jobs and assigned minutes against who is
+      actually rostered).
+- [x] Repair-or-replace as a number rather than a feeling: repair spend as a
+      share of purchase cost, with a critical asset watched sooner. An asset
+      with no purchase cost is graded **unknown**, never healthy — grading it
+      green would hide exactly the equipment most likely to be old.
+
+Not built, and deliberately: photographs, QR scanning and the mobile shell.
+All three need Supabase Storage and the Capacitor wrapper, which is
+infrastructure rather than a column.
+
+## Housekeeping
+
+The room board, sheets, inspections and lost property.
+
+- [x] **Room types carry two standards**, departure and stayover, because they
+      are different jobs and costing them the same makes every sheet wrong in
+      whichever direction the day leans.
+- [x] **Sheets are balanced on minutes, never on room count.** Six villas and
+      six standards are the same number and twice the work. Longest room first
+      onto whoever has the most capacity left, deterministic on ties, because
+      a proposal that shuffles between runs is one nobody accepts.
+- [x] **Work cannot be assigned past somebody's rostered minutes**, refused by
+      trigger rather than flagged. A sheet nobody can finish is the reason
+      rooms get signed clean without being cleaned. Proved:
+      `Nyoman Kamar is rostered 420 minutes on 19 Sep and this sheet would
+      need 460`.
+- [x] **An attendant cannot inspect a room they cleaned**, on the JWT, matched
+      on both employee id and work email so somebody with no login is still
+      caught. A failed inspection must say what is wrong.
+- [x] **A room cannot be released as clean while an open emergency or high
+      priority job stands against it.** The cross-check a standalone
+      housekeeping product structurally cannot make — engineering has the job
+      open, housekeeping has finished the room, and the front desk sells it.
+      Only high and emergency block; a rule that blocked on a chipped
+      skirting board would be switched off within a week.
+- [x] **Occupancy is recorded, not known**, and the page says so. There is no
+      PMS behind it, so the board shows how old each figure is and leads with
+      how many are unconfirmed.
+- [x] Clean is not sellable. Only inspected is — clean is the attendant's own
+      opinion of their own work.
+- [x] **Lost property held ninety days**, with a reference. Disposing early is
+      possible and has to be written down; a return must name who it went to.
+- [x] Amenities and linen are ordinary stock in the same ledger as the
+      kitchen, so reordering goes through Purchasing like any other buy.
+- [x] Append-only ledgers for room state and inspections; no update or delete
+      grant on either.
+
+Not built: a PMS integration, which is what would make occupancy real, and
+public-area scheduling beyond ad-hoc tasks.
+
+### Three bugs the testing found
+- [x] A test harness that reported four controls working **that had never
+      run**. The fixture they needed had aborted on an existing control (a
+      leave decision must name its decider), so the later `UPDATE`s matched
+      zero rows — which raises nothing. Replaced with a harness that asserts
+      rows changed, not merely that no error was raised.
+- [x] The work-order ledger recorded a sign-off **under the name of the
+      technician who had just been refused permission to sign it off**, because
+      the actor fell back to `completed_by_email` whenever there was no
+      session. The control worked and its own audit trail contradicted it —
+      the 0054 shape again.
+- [x] A `CASE` over bare enum literals is `text`, so the inspection trigger
+      was accepted by the migration and failed the first time a supervisor
+      passed a room. Caught by inspecting a room, not by reading the SQL.
+- [x] One test passed for the wrong reason: "an attendant on leave cannot be
+      given a room" was actually firing the *not rostered* rule. Reaching the
+      leave branch at all needs the shift published first and the leave
+      approved after, because the rota already refuses the other order.
 
 ## Done since `546abcd`
 

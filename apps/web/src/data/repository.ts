@@ -4018,3 +4018,610 @@ export async function withdrawBoardPost(id: string): Promise<void> {
     .update({ status: "WITHDRAWN" }).eq("id", id);
   if (error) fail("withdrawBoardPost", error);
 }
+
+// ── Maintenance ─────────────────────────────────────────────────────────────
+/*
+ * Reads come from the views wherever the database already joins things up —
+ * asset_health, maintenance_due, maintenance_manning. A browser that rebuilt
+ * those joins would be a second implementation of the same question, and the
+ * two would eventually disagree about which asset is worst.
+ */
+
+export interface LocationRow {
+  id: string; parentId: string | null; code: string; name: string;
+  kind: string; costCentreId: string | null; active: boolean;
+}
+
+export async function fetchLocations(): Promise<LocationRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("locations").select("*").order("code");
+  if (error) fail("fetchLocations", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, parentId: r.parent_id ?? null, code: r.code, name: r.name,
+    kind: r.kind, costCentreId: r.cost_centre_id ?? null, active: Boolean(r.active),
+  }));
+}
+
+export async function createLocation(input: {
+  code: string; name: string; kind: string;
+  parentId: string | null; costCentreId: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("locations").insert({
+    code: input.code, name: input.name, kind: input.kind,
+    parent_id: input.parentId, cost_centre_id: input.costCentreId,
+  });
+  if (error) fail("createLocation", error);
+}
+
+export interface AssetRow {
+  id: string; code: string; name: string; category: string;
+  locationId: string | null; locationName: string | null;
+  criticality: "CRITICAL" | "IMPORTANT" | "ROUTINE";
+  status: string; purchaseCost: number | null; warrantyUntil: string | null;
+  requiredCertifications: string[];
+  jobsYear: number; jobsOpen: number;
+  downtimeMinutesYear: number; partsCostYear: number;
+  lastServicedAt: string | null;
+}
+
+/** The register and its health in one read, because no screen wants one without the other. */
+export async function fetchAssets(): Promise<AssetRow[]> {
+  const db = requireSupabase();
+  const [health, register] = await Promise.all([
+    db.from("asset_health").select("*"),
+    db.from("assets").select("id, required_certifications, warranty_until"),
+  ]);
+  if (health.error) fail("fetchAssets", health.error);
+  if (register.error) fail("fetchAssets/register", register.error);
+
+  const extra = new Map(
+    (register.data ?? []).map((r: any) => [r.id, r]),
+  );
+  return (health.data ?? []).map((r: any) => ({
+    id: r.asset_id, code: r.code, name: r.name, category: r.category,
+    locationId: r.location_id ?? null, locationName: r.location_name ?? null,
+    criticality: r.criticality, status: r.status,
+    purchaseCost: r.purchase_cost === null ? null : Number(r.purchase_cost),
+    warrantyUntil: extra.get(r.asset_id)?.warranty_until ?? null,
+    requiredCertifications: extra.get(r.asset_id)?.required_certifications ?? [],
+    jobsYear: Number(r.jobs_year ?? 0), jobsOpen: Number(r.jobs_open ?? 0),
+    downtimeMinutesYear: Number(r.downtime_minutes_year ?? 0),
+    partsCostYear: Number(r.parts_cost_year ?? 0),
+    lastServicedAt: r.last_serviced_at ?? null,
+  }));
+}
+
+export async function createAsset(input: {
+  code: string; name: string; category: string;
+  locationId: string | null; criticality: string;
+  purchaseCost: number | null; warrantyUntil: string | null;
+  requiredCertifications: string[];
+}): Promise<void> {
+  const { error } = await requireSupabase().from("assets").insert({
+    code: input.code, name: input.name, category: input.category,
+    location_id: input.locationId, criticality: input.criticality,
+    purchase_cost: input.purchaseCost, warranty_until: input.warrantyUntil,
+    required_certifications: input.requiredCertifications,
+  });
+  if (error) fail("createAsset", error);
+}
+
+export interface MaintenanceDueRow {
+  planId: string; code: string; title: string;
+  intervalDays: number; estimatedMinutes: number;
+  statutory: boolean; criticality: string;
+  assetId: string | null; assetName: string | null; assetCode: string | null;
+  locationName: string | null;
+  lastCompletedOn: string | null; dueOn: string; daysOverdue: number;
+  jobOpen: boolean;
+}
+
+export async function fetchMaintenanceDue(): Promise<MaintenanceDueRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("maintenance_due").select("*").order("due_on");
+  if (error) fail("fetchMaintenanceDue", error);
+  return (data ?? []).map((r: any) => ({
+    planId: r.plan_id, code: r.code, title: r.title,
+    intervalDays: Number(r.interval_days), estimatedMinutes: Number(r.estimated_minutes),
+    statutory: Boolean(r.statutory), criticality: r.criticality,
+    assetId: r.asset_id ?? null, assetName: r.asset_name ?? null,
+    assetCode: r.asset_code ?? null, locationName: r.location_name ?? null,
+    lastCompletedOn: r.last_completed_on ?? null,
+    dueOn: r.due_on, daysOverdue: Number(r.days_overdue ?? 0),
+    jobOpen: Boolean(r.job_open),
+  }));
+}
+
+export async function createMaintenancePlan(input: {
+  code: string; title: string; instructions: string | null;
+  assetId: string | null; locationId: string | null;
+  intervalDays: number; estimatedMinutes: number;
+  statutory: boolean; requiredCertifications: string[];
+}): Promise<void> {
+  const { error } = await requireSupabase().from("maintenance_plans").insert({
+    code: input.code, title: input.title, instructions: input.instructions,
+    asset_id: input.assetId, location_id: input.locationId,
+    interval_days: input.intervalDays, estimated_minutes: input.estimatedMinutes,
+    statutory: input.statutory, required_certifications: input.requiredCertifications,
+  });
+  if (error) fail("createMaintenancePlan", error);
+}
+
+export interface WorkOrderRow {
+  id: string; reference: string | null; title: string; detail: string | null;
+  assetId: string | null; locationId: string | null; costCentreId: string | null;
+  source: string; planId: string | null;
+  priority: string; status: string;
+  raisedByEmail: string | null; raisedAt: string; dueBy: string | null;
+  assignedTo: string | null;
+  completedByEmail: string | null; completionNote: string | null;
+  verifiedByEmail: string | null;
+  downtimeMinutes: number | null; labourMinutes: number | null;
+  requisitionId: string | null;
+}
+
+function toWorkOrder(r: any): WorkOrderRow {
+  return {
+    id: r.id, reference: r.reference ?? null, title: r.title, detail: r.detail ?? null,
+    assetId: r.asset_id ?? null, locationId: r.location_id ?? null,
+    costCentreId: r.cost_centre_id ?? null,
+    source: r.source, planId: r.plan_id ?? null,
+    priority: r.priority, status: r.status,
+    raisedByEmail: r.raised_by_email ?? null, raisedAt: r.raised_at,
+    dueBy: r.due_by ?? null, assignedTo: r.assigned_to ?? null,
+    completedByEmail: r.completed_by_email ?? null,
+    completionNote: r.completion_note ?? null,
+    verifiedByEmail: r.verified_by_email ?? null,
+    downtimeMinutes: r.downtime_minutes === null ? null : Number(r.downtime_minutes),
+    labourMinutes: r.labour_minutes === null ? null : Number(r.labour_minutes),
+    requisitionId: r.requisition_id ?? null,
+  };
+}
+
+export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("work_orders").select("*").order("raised_at", { ascending: false }).limit(500);
+  if (error) fail("fetchWorkOrders", error);
+  return (data ?? []).map(toWorkOrder);
+}
+
+export async function createWorkOrder(input: {
+  title: string; detail: string | null;
+  assetId: string | null; locationId: string | null; costCentreId: string | null;
+  priority: string; source?: string; planId?: string | null; dueBy: string | null;
+}): Promise<WorkOrderRow> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  // No reference is sent. The trigger allocates it, and a number computed here
+  // would race with anybody else raising a job for the same unit.
+  const { data, error } = await db.from("work_orders").insert({
+    title: input.title, detail: input.detail,
+    asset_id: input.assetId, location_id: input.locationId,
+    cost_centre_id: input.costCentreId,
+    priority: input.priority, source: input.source ?? "REACTIVE",
+    plan_id: input.planId ?? null, due_by: input.dueBy,
+    raised_by_email: auth.user?.email ?? null,
+  }).select("*").single();
+  if (error) fail("createWorkOrder", error);
+  return toWorkOrder(data);
+}
+
+/**
+ * Assignment is refused by the database for an absent or uncertified
+ * technician. The message it raises names the person and what is missing, so
+ * it is shown as written rather than replaced with something vaguer.
+ */
+export async function assignWorkOrder(id: string, employeeId: string | null): Promise<void> {
+  const { error } = await requireSupabase().from("work_orders")
+    .update({ assigned_to: employeeId }).eq("id", id);
+  if (error) fail("assignWorkOrder", error);
+}
+
+export async function updateWorkOrderStatus(
+  id: string,
+  status: string,
+  extra: {
+    completionNote?: string; labourMinutes?: number | null;
+    downtimeMinutes?: number | null; cancelledReason?: string;
+  } = {},
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const patch: Record<string, unknown> = { status };
+  if (status === "COMPLETED") {
+    patch.completed_by_email = auth.user?.email ?? null;
+    patch.completion_note = extra.completionNote ?? null;
+    patch.labour_minutes = extra.labourMinutes ?? null;
+    patch.downtime_minutes = extra.downtimeMinutes ?? null;
+  }
+  if (status === "VERIFIED") patch.verified_by_email = auth.user?.email ?? null;
+  if (status === "CANCELLED") patch.cancelled_reason = extra.cancelledReason ?? null;
+  if (status === "IN_PROGRESS") patch.started_at = new Date().toISOString();
+
+  const { error } = await db.from("work_orders").update(patch).eq("id", id);
+  if (error) fail("updateWorkOrderStatus", error);
+}
+
+export interface WorkOrderEventRow {
+  fromStatus: string | null; toStatus: string; note: string | null;
+  actorEmail: string | null; at: string;
+}
+
+export async function fetchWorkOrderEvents(workOrderId: string): Promise<WorkOrderEventRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("work_order_events").select("*")
+    .eq("work_order_id", workOrderId).order("at");
+  if (error) fail("fetchWorkOrderEvents", error);
+  return (data ?? []).map((r: any) => ({
+    fromStatus: r.from_status ?? null, toStatus: r.to_status,
+    note: r.note ?? null, actorEmail: r.actor_email ?? null, at: r.at,
+  }));
+}
+
+export interface ManningRow {
+  employeeId: string; name: string; shiftsToday: number;
+  jobsOpen: number; jobsLate: number; minutesAssigned: number;
+}
+
+export async function fetchMaintenanceManning(): Promise<ManningRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("maintenance_manning").select("*").order("name");
+  if (error) fail("fetchMaintenanceManning", error);
+  return (data ?? []).map((r: any) => ({
+    employeeId: r.employee_id, name: r.name,
+    shiftsToday: Number(r.shifts_today ?? 0), jobsOpen: Number(r.jobs_open ?? 0),
+    jobsLate: Number(r.jobs_late ?? 0), minutesAssigned: Number(r.minutes_assigned ?? 0),
+  }));
+}
+
+export interface MeterRow {
+  id: string; code: string; name: string; unit: string;
+  cumulative: boolean; costPerUnit: number | null;
+  lastReading: number | null; lastReadOn: string | null;
+  lastConsumption: number | null;
+}
+
+export async function fetchMeters(): Promise<MeterRow[]> {
+  const db = requireSupabase();
+  const [meters, readings] = await Promise.all([
+    db.from("meters").select("*").eq("active", true).order("code"),
+    db.from("meter_readings").select("*").order("read_on", { ascending: false }).limit(400),
+  ]);
+  if (meters.error) fail("fetchMeters", meters.error);
+  if (readings.error) fail("fetchMeters/readings", readings.error);
+
+  const latest = new Map<string, any>();
+  for (const r of readings.data ?? []) {
+    if (!latest.has(r.meter_id)) latest.set(r.meter_id, r);
+  }
+  return (meters.data ?? []).map((m: any) => {
+    const last = latest.get(m.id);
+    return {
+      id: m.id, code: m.code, name: m.name, unit: m.unit,
+      cumulative: Boolean(m.cumulative),
+      costPerUnit: m.cost_per_unit === null ? null : Number(m.cost_per_unit),
+      lastReading: last ? Number(last.reading) : null,
+      lastReadOn: last?.read_on ?? null,
+      lastConsumption:
+        last?.consumption === null || last?.consumption === undefined
+          ? null : Number(last.consumption),
+    };
+  });
+}
+
+/**
+ * Consumption is not sent. The trigger computes it from the previous reading,
+ * because two clients computing it from the same previous row would disagree
+ * about the interval the moment they raced.
+ */
+export async function recordMeterReading(input: {
+  meterId: string; readOn: string; reading: number;
+  reset: boolean; resetReason: string | null; note: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("meter_readings").insert({
+    meter_id: input.meterId, read_on: input.readOn, reading: input.reading,
+    reset: input.reset, reset_reason: input.resetReason, note: input.note,
+    read_by_email: auth.user?.email ?? null,
+  });
+  if (error) fail("recordMeterReading", error);
+}
+
+/**
+ * Parts for a job, ordered the way everything else is ordered.
+ *
+ * A requisition, through the existing approval chain, linked back to the work
+ * order. A stores process only engineering can see is how a venue stops
+ * knowing what it owns.
+ */
+export async function raiseWorkOrderParts(input: {
+  workOrderId: string; costCentreId: string | null; unitCode?: string;
+  neededBy: string | null; justification: string;
+  lines: Omit<RequisitionLineRow, "id" | "lineTotal">[];
+}): Promise<void> {
+  const req = await createRequisition({
+    costCentreId: input.costCentreId,
+    unitCode: input.unitCode,
+    neededBy: input.neededBy,
+    justification: input.justification,
+    lines: input.lines,
+  });
+  const { error } = await requireSupabase().from("work_orders")
+    .update({ requisition_id: req.id }).eq("id", input.workOrderId);
+  if (error) fail("raiseWorkOrderParts/link", error);
+}
+
+// ── Housekeeping ────────────────────────────────────────────────────────────
+
+export interface RoomTypeRow {
+  id: string; code: string; name: string; beds: number;
+  departureMinutes: number; stayoverMinutes: number; deepCleanMinutes: number;
+}
+
+export async function fetchRoomTypes(): Promise<RoomTypeRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("room_types").select("*").eq("active", true).order("code");
+  if (error) fail("fetchRoomTypes", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, code: r.code, name: r.name, beds: Number(r.beds),
+    departureMinutes: Number(r.departure_minutes),
+    stayoverMinutes: Number(r.stayover_minutes),
+    deepCleanMinutes: Number(r.deep_clean_minutes),
+  }));
+}
+
+export interface BoardRow {
+  roomId: string; roomNumber: string; floor: string | null;
+  state: string; stateChangedAt: string;
+  occupancy: string; occupancySetAt: string | null;
+  outOfServiceReason: string | null;
+  roomType: string | null; roomTypeName: string | null;
+  roomTypeId: string | null;
+  locationId: string; locationName: string;
+  taskId: string | null; taskKind: string | null; taskStatus: string | null;
+  standardMinutes: number | null; actualMinutes: number | null;
+  attendant: string | null;
+  jobsOpen: number; jobsBlocking: number;
+}
+
+/**
+ * The board, with maintenance included.
+ *
+ * `jobs_blocking` comes from the view rather than a second query, because the
+ * whole point of these two modules being one database is that the question
+ * "may this room be sold" has one answer.
+ */
+export async function fetchHousekeepingBoard(): Promise<BoardRow[]> {
+  const db = requireSupabase();
+  const [board, rooms] = await Promise.all([
+    db.from("housekeeping_board").select("*"),
+    db.from("rooms").select("id, room_type_id"),
+  ]);
+  if (board.error) fail("fetchHousekeepingBoard", board.error);
+  if (rooms.error) fail("fetchHousekeepingBoard/rooms", rooms.error);
+  const typeOf = new Map((rooms.data ?? []).map((r: any) => [r.id, r.room_type_id]));
+
+  return (board.data ?? [])
+    .map((r: any) => ({
+      roomId: r.room_id, roomNumber: r.room_number, floor: r.floor ?? null,
+      state: r.state, stateChangedAt: r.state_changed_at,
+      occupancy: r.occupancy, occupancySetAt: r.occupancy_set_at ?? null,
+      outOfServiceReason: r.out_of_service_reason ?? null,
+      roomType: r.room_type ?? null, roomTypeName: r.room_type_name ?? null,
+      roomTypeId: typeOf.get(r.room_id) ?? null,
+      locationId: r.location_id, locationName: r.location_name,
+      taskId: r.task_id ?? null, taskKind: r.task_kind ?? null,
+      taskStatus: r.task_status ?? null,
+      standardMinutes: r.standard_minutes === null ? null : Number(r.standard_minutes),
+      actualMinutes: r.actual_minutes === null ? null : Number(r.actual_minutes),
+      attendant: r.attendant ?? null,
+      jobsOpen: Number(r.jobs_open ?? 0), jobsBlocking: Number(r.jobs_blocking ?? 0),
+    }))
+    .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
+}
+
+export async function createRoom(input: {
+  locationId: string; roomTypeId: string | null;
+  roomNumber: string; floor: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("rooms").insert({
+    location_id: input.locationId, room_type_id: input.roomTypeId,
+    room_number: input.roomNumber, floor: input.floor,
+  });
+  if (error) fail("createRoom", error);
+}
+
+/**
+ * The release rule is the database's. A room with an open emergency or high
+ * priority job is refused, by name, and that message is worth showing intact —
+ * it names the job, which is what the person has to chase.
+ */
+export async function setRoomState(
+  roomId: string, state: string, outOfServiceReason?: string | null,
+): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("rooms").update({
+    state,
+    out_of_service_reason: state === "OUT_OF_SERVICE" ? (outOfServiceReason ?? null) : null,
+    state_changed_by_email: auth.user?.email ?? null,
+  }).eq("id", roomId);
+  if (error) fail("setRoomState", error);
+}
+
+/**
+ * Occupancy is recorded, not known — there is no property management system
+ * behind it. The stamp is written here so every screen can say how old it is.
+ */
+export async function setRoomOccupancy(roomId: string, occupancy: string): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("rooms").update({
+    occupancy,
+    occupancy_set_at: new Date().toISOString(),
+    occupancy_set_by_email: auth.user?.email ?? null,
+  }).eq("id", roomId);
+  if (error) fail("setRoomOccupancy", error);
+}
+
+export interface HousekeepingTaskRow {
+  id: string; roomId: string | null; locationId: string | null;
+  kind: string; taskDate: string;
+  assignedTo: string | null; standardMinutes: number;
+  status: string; actualMinutes: number | null;
+  startedAt: string | null; finishedAt: string | null;
+}
+
+export async function fetchHousekeepingTasks(onDate: string): Promise<HousekeepingTaskRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("housekeeping_tasks").select("*").eq("task_date", onDate);
+  if (error) fail("fetchHousekeepingTasks", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, roomId: r.room_id ?? null, locationId: r.location_id ?? null,
+    kind: r.kind, taskDate: r.task_date,
+    assignedTo: r.assigned_to ?? null, standardMinutes: Number(r.standard_minutes),
+    status: r.status,
+    actualMinutes: r.actual_minutes === null ? null : Number(r.actual_minutes),
+    startedAt: r.started_at ?? null, finishedAt: r.finished_at ?? null,
+  }));
+}
+
+/**
+ * Publish a proposed sheet.
+ *
+ * Inserted one row at a time rather than in a batch, because the capacity rule
+ * is a row trigger: a batch that broke somebody's shift would be refused whole
+ * and the screen could not say which room did it. One at a time costs a few
+ * round trips and reports the exact room that overflowed.
+ */
+export async function publishHousekeepingSheet(
+  tasks: { roomId: string; kind: string; standardMinutes: number; employeeId: string }[],
+  taskDate: string,
+): Promise<{ created: number; refused: { roomId: string; message: string }[] }> {
+  const db = requireSupabase();
+  let created = 0;
+  const refused: { roomId: string; message: string }[] = [];
+  for (const t of tasks) {
+    const { error } = await db.from("housekeeping_tasks").insert({
+      room_id: t.roomId, kind: t.kind, task_date: taskDate,
+      standard_minutes: t.standardMinutes, assigned_to: t.employeeId,
+    });
+    if (error) refused.push({ roomId: t.roomId, message: error.message });
+    else created += 1;
+  }
+  return { created, refused };
+}
+
+export async function startHousekeepingTask(id: string): Promise<void> {
+  const { error } = await requireSupabase().from("housekeeping_tasks")
+    .update({ status: "IN_PROGRESS", started_at: new Date().toISOString() }).eq("id", id);
+  if (error) fail("startHousekeepingTask", error);
+}
+
+export async function finishHousekeepingTask(
+  id: string, actualMinutes: number | null,
+): Promise<void> {
+  const { error } = await requireSupabase().from("housekeeping_tasks").update({
+    status: "DONE", finished_at: new Date().toISOString(), actual_minutes: actualMinutes,
+  }).eq("id", id);
+  if (error) fail("finishHousekeepingTask", error);
+}
+
+/**
+ * An inspection moves the task and the room by trigger, so nothing else is
+ * written here. Doing it in the browser would leave a room inspected and a
+ * task not, whenever the second request failed.
+ */
+export async function inspectHousekeepingTask(input: {
+  taskId: string; passed: boolean; score: number | null; findings: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("housekeeping_inspections").insert({
+    task_id: input.taskId, passed: input.passed,
+    score: input.score, findings: input.findings,
+    inspector_email: auth.user?.email ?? null,
+  });
+  if (error) fail("inspectHousekeepingTask", error);
+}
+
+export interface WorkloadRow {
+  employeeId: string; name: string; taskDate: string;
+  minutesAssigned: number; minutesWorked: number;
+  roomsAssigned: number; roomsFinished: number; minutesRostered: number;
+}
+
+export async function fetchHousekeepingWorkload(): Promise<WorkloadRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("housekeeping_workload").select("*").order("name");
+  if (error) fail("fetchHousekeepingWorkload", error);
+  return (data ?? []).map((r: any) => ({
+    employeeId: r.employee_id, name: r.name, taskDate: r.task_date,
+    minutesAssigned: Number(r.minutes_assigned ?? 0),
+    minutesWorked: Number(r.minutes_worked ?? 0),
+    roomsAssigned: Number(r.rooms_assigned ?? 0),
+    roomsFinished: Number(r.rooms_finished ?? 0),
+    minutesRostered: Number(r.minutes_rostered ?? 0),
+  }));
+}
+
+export interface LostPropertyRow {
+  id: string; reference: string | null; description: string;
+  foundInRoomId: string | null; foundOn: string; holdUntil: string | null;
+  storageRef: string | null; status: string;
+  releasedTo: string | null; releasedOn: string | null;
+}
+
+export async function fetchLostProperty(): Promise<LostPropertyRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("lost_property").select("*").order("found_on", { ascending: false }).limit(300);
+  if (error) fail("fetchLostProperty", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, reference: r.reference ?? null, description: r.description,
+    foundInRoomId: r.found_in_room_id ?? null, foundOn: r.found_on,
+    holdUntil: r.hold_until ?? null, storageRef: r.storage_ref ?? null,
+    status: r.status, releasedTo: r.released_to ?? null, releasedOn: r.released_on ?? null,
+  }));
+}
+
+export async function bookLostProperty(input: {
+  description: string; foundInRoomId: string | null;
+  foundByEmployeeId: string | null; storageRef: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("lost_property").insert({
+    description: input.description, found_in_room_id: input.foundInRoomId,
+    found_by_employee_id: input.foundByEmployeeId, storage_ref: input.storageRef,
+  });
+  if (error) fail("bookLostProperty", error);
+}
+
+export async function releaseLostProperty(input: {
+  id: string; status: "RETURNED" | "DISPOSED" | "DONATED";
+  releasedTo: string | null; releaseNote: string | null;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { data: auth } = await db.auth.getUser();
+  const { error } = await db.from("lost_property").update({
+    status: input.status, released_to: input.releasedTo,
+    release_note: input.releaseNote, released_by_email: auth.user?.email ?? null,
+  }).eq("id", input.id);
+  if (error) fail("releaseLostProperty", error);
+}
+
+export interface ReplenishmentRow {
+  productId: string; productName: string; unit: string | null;
+  neededToday: number; onHand: number; afterToday: number;
+}
+
+export async function fetchHousekeepingReplenishment(): Promise<ReplenishmentRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("housekeeping_replenishment").select("*");
+  if (error) fail("fetchHousekeepingReplenishment", error);
+  return (data ?? []).map((r: any) => ({
+    productId: r.product_id, productName: r.product_name, unit: r.unit ?? null,
+    neededToday: Number(r.needed_today ?? 0),
+    onHand: Number(r.on_hand ?? 0),
+    afterToday: Number(r.after_today ?? 0),
+  }));
+}

@@ -112,7 +112,23 @@ The rest of SRS Phase 6, and the last obvious hole in the core product.
       summaries. Menu engineering already classifies dishes; there is still no
       object called a menu.
 
-## Phase 5 — Engineering Maintenance System (EMS)
+## Phase 5 — Engineering Maintenance System (EMS) — **built**
+
+> Built on 2026-09-19 as migration 0055, ahead of the order below. The
+> sequencing argument still stands and is worth keeping visible: a work order
+> that notifies nobody is a paper form, so **Phase 2 is now the thing holding
+> this module back**, not the other way round. What exists is proved in SQL;
+> what it cannot yet do is tell anybody anything.
+>
+> Built: the location tree, asset register, work orders on the existing
+> reference and approval machinery, the PM scheduler, meters, and the
+> management views. Assignment is refused for an uncertified or absent
+> technician; sign-off is refused for the person who did the work.
+>
+> Still not built, as planned: photographs, QR scanning, the Capacitor shell,
+> and engineering stock — which still needs multi-location inventory first.
+
+### Original reasoning
 
 New scope. The reference point is [emshotels.net](https://emshotels.net) —
 work orders, preventive maintenance, a digital logbook, asset management by QR
@@ -174,7 +190,25 @@ one cost centre, one approval rule — but it is a bet, and it should be made
 deliberately rather than by drifting into it. A work order that notifies
 nobody is a paper form, so **EMS should not start before Phase 2**.
 
-## Phase 6 — Housekeeping
+## Phase 6 — Housekeeping — **built, against this plan's own advice**
+
+> Built on 2026-09-19 as migration 0056. This section had recommended buying
+> Flexkeeping rather than building, on the grounds that housekeeping runs on
+> room status and room status comes from a PMS. That reasoning was not wrong
+> and the gap it named is real: **occupancy in this module is recorded, not
+> known.** Somebody types it, and every screen says how old the figure is.
+>
+> What building it bought, and what a purchased product could not have: a room
+> cannot be released as clean while engineering has an open emergency or high
+> priority job against it, and a sheet cannot exceed the attendant's rostered
+> minutes. Both cross module boundaries that two separate products cannot
+> reach across.
+>
+> The honest position: this is a good housekeeping module with no PMS behind
+> it. If the venue runs one, an integration that sets occupancy is the single
+> highest-value thing to add, and it is a project of its own.
+
+### The market, as surveyed before building
 
 Asked for: an application of the same kind, for housekeepers.
 
@@ -208,9 +242,11 @@ integrate with whatever PMS the property runs, before writing a line of
 housekeeping logic. EMS needs none of that — an asset, a work order and a
 technician are all things CCOS can already describe.
 
-That asymmetry is the whole argument: **build EMS, buy housekeeping.** If
-housekeeping later has to come in-house, it arrives behind a PMS integration,
-and that is a project of its own with its own decision.
+That asymmetry was the argument: **build EMS, buy housekeeping.** The decision
+taken was to build both. The PMS gap did not go away by building around it —
+it moved from "a reason not to start" to "the one thing this module is missing",
+which is a better place for it to be, and visible on the page rather than in a
+plan nobody rereads.
 
 ---
 

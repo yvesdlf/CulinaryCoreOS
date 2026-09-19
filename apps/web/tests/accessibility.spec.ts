@@ -37,6 +37,8 @@ const PAGES = [
   { name: "products list", path: "/products", heading: "Products" },
   { name: "allergen matrix", path: "/allergen-matrix", heading: "Allergen matrix" },
   { name: "dashboard", path: "/", heading: "Dashboard" },
+  { name: "maintenance", path: "/maintenance", heading: "Maintenance" },
+  { name: "housekeeping", path: "/housekeeping", heading: "Housekeeping" },
 ];
 
 for (const p of PAGES) {
