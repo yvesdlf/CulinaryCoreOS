@@ -54,5 +54,10 @@ Claude Code can do for you locally versus what happens here in chat.
 
 ## Status
 
-Pre-development. Schema and domain types are scaffolded from the SRS; no
-working UI yet. See `docs/PROGRESS.md` for the running task list.
+In development, and working. 54 migrations, 84 tables, 501 unit tests, and a
+web app of 22 routed pages covering costing, allergens, inventory, purchasing,
+traceability, hygiene, production, menu engineering and Human Resources.
+
+Not deployed anywhere, and the repository has no git remote yet, so CI has
+never run. See `docs/PROGRESS.md` for what is built, what is not, and how each
+claim was checked.

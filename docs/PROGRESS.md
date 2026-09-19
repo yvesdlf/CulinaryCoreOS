@@ -6,12 +6,17 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `546abcd` · 46 migrations · 424 unit tests · 4 browser spec files ·
-80 tables / 305 policies / 89 functions, rebuilt from empty on 2026-08-08.
+**Head:** `626bc24` · 54 migrations · 501 unit tests · 4 browser spec files ·
+84 tables / 323 policies, rebuilt from empty on 2026-08-11. Tests and
+typecheck re-run and green on 2026-09-19.
 
-> **CI status is unverified from this machine.** `gh` was only installed on
-> 2026-08-08 and is not yet authenticated, so no run has been read since
-> `ec2c054`. Treat the CI claim in older entries as stale rather than green.
+> **CI has never run on this work.** The repository has no git remote at all
+> — `git remote -v` is empty, every branch is local-only, and nothing has
+> been pushed anywhere. `.github/workflows/ci.yml` exists and its `on:` block
+> is correct, but with no remote it has never been triggered for a single one
+> of these commits. `gh` is now authenticated as `yvesdlf`, which changes
+> nothing while there is nowhere to push to. Treat every CI claim in this file
+> as describing a workflow file rather than a run that happened.
 
 ## Where the app stands
 
@@ -31,8 +36,14 @@ granted and the protected numbers are set.
 The line the whole system is built on: **every control is enforced in the
 database and proved by SQL that tries to break it.** See `AGENTS.md`.
 
-Not started: AI import, the wider reporting suite, and the native shells
-(Capacitor/Tauri) in DOC1.
+Since then: every purchasing document carries one reference number for its
+whole life — REQ becomes PR becomes PO becomes GRN becomes INV, allocated by
+the database rather than computed in a browser; an AI assistant runs on every
+page against the user's own API key; and Human Resources has the data model
+and the home screen for staff self-service.
+
+Not started: AI recipe import, the wider reporting suite, and the native
+shells (Capacitor/Tauri) in DOC1.
 
 ## Done
 
@@ -241,9 +252,10 @@ and guessing it would overstate tax on every food line.
       back and named rather than guessed at.
 - [x] Order totals, VAT and line totals maintained by trigger.
 
-Not built yet: goods receipts matched against an order, invoices, three-way
-matching and tolerances, budgets and committed spend, and sending an order to
-a supplier — marking one "ordered" does not transmit anything.
+Receiving, invoices, three-way matching, budgets and committed spend were
+written after this section and are recorded further down. What is still not
+built: sending an order to a supplier — marking one "ordered" transmits
+nothing to anybody.
 
 ### Traceability and food safety (EU)
 - [x] Suppliers as records rather than a name typed on each product: legal
@@ -310,6 +322,109 @@ a markdown file. The failing step was `supabase/setup-cli@v1`, not a test:
 lookup can simply fail. Pinned to 2.109.1. Worth remembering that a job dying
 before any test executes looks identical to a test regression.
 
+## Done since `546abcd`
+
+Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
+
+### One reference number per transaction
+- [x] **References say what, where and when**: `REQ-KIT-260809-001` is
+      document type, business unit from the cost centre, the date, and a
+      sequence restarting daily. It replaces `REQ-2026-0001`, which told a
+      buyer nothing without opening the document.
+- [x] **Allocated by the database, not the browser.** The old scheme read
+      every existing reference and added one to the highest, so two people
+      raising a requisition in the same second both computed 001 and the
+      second was refused by a unique index mid-order. `next_document_reference()`
+      holds a row lock for the statement; twenty concurrent psql clients
+      produced a clean 001 to 020 with nothing refused.
+- [x] **One document, one number, for its whole life.** REQ becomes PR on
+      approval, PO on ordering, and the goods receipt and supplier invoice
+      take the same number: `REQ-KIT-260809-003` → `PR-` → `PO-` → `GRN-` →
+      `INV-`. "We are being chased for INV-KIT-260809-003, what was that?" is
+      answered by eye instead of by a three-table join. A `purchasing_chain`
+      view returns the whole transaction in one row.
+- [x] **One requisition per supplier**, enforced where the requisition is
+      raised. Two earlier commits invented numbering schemes for the pieces of
+      a split request; the answer was that there is nothing to split. A
+      request goes to one supplier, so it becomes one order, one delivery and
+      one invoice. Lines with no supplier yet are grouped into their own
+      request rather than refused — that pile is real and needs a decision.
+- [x] A requisition that still ends up with two orders (imported data, or a
+      venue that pre-dates the rule) leaves the chain visibly broken rather
+      than colliding. That mismatch is the signal somebody needs.
+- [x] Legacy references are recognised, kept, and deliberately excluded from
+      counting, so the first new reference of the day does not follow
+      `REQ-2026-0847` as 848.
+
+### The assistant
+- [x] **An assistant on every page, on the user's own API key.** DOC5
+      specified a provider abstraction in July; this is the first thing built
+      against it. Three providers behind one interface: Gemini by default
+      (its free tier reads photographs, which is the capability a kitchen
+      needs), OpenAI-compatible for Groq, OpenRouter and — the real reason —
+      a local Ollama or LM Studio for venues that will not send their recipe
+      book anywhere, and Anthropic for venues already paying for it.
+- [x] The key stays in the browser. A key column in the database would be
+      readable by everyone with access to the row, land in every backup, and
+      still have to reach the browser to be used, because there is no server
+      to call from. The settings screen states the limit that remains — a
+      script on the page can read local storage — rather than implying
+      otherwise. It is somebody's own money.
+- [x] **The model may add an allergen and may never remove one** (DOC5 §6.1).
+      Enforced by shape rather than by prompt: `mergeAllergenProposal` is a
+      union, always, and the module exports no function that can remove one.
+      Free-from and "safe to serve" claims are stripped from any answer, with
+      the substitution shown rather than made silently.
+- [x] Three bugs the tests found before a user could: `looseNumber` turned "a
+      pinch" into a confident `0`; the free-from replacement text matched its
+      own filter, so running the guard twice deleted its own warning; and
+      Gemini reports a safety refusal as a `finishReason` rather than an HTTP
+      error, which read as the model having nothing to say.
+
+### Human Resources self-service
+- [x] **The data model**: public holidays, birthdays, requests that are not
+      absences, a community board and a company profile. A loan is not
+      measured in days and a shift swap needs two shifts, so `staff_requests`
+      carries a kind and a payload rather than forcing three shapes into
+      `leave_requests`.
+- [x] **The board is moderated before it is visible.** A post starts PENDING
+      whatever the client asks for, and no client path writes PUBLISHED — the
+      board carries a colleague's phone number and a price, and whoever has to
+      deal with it going wrong should read it first.
+- [x] **A decision can no longer be filed under somebody else's name.** The
+      guard compared the caller's JWT email against the employee but recorded
+      `decided_by_email` from the row the client sent, so the record could say
+      Budi approved Budi's loan. It grants nobody an approval they could not
+      already make; what it corrupts is the audit trail of a
+      segregation-of-duties control, which makes the control decoration. The
+      field is no longer read where there is a session.
+- [x] **The HR home screen**: whether you are clocked in first, because that
+      is done in a hurry twice a day; then what needs doing; then what has
+      been sent. Four buttons rather than a menu — a menu is a question about
+      where something is. A manager gets the same screen with approvals added,
+      because a head chef is a member of staff who also approves things and
+      splitting that in two means checking two places.
+- [x] **Leave balances are a tested engine, not a query.** Pending requests
+      count against the balance, because showing somebody twenty days when
+      they have asked for fifteen invites a holiday they cannot take. Rejected
+      and cancelled days give nothing back. Leave with no entitlement reports
+      days used and never a remainder — "sick days remaining" reads as an
+      allowance. An overrun shows as -3 rather than clamping to zero, because
+      hiding it is how it reaches payroll unnoticed.
+
+### Rules and workflow
+- [x] **AGENTS.md** now holds the rules that have actually governed this
+      codebase, each one traced to the failure that caused it. Three documents
+      were stale, and `.github/copilot-instructions.md` was the worst of them:
+      it told agents the repository contained no source files, through
+      forty-six migrations and a working application.
+- [x] A PR template whose load-bearing section is "how it was proved" — which
+      flow was driven, which SQL was run to try to break a rule, and what the
+      database said.
+- [x] A false pass worth remembering, caught here: an UPDATE refused by RLS
+      matches zero rows and raises no exception, so a test asserting "no
+      error" proves nothing. Re-run with `get diagnostics row_count`.
+
 ## In progress / next up
 
 - [ ] **Realtime sync is not working, and the attempt was reverted.** Reads
@@ -364,8 +479,13 @@ before any test executes looks identical to a test regression.
 - [ ] Cascade `refPercent` from product yield onto recipe lines. Deliberately
       not done: ref % is editable per line in the ingredient grid, so
       overwriting it would discard a chef's intentional trim override.
-- [ ] AI recipe import, and an AI assistant. Neither is started, and both
-      need a provider and key decision first.
+- [ ] **AI recipe import.** Not started. The provider abstraction it needs
+      now exists (see the assistant, below), so this is a prompt, a preview
+      screen and the same refusal-to-invent-products rule the sheet importer
+      already enforces — not a platform decision.
+- [ ] **The assistant has never made a real network call.** Three providers
+      are wired up and the guardrails are tested, but there is no API key on
+      this machine, so the first real request will be the first real test.
 - [ ] **The WhatsApp adapter has never talked to WhatsApp.** It is written,
       it drains its queue correctly and it was verified against real queued
       messages in dry run — but sending needs a Meta Business account, an
@@ -377,7 +497,7 @@ before any test executes looks identical to a test regression.
       only an owner. The confidentiality direction — a colleague who is not a
       participant sees nothing — is proved.
 
-## Done since the last revision
+## Done earlier, up to `546abcd`
 
 - [x] **Training, competency, reviews and HR cases now have screens**, as
       four more tabs on People. Competency is shown as a matrix — people
@@ -588,12 +708,14 @@ before any test executes looks identical to a test regression.
       add everything at or below its reorder point.
 
 ### Known gaps
-- [ ] CI unread since `ec2c054`; `gh` newly installed and not authenticated.
+- [ ] **No git remote.** Every branch is local to this machine, `main` is
+      nine commits behind, and CI has therefore never run on any of this work.
 - [ ] Never deployed. `DEPLOY.md` is untested.
 - [ ] `pnpm lint` fails — eslint is not installed.
 - [ ] Realtime sync was built, could not be made to work, and was deliberately
       reverted rather than shipped. Undiagnosed.
-- [ ] The WhatsApp and email adapters have never made a real network call.
+- [ ] The WhatsApp and email adapters have never made a real network call,
+      and neither has the assistant.
 - [ ] Written-answer marking has schema and no screen.
 
 ## Open questions for the user
