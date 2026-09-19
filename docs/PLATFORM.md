@@ -1,331 +1,294 @@
-# Platform: departments, and how they link as one
+# The platform: what this actually is
 
-> Written 2026-09-19 at `31f8ba5`. A design, not a record of what exists —
-> `PROGRESS.md` is that. This answers a single question: what has to change so
-> that one application runs a corner-shop café, a restaurant group and a small
-> hotel, with each department working in its own part and reaching into other
-> people's parts where it genuinely has to.
+> Rewritten 2026-09-19 at `9efb06b`. The first version of this file asked
+> whether the target was "a hotel platform or a food platform". That was the
+> wrong question and it is withdrawn — see §2. This version starts from what
+> the application has actually become.
 
-## 1. The problem underneath every other problem
+## 1. Read the history before designing the future
 
-The application already has two organisational hierarchies, and they do not
-agree with each other.
+Ninety commits, and a pattern that is not "someone decided to build a hotel
+app". Every module here exists because **another module's rule needed a fact
+it did not own**:
 
 ```
-departments (HR)          cost_centres (money)
-  KITCHEN  ────linked───►   KITCHEN
-  BAR      ────linked───►   BAR
-  SERVICE  ── unlinked      FOH        ◄── no department
-  ADMIN    ── unlinked
-  ENG      ── unlinked
+  costing a dish            needed a real price     ->  suppliers
+  EU traceability           needed supplier + lot   ->  traceability
+  buying something          needed an approval      ->  purchasing, and SoD
+  segregation of duties     needed a second person  ->  membership, RBAC
+  publishing a rota         needed certificates     ->  HR
+  assigning a work order    needed the rota         ->  HR again
+  a housekeeping sheet      needed rostered hours   ->  HR again
+  releasing a room          needed the fault list   ->  maintenance
 ```
 
-Three of five departments have no cost centre. One cost centre has no
-department. Nothing forces the link, and the two are referenced by different
-halves of the schema:
+It started as kitchen costing and grew along the dependency graph of its own
+controls. Nothing was added for completeness; each thing was added because a
+rule could not be enforced without it.
 
-| | referenced by |
+That matters for what comes next, because it means the unit of design is not
+a department and not a venue. It is a **fact, and the rules that read it**.
+
+## 2. What the last version of this document got wrong
+
+It proposed sorting organisations into venue profiles — café, restaurant,
+group, small hotel — and asked which one the product was for.
+
+That is a tiering model wearing an analysis costume, and it is wrong twice
+over. It is wrong about customers: a beach club is a bar, a restaurant, a
+retail shop and a facilities operation at once, and it would have to pick a
+box that fits none of it. And it is wrong about the code: there is nothing in
+this schema that is hotel-shaped or restaurant-shaped. `work_orders` does not
+know what a hotel is. `rooms` is a location with a cleaning standard.
+
+There are no venue types in this design. There are units and capabilities,
+and the shape of the business is what they add up to.
+
+## 3. The spine: eight facts everything reads
+
+Underneath every module are eight nouns. Every department is a set of verbs
+over some of them, plus a rule or two of its own.
+
+| Fact | Owned by | Read by |
+|---|---|---|
+| A person | People | rota, work orders, cleaning sheets, approvals, training |
+| A place | shared tree | rooms, assets, HACCP forms, cost allocation |
+| A thing you buy | Purchasing | recipes, stock, spares, amenities |
+| A thing you own | Maintenance | rooms, kitchen, IT, plant |
+| A unit of money | Finance | every document with a cost |
+| A numbered document | shared sequence | REQ→PR→PO→GRN→INV, WO, and whatever is next |
+| A rule about who may act | Access + approvals | every write worth arguing about |
+| A record that cannot be rewritten | ledgers | stock, approvals, status, rooms, meters |
+
+The eighth is the one that makes the others trustworthy, and it is already
+used five times. Nothing new here should be built without asking which of the
+eight it is, and who else will read it.
+
+**Today two of these are split in half and disagree with themselves.** The
+department tree (HR) and the cost centre tree (money) are separate tables,
+three of five departments have no cost centre, and one cost centre has no
+department. So "what did the bar spend on staff" is not a hard query; it is an
+unanswerable one. Merging them into one `business_units` table is the first
+piece of work, and the riskiest migration in the project — thirteen tables of
+foreign keys.
+
+## 4. Capabilities and units, not tiers
+
+An organisation is a **tree of units**. A unit is a place money is spent and
+work is owned: a kitchen, a bar, a floor, an engineering shop, a whole venue,
+a head office.
+
+A **capability** is a set of verbs over the spine: costing, stock, buying,
+people, assets, cleaning, compliance, selling.
+
+An organisation turns on the capabilities its units need. Nobody chooses a
+profile. A corner shop café is one unit with four capabilities on, and it is
+not "café mode" — it is simply a small tree. A group is the same application
+with sixty units and a head office above them. **The same code runs both, and
+neither was configured to be what it is.**
+
+The mechanism mostly exists: `app_sections` is a table rather than an enum,
+which migration 0036 chose deliberately. It needs an `enabled` flag per
+organisation and a sensible default, not a tier list.
+
+## 5. A dashboard is the access grid, rendered
+
+The request named CEO, CFO, HR director, executive chef. The temptation is to
+design four dashboards, then six, then one per job title anybody invents.
+
+Do not. **A role is a capability at a scope**, and that is exactly the two-axis
+access model:
+
+```
+   capability  ×  scope        =  what you are accountable for
+   FINANCE        enterprise   =  CFO
+   FINANCE        one venue    =  venue finance manager
+   PEOPLE         enterprise   =  HR director
+   PEOPLE         kitchen      =  head chef doing their own rota
+   CULINARY       enterprise   =  executive chef
+   CULINARY       one venue    =  head chef
+   everything     enterprise   =  CEO
+   everything     one venue    =  general manager
+```
+
+So there is one dashboard, and it renders whatever the person's grid says.
+A CEO tile and a GM tile are the same component at different scopes. This is
+the difference between building seven dashboards and building one — and it is
+why the unit axis in §3 has to come first.
+
+Two rules keep it honest:
+
+- **A tile earns its place by being able to go red.** A number that is always
+  green is a report, and reports belong inside the department.
+- **Every tile links to the thing it is about.** An exception count that
+  cannot be opened is a complaint.
+
+## 6. The two facts that stop every executive view from existing
+
+This is the sharpest finding of the re-analysis, and it is not about
+architecture.
+
+**The application knows what things cost in extraordinary detail, and almost
+nothing about money coming in or the cost of people.**
+
+| | status |
 |---|---|
-| `department_id` | employees, shifts, job_roles, hiring_requests, department_approvers |
-| `cost_centre_id` | requisitions, purchase_orders, budgets, work_orders, locations, meters |
+| Hours worked | **exists** — `time_entries`, clocked in and out, corrections, approvals |
+| A pay rate | **does not exist anywhere in the schema** |
+| Dish revenue | partial — `sales_lines.net_sales`, only for imported POS periods |
+| Unit revenue | **does not exist** — no takings per unit per day |
+| Budgets | exists, per cost centre |
 
-So "what did the bar spend on staff" cannot be asked, because staff hang off
-one tree and money off the other. Every cross-department feature in this
-document runs into that seam, which is why it is first.
+Labour cost is hours × rate. The hours are there, clocked and corrected and
+argued over. There is no rate, so there is no labour cost, so there is no unit
+profit and loss, so **the CEO tile and the CFO dashboard cannot be built** —
+not for want of a design, but because the two numbers they are made of are not
+in the database.
 
-### The fix: one business unit
+This is a bigger gap than anything in §8, and it should be closed before any
+executive dashboard is drawn. What it needs:
 
-One table — call it `business_units` — that **is** the department, **is** the
-cost centre, and **owns** locations. `departments` and `cost_centres` become
-views over it during migration and are then dropped.
+- **Pay rates with effective dates**, in the restricted table beside the other
+  personal data, with a rate history — because last month's payroll must stay
+  computed at last month's rate, the same reasoning that already keeps last
+  month's waste valued at last month's price.
+- **Overtime and premium rules** as policy data, the way approval thresholds
+  already are.
+- **Revenue per unit per day**, from the POS, as a first-class fact rather
+  than a menu-engineering import.
 
-A unit carries: a code (KIT, BAR, HK, ENG…), a name, a parent unit, a manager,
-an approval threshold, and the locations it is responsible for. It is what a
-reference number already abbreviates — `PO-KIT-260919-001` has been naming
-business units since migration 0047, without a table to point at.
+With those three, everything above becomes arithmetic over facts that exist.
 
-**This is the prerequisite for everything below.** It is also the single
-riskiest migration in the project so far: it rewrites foreign keys across
-thirteen tables. It should be its own piece of work with its own proof.
+## 7. How departments actually talk to each other
 
----
+Four mechanisms, and they should be used in this order. The first is best
+because it requires no message at all.
 
-## 2. Permissions become two axes, not one
+**1 — Share the fact.** Neither department sends anything; both read the same
+row. A room cannot be released while a high-priority work order stands against
+it, and no notification is involved. This is the strongest form of integration
+and the one a separate product cannot reach.
 
-Today access is a grid of *person × section*. A person has WRITE on
-Purchasing, everywhere. That cannot express what was asked for — "purchasing
-should be able to see the HR records of their own staff" — because People is
-one switch and it is on or off for the whole venue.
+**2 — Hand over a document.** One department raises it, another acts on it.
+This is already the spine of the app and it is how a kitchen porter reports a
+leaking tap: anybody may raise, only the owning department may close.
 
-The change is to add a second axis:
-
-```
-        member_access   : person × section × level      (exists)
-      + member_scope    : person × business unit        (new)
-```
-
-Read together: **the section says what kind of thing you may touch; the unit
-says whose.** A head chef with `PEOPLE: WRITE` scoped to Kitchen can build the
-kitchen rota, approve kitchen leave and see kitchen attendance — and sees
-nothing at all of the bar's. An HR director has `PEOPLE: WRITE` with no scope,
-which means all units.
-
-Enforced the way everything else here is enforced: a trigger, extending the
-`require_section_write` function that migration 0057 has just finished wiring
-up, plus a `unit_visible()` predicate added to the RLS policies of the tables
-that carry a unit.
-
-Three properties worth stating, because each is a decision:
-
-- **No scope means every unit**, not none. Otherwise every existing grant
-  silently becomes worthless on the day this ships.
-- **Scope narrows, never widens.** A person with `PEOPLE: NONE` and a Kitchen
-  scope still has nothing. The section remains the outer gate.
-- **A unit scope is inherited down the tree.** Scope somebody to Food &
-  Beverage and they get Kitchen and Bar beneath it, because that is what a
-  director of F&B is.
-
----
-
-## 3. What anybody may do, regardless of department
-
-Some things are not a department's property. A kitchen porter who finds a
-leaking tap must be able to say so, and today the Maintenance section guard
-refuses their write.
-
-The model is the one this codebase already uses for staff self-service, and
-which 0057 formalised: **you may raise a document; somebody else must act on
-it.** Five of these, and they are the connective tissue of the whole platform:
-
-| Anybody may raise | It lands in | Only they may |
+| Anybody may raise | Lands in | Only they may |
 |---|---|---|
-| A maintenance issue | Maintenance, as an OPEN work order | assign, put on hold, complete, sign off |
-| A hygiene concern | Hygiene, as a non-conformity | investigate, close with a corrective action |
-| A request to buy something | Purchasing, as a requisition for their own unit | approve, order, receive |
-| A request for staff | HR, as a hiring request for their own unit | approve, advertise, hire |
-| A request about themselves | HR, as leave, a shift swap, a correction | decide |
+| A fault, with a photo and a place | Maintenance, as an OPEN work order | assign, hold, complete, sign off |
+| A hygiene concern | Hygiene, as a non-conformity | close, with a corrective action |
+| Something to buy | Purchasing, for their own unit | approve, order, receive |
+| A request for staff | People, for their own unit | approve, advertise, hire |
+| A request about themselves | People | decide |
 
-Each already has a table. `hiring_requests` already carries
-`department_id`, `job_role_id` and `headcount` — the "request staff from HR"
-feature is modelled and simply unreachable from anywhere but Administration.
+`hiring_requests` already carries department, role and headcount — "request
+staff from HR" is modelled and merely unreachable from anywhere but
+Administration.
 
-### Reporting a fault, in detail
+**3 — Tell somebody.** Events already exist: the communication cycle raises
+them by trigger rather than from the pages, deliberately, so an import or a
+future mobile client tells the same people. Nothing is delivered anywhere.
+This is `PLAN.md` Phase 2 and the fault reporter makes it unavoidable — a
+report nobody is told about is a suggestion box.
 
-This is the one the request describes most concretely, so it is specified most
-concretely.
+**4 — Escalate.** A document nobody acts on moves up the unit tree after a
+defined time. This is the mechanism that stops mechanism 2 from becoming a
+pile, and it does not exist.
 
-A reporter — any signed-in member of staff, from any department — submits:
-a photograph or a short video, a description, the location, and the time.
-Time and date are the server's, not the client's, for the same reason a
-delivery temperature is: a self-reported timestamp on a fault that later
-matters is not evidence.
+**And one that is missing entirely: handover.** "Communicate through the app"
+most literally means the shift-to-shift note — what broke, who is coming, what
+the late table complained about, which room the guest is unhappy in. Today
+there is nowhere to put it, so it lives in WhatsApp, which is exactly where
+the app is trying to stop things living. It is small to build and it is
+probably the most-used screen in the product.
 
-It becomes a work order at `OPEN` with `source = 'REPORTED'`, which is why
-that enum already has room for it. From there it follows the states the
-module already has — `ON_HOLD` is literally "waiting for parts" — and the
-reporter is told when it changes, which is the first thing in this platform
-that genuinely needs the notifications in `PLAN.md` Phase 2.
+## 8. The departments to add, as capabilities
 
-**The new infrastructure this needs is media storage**, and it is the only
-genuinely new infrastructure in this document: a Supabase Storage bucket per
-organisation, row-level security on the objects mirroring the work order's
-own, a hard cap on video length, and a retention policy. Photographs of a
-fault are cheap and worth keeping; video is neither, and a venue that uploads
-thirty-second clips of every dripping tap will fill a bucket and a bill.
+Reframed from the last version: none of these is a venue type, and most are
+not modules.
 
-### Maintenance buys its own things
+**Beverage.** A unit scope and a second cost basis, not a module. Recipes,
+stock, suppliers and allergens apply unchanged. What differs: pour cost rather
+than food cost; measures and yields (a 700 ml bottle at 25 ml is 28 pours, and
+the gap between 28 and what the till says is the whole of beverage control —
+the same variance calculation as theoretical-vs-actual usage in `PLAN.md`
+Phase 3, and it should be built once for both); and licences as certificates
+with expiries, which the supplier-certificate machinery already does.
 
-Engineering's suppliers are not the kitchen's. The supplier table is already
-shared and already correct — what is missing is a scope: a supplier belongs to
-one or more business units, and a unit's ordering screens show its own.
+**Stewarding.** Small, and the missing link in hygiene. It owns the machine
+temperatures the kitchen's HACCP file already depends on without owning — a
+final rinse below 82 °C is a stewarding fault with a kitchen consequence.
 
-The chain is unchanged and that is the point: engineering raises a requisition
-against its own unit, it follows the same approval thresholds, becomes the
-same purchase order, and lands in the same invoice matching. Finance sees one
-spend picture. A separate engineering stores ledger is how a venue stops
-knowing what it owns.
+**Finance.** The real gap, and §6 is most of it. Beyond pay and revenue:
+payment runs, unit P&L rolled up from facts that exist, and an export to an
+accounting package rather than a ledger of our own. Building a general ledger
+to compete with QuickBooks and Xero would be the largest and least
+differentiated thing in this repository.
 
----
+**IT.** Offered as the test of whether §4 is right. An IT asset is an asset, a
+broken laptop is a work order, a subscription is a supplier with a renewal
+date. If IT needs a module, the capability model is wrong.
 
-## 4. The dashboard hierarchy
+**Front office.** Where occupancy would come from. Housekeeping records it by
+hand today and says so on the page. This is the boundary with a property
+management system, and it is a build-or-integrate decision rather than a
+feature.
 
-Today `/` is a food-cost dashboard. That is the right dashboard for a chef and
-the wrong one for an owner.
+**Marketing.** Menus with sections (already Phase 4), publication, promotions
+with a start and end, reviews. The part worth having early is the tie-back:
+a promotion has a cost, and menu engineering already knows what each dish
+contributes.
 
-```
-/                     Executive overview   — one tile per unit, exceptions first
-/kitchen              Culinary             — today's `/`, unchanged
-/bar                  Beverage
-/housekeeping         (exists)
-/maintenance          (exists)
-/finance  /people  /marketing  …
-```
+**Also units rather than modules:** security, spa, laundry, retail, events,
+and a head office above the rest.
 
-**The executive overview is not a bigger version of the culinary dashboard.**
-It answers one question per department and nothing else — the CEO reading of a
-business, which is "where is something wrong today". Each tile shows one
-headline number, one exception count, and a link.
+## 9. Hygiene, expanded
 
-| Unit | Headline | Exception |
-|---|---|---|
-| Culinary | Food cost % against target | Dishes off target |
-| Beverage | Pour cost % | Lines due a clean |
-| Housekeeping | Rooms sellable | Rooms held by engineering |
-| Maintenance | PM compliance % | Statutory inspections late |
-| Hygiene | Checks completed today | Breaches without a corrective action |
-| People | Headcount against rota | Shifts unfilled tomorrow; certificates lapsing |
-| Purchasing | Committed spend against budget | Invoices unmatched |
-| Finance | Margin this period | Approvals waiting |
+Hygiene is a kitchen file today and should be the venue's compliance spine —
+it is the capability that touches every other department.
 
-The rule that keeps it useful: **a tile earns its place by being able to go
-red.** A number that is always green is a report, and reports belong inside
-the department.
+Forms scoped to a unit, so each page leads with its own overdue list. Bar:
+glass washer temperatures, ice machine cleaning, line cleaning dates.
+Housekeeping: chemical COSHH, linen handling, sanitation after a reported
+illness. Stewarding: final rinse, dosing, waste segregation, pest control.
 
-Each departmental dashboard is the same shape, scoped by unit — which the two
-axis model in §2 gives for free.
+And the highest-value link in this document: **a failed check raises an
+engineering job by itself.** An ice machine above temperature is both a
+hygiene non-conformity and a maintenance fault, and today somebody has to
+remember to be both. The mechanism exists — `work_orders` with
+`source = 'INSPECTION'`. Forgetting currently has a consequence; this removes
+the forgetting.
 
----
+## 10. Order of work
 
-## 5. The departments to add
+1. **Business units.** One tree. Nothing else is honest until this is done.
+2. **Pay rates and unit revenue.** §6. Without these there is no executive
+   anything, and the design above would be drawn over a hole.
+3. **The scope axis on access**, which makes roles and dashboards the same
+   mechanism.
+4. **Handover**, because it is small, it is used every day, and it is where
+   the app currently loses to WhatsApp.
+5. **Universal raise rights**, starting with the fault reporter — the first
+   thing needing media storage.
+6. **Notifications**, which the fault reporter makes unavoidable.
+7. **The one dashboard**, rendered by grid, once there are units and money to
+   put in it.
+8. **Hygiene by unit**, and the failed-check-raises-a-job link.
+9. **Beverage**, then Finance, Stewarding, IT, Marketing, Front office.
 
-Ordered by how much is already there.
+## 11. Decisions this needs
 
-### Bar / beverage — mostly exists, needs separating
-A bar is a kitchen with different arithmetic. Recipes, costing, stock,
-suppliers and the allergen registry all apply unchanged. What differs:
+The venue-type question is withdrawn. What is genuinely open:
 
-- **Pour cost rather than food cost**, and the reduced-VAT question from
-  `PROGRESS.md` bites here first: in most EU member states restaurant food sits
-  on a reduced rate and alcohol on the standard one, so a single rate is wrong
-  for one of the two menus from day one.
-- **Measures and yields**: a 700 ml bottle at 25 ml a measure is 28 pours, and
-  the loss between 28 and what the till recorded is the whole of beverage
-  control. This is the same variance calculation as theoretical-vs-actual
-  usage in `PLAN.md` Phase 3, and it should be built once for both.
-- **Licensing** as a certificate with an expiry, which the supplier-certificate
-  machinery already does.
-
-Not a new module. A unit scope, a second cost basis, and its own dashboard.
-
-### Stewarding — small, and the missing link in hygiene
-Dishwashing, chemicals, waste and pest control. It owns the machine
-temperatures that the kitchen's HACCP file depends on and currently records
-without owning: a final rinse below 82 °C is a stewarding fault with a kitchen
-consequence. Needs: its own HACCP forms, its own chemical inventory (COSHH),
-and the link that raises an engineering job when a machine fails a check.
-
-### Finance — the real gap
-Purchasing ends at a matched invoice. Nothing pays it, nothing posts it, and
-nothing produces a margin. Needs: payment runs, a cost-centre P&L rolled up
-from what already exists, and an export to an accounting package rather than a
-general ledger of our own — `COMPETITIVE_ANALYSIS.md` already recommends
-QuickBooks and Xero, and building a ledger to compete with them would be the
-largest and least differentiated thing in this repository.
-
-Owns, rather than shares: approval thresholds, tax rates, budgets.
-
-### IT — a worked example of needing no new module
-An IT asset is an asset; a broken laptop is a work order; a software
-subscription is a supplier with a renewal date and a certificate-shaped
-expiry. IT is a business unit with a scope on Maintenance and Purchasing, an
-asset category, and its own supplier list. If the two-axis model is right, IT
-costs nothing to add — and if it turns out to need a module, the model is
-wrong. It is worth building as the test.
-
-### Front office / reception — the PMS boundary
-Where a hotel's occupancy would actually come from. Today housekeeping records
-it by hand and says so. This is the department that either integrates with a
-PMS or becomes one, and that is a strategic decision rather than a feature.
-Until it is made, front office is arrivals and departures typed in, which is
-what exists.
-
-### Marketing — the smallest useful version
-Menus with sections (already Phase 4 in `PLAN.md`), publication to channels,
-promotions with a start and end date, and review monitoring. The part worth
-having early is the one that ties back: a promotion has a cost, and menu
-engineering already knows what each dish contributes.
-
-### Also worth a unit, not a module
-Security, spa and leisure, laundry, and — for a group — a Head Office unit
-that is the parent of every venue's units and the reason the tree in §1 has a
-`parent_id`.
-
----
-
-## 6. Hygiene, expanded
-
-Hygiene today is a kitchen file. It should be the venue's compliance spine,
-and it is the module that touches every other department.
-
-- **Forms scoped to a unit.** A form belongs to Kitchen, Bar, Housekeeping or
-  Stewarding, and each unit's page leads with its own overdue list rather than
-  everybody's.
-- **Bar**: glass washer temperatures, ice machine cleaning, draught line
-  cleaning dates, spirit measure calibration.
-- **Housekeeping**: chemical COSHH sheets, linen handling, room sanitation
-  after a reported illness.
-- **Stewarding**: final rinse temperature, chemical dosing, waste segregation,
-  pest control visits.
-- **A failed check raises an engineering job automatically.** An ice machine
-  above temperature is both a hygiene non-conformity and a maintenance fault,
-  and today somebody has to remember to be both. The mechanism exists —
-  `work_orders` with `source = 'INSPECTION'` — and this is the single highest
-  value link in the whole document, because it is the one where forgetting has
-  a consequence.
-- **One compliance view across units**, which is what an inspector asks for
-  and what nobody can currently produce.
-
----
-
-## 7. One application, three sizes
-
-A corner café must not open to twenty sections, and a hotel group must not be
-told to use a restaurant app.
-
-`app_sections` is already a table rather than an enum — 0036 chose that
-deliberately — so the mechanism is nearly there. What it needs is an
-`enabled` flag per organisation, set from a profile at sign-up:
-
-| Profile | Units | Sections on |
-|---|---|---|
-| **Café / one operator** | one | Recipes, Inventory, Purchasing, Hygiene |
-| **Restaurant** | Kitchen, Bar, FOH | the above, plus People, Menu, Production, Traceability |
-| **Restaurant group** | per venue, under a head office | the above, plus Finance, Marketing, multi-venue roll-up |
-| **Small hotel** | plus Housekeeping, Maintenance, Front office, Stewarding | everything |
-
-The profile picks the starting set. It is not a licence tier and it is not a
-one-way door: a café that opens a second site turns units on, and nothing
-about its data has to move. Seeding runs through
-`seed_organization_defaults()`, which already exists and already knows how to
-be extended.
-
----
-
-## 8. Order of work
-
-1. **Business units.** Merge `departments` and `cost_centres`. Nothing below
-   is honest until this is done.
-2. **The unit axis on permissions**, and the scoped dashboards that fall out.
-3. **Universal raise rights**, starting with reporting a fault — which needs
-   media storage, and therefore is the first thing to need Supabase Storage.
-4. **Notifications** (`PLAN.md` Phase 2), which the fault reporter makes
-   unavoidable: a report nobody is told about is a suggestion box.
-5. **Executive dashboard**, once there are units to roll up.
-6. **Hygiene by unit**, and the failed-check-raises-a-job link.
-7. **Bar**, as the first new unit, and the pour-cost variance shared with
-   `PLAN.md` Phase 3.
-8. **Finance**, then Stewarding, IT, Marketing, Front office.
-9. **Venue profiles**, last, because it is a filter over a finished set and
-   filtering an unfinished one hides the gaps.
-
-## 9. Decisions this needs, which are not mine
-
-- **Is the target a hotel platform or a food platform?** Front office and a
-  PMS boundary are a different company from recipe costing. The answer changes
-  §5 entirely.
-- **Finance: export or own ledger?** Recommended: export. It is the largest
-  build here and the least differentiated.
-- **Does a group need cross-venue consolidation on day one**, or is a venue
-  the unit of sale? This decides whether the unit tree has one root or many.
-- **The reduced VAT rate**, still open from `PROGRESS.md`, and now blocking
-  the bar rather than only the food menu.
+- **Pay rates in this system, or only hours out to a payroll provider?**
+  Holding rates means holding the most sensitive data in the product and
+  taking on payroll's compliance surface. Holding none means no labour cost
+  and no unit P&L. A middle exists — rates for costing, payroll elsewhere —
+  and it is probably the right one, but it is a decision.
+- **Revenue: POS integration, or manual daily takings?** Integration is the
+  right answer and needs naming a POS. Manual takings are a day's work and
+  unblock everything in §6.
+- **Is a venue the unit of sale, or is an enterprise?** This decides whether
+  the unit tree has one root or many, and whether cross-venue consolidation is
+  day-one or never.
+- **Front office: integrate with a PMS, or become one?**
