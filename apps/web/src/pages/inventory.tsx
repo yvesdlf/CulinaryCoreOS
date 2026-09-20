@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { Button } from "@/components/ui/button";
@@ -761,10 +762,11 @@ function CountSheet({
 
   if (lines.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        No ingredients are stock-tracked yet. Set a par level on a product to
-        start counting it.
-      </p>
+      <EmptyState icon={Warehouse} title="Nothing is stock-tracked yet">
+        Set a par level on a product and it starts being counted here. No par means
+        "bought to order" rather than "out of stock" — most of a catalogue this size
+        is never held.
+      </EmptyState>
     );
   }
 

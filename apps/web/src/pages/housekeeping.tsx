@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -208,7 +209,7 @@ export function HousekeepingPage() {
         <div className="mt-4 rounded-lg border border-status-warning bg-status-warning-soft p-3">
           <p className="text-sm text-status-warning">
             <TriangleAlert className="mr-1 inline size-4" />
-            {stale.length} room{stale.length === 1 ? "" : "s"} have no recent occupancy.
+            {stale.length} room{stale.length === 1 ? " has" : "s have"} no recent occupancy.
             There is no property management system behind this board, so arrivals and
             departures are whatever somebody last recorded — a stale list sends an
             attendant to a room that was never vacated.
@@ -238,7 +239,11 @@ export function HousekeepingPage() {
         {/* ── The board ────────────────────────────────────────────────── */}
         <TabsContent value="board" className="mt-4">
           {loading ? <Loading /> : board.length === 0 ? (
-            <Empty>No rooms yet. Add them as locations of kind "guest room".</Empty>
+            <EmptyState icon={BedDouble} title="No rooms yet">
+              A room is a location of kind "guest room", with a room type that says
+              how long it takes to clean. The room type is what lets a morning's
+              sheets be balanced on minutes rather than on room count.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -347,7 +352,10 @@ export function HousekeepingPage() {
         {/* ── Inspections ──────────────────────────────────────────────── */}
         <TabsContent value="inspect" className="mt-4">
           {toInspect.length === 0 ? (
-            <Empty>Nothing waiting. A room appears here once its attendant marks it clean.</Empty>
+            <EmptyState icon={ClipboardCheck} title="Nothing waiting to inspect">
+              A room appears here once its attendant marks it clean. Until somebody
+              other than the attendant has passed it, it is not sellable.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -400,7 +408,12 @@ export function HousekeepingPage() {
               <CardTitle className="text-base">Today's sheets against today's rota</CardTitle>
             </CardHeader>
             <CardContent>
-              {workload.length === 0 ? <Empty>No staff records.</Empty> : (
+              {workload.length === 0 ? (
+                <EmptyState icon={Users} title="No staff records">
+                  Attendants come from Human Resources. Their published shifts are
+                  what decides how much work can be given to them.
+                </EmptyState>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -444,12 +457,28 @@ export function HousekeepingPage() {
 
         {/* ── Lost property ────────────────────────────────────────────── */}
         <TabsContent value="lost" className="mt-4">
-          <div className="mb-3 flex justify-end">
-            <Button size="sm" variant="outline" onClick={() => setBooking(true)}>
-              Book an item in
-            </Button>
-          </div>
-          {lost.length === 0 ? <Empty>Nothing booked in.</Empty> : (
+          {lost.length > 0 && (
+            <div className="mb-3 flex justify-end">
+              <Button size="sm" variant="outline" onClick={() => setBooking(true)}>
+                Book an item in
+              </Button>
+            </div>
+          )}
+          {lost.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="Nothing booked in"
+              action={
+                <Button variant="outline" onClick={() => setBooking(true)}>
+                  Book an item in
+                </Button>
+              }
+            >
+              An item found in a room is held ninety days and gets a reference.
+              Returning it records who it went to; disposing of it early has to
+              say why.
+            </EmptyState>
+          ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
@@ -501,10 +530,11 @@ export function HousekeepingPage() {
         {/* ── Amenities ────────────────────────────────────────────────── */}
         <TabsContent value="stock" className="mt-4">
           {stock.length === 0 ? (
-            <Empty>
-              No amenities configured. Link products to room types to see what today's
-              cleans will consume.
-            </Empty>
+            <EmptyState icon={PackageSearch} title="No amenities configured">
+              Link a product to a room type and this shows what today's cleans will
+              consume against what is on the shelf. Amenities are ordinary stock in
+              the same ledger as the kitchen, so reordering goes through Purchasing.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -580,9 +610,7 @@ function Stat({ label, value, hint, danger }: {
 function Loading() {
   return <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>;
 }
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-12 text-center text-sm text-muted-foreground">{children}</p>;
-}
+
 
 function InspectDialog({ row, onClose, onDone }: {
   row: BoardRow | null; onClose: () => void; onDone: () => Promise<void>;

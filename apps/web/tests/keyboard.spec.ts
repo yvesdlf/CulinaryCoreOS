@@ -129,6 +129,31 @@ test.describe("keyboard operability", () => {
     expect(seen.size, "focus appears trapped in a small cycle").toBeGreaterThan(8);
   });
 
+  test("vertical tabs answer to up and down, not left and right", async ({ page }) => {
+    /*
+     * The People page is the only vertical tablist, and it found a defect the
+     * axe sweep cannot see: `orientation` was styled but never forwarded to
+     * the tabs primitive, so Arrow Down did nothing and Arrow Right moved
+     * between tabs. Automated scanning does not press keys.
+     */
+    await page.goto("/human-resources");
+    await page.getByRole("tab").first().waitFor();
+
+    await page.getByRole("tab").first().focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(
+      page.locator(":focus")
+    ).toHaveAttribute("role", "tab");
+    const after = await page.evaluate(
+      () => document.activeElement?.textContent?.trim() ?? "");
+    expect(after).toContain("Joining");
+
+    await page.keyboard.press("ArrowUp");
+    const back = await page.evaluate(
+      () => document.activeElement?.textContent?.trim() ?? "");
+    expect(back).toContain("Team");
+  });
+
   test("a select is operable without a mouse", async ({ page }) => {
     await page.goto("/recipes");
     await ready(page, "Recipes");

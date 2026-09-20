@@ -14,12 +14,15 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
-import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert } from "lucide-react";
+import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert,
+  UserPlus, CalendarRange, Clock, GraduationCap, Target, ClipboardCheck, Lock,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Send } from "lucide-react";
 import { StaffCommsTab } from "@/components/people/staff-comms-tab";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,21 +183,72 @@ export function PeoplePage() {
               hint="Expired or within 30 days" danger={lapsing.some((l) => l.daysLeft < 0)} />
       </div>
 
-      <Tabs defaultValue="team" className="mt-6">
-        <TabsList>
-          <TabsTrigger value="team"><Users className="size-4" />Team ({employees.length})</TabsTrigger>
-          <TabsTrigger value="leave"><CalendarDays className="size-4" />Leave ({leave.length})</TabsTrigger>
-          <TabsTrigger value="rota">Rota</TabsTrigger>
-          <TabsTrigger value="lifecycle">Joining &amp; leaving ({tasks.length})</TabsTrigger>
-          <TabsTrigger value="attendance">Attendance</TabsTrigger>
-          <TabsTrigger value="certifications">
+      {/*
+        * Eleven tabs is past what a tab row carries.
+        *
+        * Vertical, and grouped by what somebody came to do: who works here,
+        * when they work, how they are developing, what is confidential, and
+        * what is sent out. The groups are the reviewer's, and they match how
+        * an HR screen is asked about.
+        *
+        * Still one tablist, so arrow-key navigation still walks every tab in
+        * order. The group headings are presentational and hidden from
+        * assistive technology — a screen reader gets the same eleven tabs it
+        * got before, in the same order, which is why this is a layout change
+        * rather than a restructuring.
+        */}
+      <Tabs defaultValue="team" orientation="vertical" className="mt-6 items-start">
+        <TabsList variant="line" className="w-56 shrink-0 items-stretch gap-0.5">
+          <div aria-hidden="true" className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">
+            People
+          </div>
+          <TabsTrigger value="team" className="justify-start">
+            <Users className="size-4" />Team ({employees.length})
+          </TabsTrigger>
+          <TabsTrigger value="lifecycle" className="justify-start">
+            <UserPlus className="size-4" />Joining &amp; leaving ({tasks.length})
+          </TabsTrigger>
+
+          <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
+            Time &amp; attendance
+          </div>
+          <TabsTrigger value="rota" className="justify-start">
+            <CalendarRange className="size-4" />Rota
+          </TabsTrigger>
+          <TabsTrigger value="attendance" className="justify-start">
+            <Clock className="size-4" />Attendance
+          </TabsTrigger>
+          <TabsTrigger value="leave" className="justify-start">
+            <CalendarDays className="size-4" />Leave ({leave.length})
+          </TabsTrigger>
+
+          <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
+            Development
+          </div>
+          <TabsTrigger value="certifications" className="justify-start">
             <BadgeCheck className="size-4" />Certifications ({certifications.length})
           </TabsTrigger>
-          <TabsTrigger value="training">Training ({courses.length})</TabsTrigger>
-          <TabsTrigger value="competency">Competency</TabsTrigger>
-          <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
-          <TabsTrigger value="cases">Cases ({cases.length})</TabsTrigger>
-          <TabsTrigger value="comms">
+          <TabsTrigger value="training" className="justify-start">
+            <GraduationCap className="size-4" />Training ({courses.length})
+          </TabsTrigger>
+          <TabsTrigger value="competency" className="justify-start">
+            <Target className="size-4" />Competency
+          </TabsTrigger>
+          <TabsTrigger value="reviews" className="justify-start">
+            <ClipboardCheck className="size-4" />Reviews ({reviews.length})
+          </TabsTrigger>
+
+          <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
+            Private
+          </div>
+          <TabsTrigger value="cases" className="justify-start">
+            <Lock className="size-4" />Cases ({cases.length})
+          </TabsTrigger>
+
+          <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
+            Communication
+          </div>
+          <TabsTrigger value="comms" className="justify-start">
             <Send className="size-4" />Send to staff
           </TabsTrigger>
         </TabsList>
@@ -219,10 +273,11 @@ export function PeoplePage() {
           {loading ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
           ) : employees.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nobody on the books yet. An employee record does not need a login —
-              most kitchen staff will not have one.
-            </p>
+            <EmptyState icon={Users} title="Nobody on the books yet">
+              An employee record does not need a login; most kitchen staff will not
+              have one. What it does need is a job role, because that is what says
+              which certificates the work requires.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
