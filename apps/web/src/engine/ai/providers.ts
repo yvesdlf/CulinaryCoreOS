@@ -22,7 +22,7 @@
 // first real request is the first real test.
 // ---------------------------------------------------------------------------
 
-import { AiError, type AiProvider, type AiRequest, type AiResponse } from "./types";
+import { AiError, type AiProvider, type AiResponse } from "./types";
 
 /** Split a data URL into the parts an API wants. */
 function splitDataUrl(dataUrl: string): { mime: string; base64: string } {

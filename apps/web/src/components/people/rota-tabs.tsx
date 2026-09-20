@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from "react";
-import { CalendarRange, Clock, TriangleAlert, Plus, Play, Square } from "lucide-react";
+import { Clock, TriangleAlert, Plus, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -472,9 +472,9 @@ export function AttendanceTab({
 
 // ── Onboarding and offboarding ──────────────────────────────────────────────
 
-import { ClipboardCheck, UserPlus, UserMinus, Lock } from "lucide-react";
+import { UserPlus, UserMinus, Lock } from "lucide-react";
 import {
-  fetchTaskBoard, startChecklist, completeTask, type EmployeeTask,
+  startChecklist, completeTask, type EmployeeTask,
 } from "@/data/repository";
 
 /**

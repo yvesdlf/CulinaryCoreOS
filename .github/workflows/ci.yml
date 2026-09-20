@@ -45,6 +45,13 @@ jobs:
       - name: Unit tests
         run: pnpm --filter web test:unit
 
+      # eslint was in package.json from the first week and never installed, so
+      # `pnpm lint` failed and reported nothing — a check that cannot run is
+      # worse than no check, because it appears in the script list and
+      # everybody assumes somebody runs it.
+      - name: Lint
+        run: pnpm --filter web lint
+
       - name: Production build
         run: pnpm --filter web build
 

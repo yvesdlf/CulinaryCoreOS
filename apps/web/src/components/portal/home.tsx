@@ -21,14 +21,13 @@
 
 import { useMemo, useState } from "react";
 import {
-  Clock, CalendarDays, FileText, Plus, Cake, CalendarOff, Loader2,
+  Clock, CalendarDays, FileText, Cake, CalendarOff, Loader2,
   CircleCheck, Inbox, GraduationCap, Store, ClipboardList, Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { leaveBalances, headlineBalance } from "@/engine/leave-balance";
 import type { LeaveType } from "@/engine/people";
 import type {

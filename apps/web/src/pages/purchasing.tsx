@@ -48,7 +48,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { allocateReference } from "@/data/repository";
 import { parStatus } from "@/engine/inventory";
 import { toDecimal } from "@/engine/cost-engine";
 import { fetchStockLevels, fetchAllProductSuppliers } from "@/data/repository";
@@ -217,7 +216,7 @@ export function PurchasingPage() {
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const awaiting = requisitions.filter((r) => r.status === "SUBMITTED");

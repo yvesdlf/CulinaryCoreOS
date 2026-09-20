@@ -54,7 +54,7 @@ export function subscribeToPersistence(listener: () => void): () => void {
 /** Report a write failure without tearing down local state. */
 function reportWriteFailure(operation: string, err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
-  // eslint-disable-next-line no-console
+   
   console.error(`[persistence] ${operation}:`, message);
   setStatus("error", `${operation}: ${message}`);
 

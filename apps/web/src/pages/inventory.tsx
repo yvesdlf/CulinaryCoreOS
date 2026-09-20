@@ -138,7 +138,7 @@ export function InventoryPage() {
   useEffect(() => {
     void load();
     // Loaded once on mount; every write reloads through `load` itself.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const lines = useMemo(

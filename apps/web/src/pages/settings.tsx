@@ -88,7 +88,7 @@ export function SettingsPage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void load();   }, []);
 
   const canManage = myRole === "OWNER" || myRole === "ADMIN";
   const owners = people.filter((p) => p.role === "OWNER").length;

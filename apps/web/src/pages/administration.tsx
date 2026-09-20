@@ -182,7 +182,7 @@ export function AdministrationPage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void load();   }, []);
 
   const person = useMemo(
     () => grid.find((g) => g.userId === selected) ?? null,

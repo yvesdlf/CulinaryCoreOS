@@ -13,7 +13,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  GraduationCap, Target, ClipboardCheck, Lock, Plus, Check,
+  Lock, Plus, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -318,7 +318,6 @@ export function CompetencyTab({
 }) {
   const [editing, setEditing] = useState<Competency | "new" | null>(null);
   const [assessing, setAssessing] = useState<Competency | null>(null);
-  const byId = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
 
   /** The latest assessment per person per competency — the matrix. */
   const latest = useMemo(() => {

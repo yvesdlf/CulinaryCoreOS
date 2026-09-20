@@ -64,9 +64,9 @@ const STATE_LABEL: Record<string, string> = {
   INSPECTED: "Inspected", OUT_OF_SERVICE: "Out of service",
 };
 
-function ageOf(iso: string | null): string {
+function ageOf(iso: string | null, now: number): string {
   if (!iso) return "never set";
-  const hours = (Date.now() - new Date(iso).getTime()) / 3600000;
+  const hours = (now - new Date(iso).getTime()) / 3600000;
   if (hours < 1) return "just now";
   if (hours < 24) return `${Math.floor(hours)} h ago`;
   return `${Math.floor(hours / 24)} d ago`;
@@ -83,6 +83,17 @@ export function HousekeepingPage() {
   const [inspecting, setInspecting] = useState<BoardRow | null>(null);
   const [booking, setBooking] = useState(false);
   const [outOfService, setOutOfService] = useState<BoardRow | null>(null);
+  /*
+   * When the board was last read.
+   *
+   * Staleness used to be measured against `Date.now()` inside a `useMemo`,
+   * which is impure: the memo is keyed on the board, so the answer never
+   * changed as time passed, and the same board rendered differently depending
+   * on when the component happened to re-render. Measured against the moment
+   * the data actually arrived instead, which is also the honest reading —
+   * "these figures were this old when we fetched them".
+   */
+  const [readAt, setReadAt] = useState(() => Date.now());
 
   async function load() {
     if (!isSupabaseConfigured) { setLoading(false); return; }
@@ -94,6 +105,7 @@ export function HousekeepingPage() {
       ]);
       setBoard(b); setTypes(t); setWorkload(w); setLost(l); setStock(s);
       setPeople(emp.map((e) => ({ id: e.id, name: `${e.firstName} ${e.lastName}` })));
+      setReadAt(Date.now());
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not load housekeeping");
     } finally { setLoading(false); }
@@ -116,8 +128,8 @@ export function HousekeepingPage() {
 
   const stale = useMemo(
     () => board.filter((r) => r.occupancySetAt === null
-      || Date.now() - new Date(r.occupancySetAt).getTime() > 36 * 3600000),
-    [board],
+      || readAt - new Date(r.occupancySetAt).getTime() > 36 * 3600000),
+    [board, readAt],
   );
 
   const toInspect = useMemo(
@@ -279,7 +291,7 @@ export function HousekeepingPage() {
                               .map((o) => <option key={o} value={o}>{o.toLowerCase()}</option>)}
                           </select>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            set {ageOf(r.occupancySetAt)}
+                            set {ageOf(r.occupancySetAt, readAt)}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm">

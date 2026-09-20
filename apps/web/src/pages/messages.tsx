@@ -11,7 +11,7 @@
 // else, and every view behind the portal scopes itself the same way.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Inbox, PackageCheck, FileText, Check, Mail } from "lucide-react";
 import { toast } from "sonner";
 
@@ -67,7 +67,7 @@ export function MessagesPage() {
     } finally { setResolved(true); }
   }
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void load();   }, []);
 
   const unread = notifications.filter((n) => !n.readAt);
   const awaitingAck = orders.filter((o) => !o.acknowledgedAt);

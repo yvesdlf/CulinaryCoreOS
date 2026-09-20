@@ -34,7 +34,6 @@ import {
   recordGoodsReceipt, createSupplierInvoice, setInvoiceStatus,
   type PurchaseOrder, type GoodsReceiptRow, type SupplierInvoice, type Supplier,
 } from "@/data/repository";
-import { DEFAULT_TAX_PERCENT } from "@/lib/constants";
 
 // ── Receiving ───────────────────────────────────────────────────────────────
 
@@ -1010,7 +1009,7 @@ export function AnalyticsTab({
 
 // ── Contracts ───────────────────────────────────────────────────────────────
 
-import { FileSignature, CalendarClock } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import {
   fetchContractPrices, addContractPrice, saveContract, refreshContractStatuses,
   type Contract, type ContractPrice,
@@ -1614,7 +1613,7 @@ function CompareDialog({ rfq, onClose, onDone }: {
   const [busy, setBusy] = useState(false);
 
   const load = () => void fetchRfqComparison(rfq.id).then(setRows).catch(() => setRows([]));
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [rfq.id]);
+  useEffect(() => { load();   }, [rfq.id]);
 
   // Grouped by line, cheapest first — which is the order a buyer reads them in.
   const byLine = useMemo(() => {
