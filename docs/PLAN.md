@@ -118,6 +118,8 @@ than a feature.
 | 32 | Empty screens say one sentence | Explain what the screen is for, offer the action that fills it, show what it will look like. About fifteen of them. |
 | 33 | No overview screen per role | An owner, a finance manager and a head chef all get the same food-cost page. | One screen that shows what *you* are responsible for — Stage 4. |
 | 34 | Visual polish has drifted | Identical white cards, no hierarchy. The colours and shadows it needs are already defined and unused. | One deliberate pass, one commit. |
+| 35b | **Service periods are not configured anywhere** | The top bar should say which service is running. It can only be guessed from the clock, and no venue has told the platform when its services run — printing "Dinner" at six because six is usually dinner is the guess this codebase refuses elsewhere. | A unit carries its service periods. Falls out of Stage 1. |
+| 36b | **Covers are one browser's working figure** | The production page keeps expected covers in local storage, so they are personal rather than the venue's. Showing them in a shared header would present a private number as an agreed fact. | Covers become a shared record per unit per day, alongside revenue in Stage 2. |
 
 ---
 
