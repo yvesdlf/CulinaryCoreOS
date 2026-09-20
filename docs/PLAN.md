@@ -76,6 +76,39 @@ either done or nobody has noticed it.
 | 28 | Occupancy is typed in | Housekeeping is driven by who is arriving and leaving, and that normally comes from a booking system. | Decide whether to connect to one. **D4.** |
 | 29 | No phone or tablet app | The shells exist and are empty. The first real need is scanning a QR code on a machine. | Build when #12 and #27 land. |
 
+### A8 · From reviewing Q3 Aurelia (Singapore, operating in Indonesia)
+
+A regional peer doing back-office finance, payments and integrations for
+hotels and F&B. They overlap with this platform only at purchasing and
+inventory; what follows is what they have that we do not, and what is worth
+taking. Their allergen, food-safety, traceability, HR, maintenance and
+housekeeping coverage is nil, which is where this platform's advantage sits
+and where it should not be diluted.
+
+| # | What is missing | Why it matters | How it gets fixed |
+|---|---|---|---|
+| 35 | **E-invoicing to the tax authority** | Not a feature — a legal requirement, and the one genuinely new obligation this review turned up. Malaysia's IRBM mandate is live, Singapore runs InvoiceNow on Peppol, Indonesia has e-Faktur. A platform that issues and receives invoices in this region has to file them. | Build against Peppol first, since Singapore and Malaysia both reach it, then country adapters. Stage 4, beside Finance. |
+| 36 | **Revenue arrives from more than a till** | Their reporting consolidates POS *and* GrabFood, FoodPanda and Easi. In Indonesia a venue's takings are split across delivery platforms, and a revenue figure that only reads the till is wrong by whatever the aggregators took. | Gap 10 is widened: revenue by unit, by day, **by channel**. Changes the shape of the table, not the size of the job. |
+| 37 | **The daily revenue report** | Revenue by outlet and meal period is the report a hospitality manager actually opens each morning. We have no equivalent. | Falls out of gap 36 once revenue carries a unit and a meal period. |
+| 38 | **Fixed assets have no depreciation** | They keep a full fixed-asset register — depreciation, disposal, transfer, write-off. We have an asset register already, built for maintenance, carrying a purchase cost and doing nothing financial with it. | One asset, two readers: maintenance sees faults and downtime, finance sees book value. Cheap, because the register exists. Stage 4. |
+| 39 | **No barcode scanning on a stock count** | They have it; we deferred it deliberately. A count sheet typed by hand is slower and wrong more often. | Comes with the phone app, gap 29. |
+| 40 | **Single currency** | Fine for one venue, wrong for a group buying in two currencies. | With Finance, Stage 4. |
+| 41 | **No standard chart of accounts** | Hotel finance runs on USALI, the uniform system for the lodging industry. Inventing our own account codes would make every export a translation exercise. | Align to USALI when Finance is built, rather than afterwards. |
+| 42 | **Real-time stock across outlets** | They sell it as a headline. We cannot do it because of gap 5 and gap 6. | Already Stage 1. This confirms its priority rather than adding work. |
+
+**What the review confirms rather than changes.** Their accounting product is
+a full ledger — payables, receivables, general ledger, bank reconciliation,
+trial balance. `COMPETITIVE_ANALYSIS.md` already recommends exporting to an
+accounting package rather than building one, and seeing a competitor's ledger
+up close does not change that: it is the largest and least differentiated
+thing we could build. Their payments products confirm the same for payments.
+
+**What it says about positioning.** They integrate with Oracle Opera and
+Simphony as a first-class product. That is the market's answer to where
+revenue and occupancy come from — decisions D2 and D4 — and it is worth
+noticing that a company of their size treats integration as a product rather
+than a feature.
+
 ### A7 · The screens (Stage 0.5)
 
 | # | What is wrong | How it gets fixed |
