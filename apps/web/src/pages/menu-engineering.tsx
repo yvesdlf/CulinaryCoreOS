@@ -113,7 +113,7 @@ export function MenuEngineeringPage() {
 
   useEffect(() => {
     void loadPeriods();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {

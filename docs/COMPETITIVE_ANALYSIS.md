@@ -103,3 +103,61 @@ pages and third-party review aggregators (Capterra, GetApp, SoftwareAdvice, Sele
 accessed 2026-07-26. ChefTec info from cheftec.com. Treat as directionally accurate, not
 contractually verified — vendor pricing/features change; re-verify before any competitive
 claims go into external-facing material.
+
+---
+
+## Q3 Aurelia — reviewed 2026-09-20
+
+Singapore-headquartered, with offices in Thailand, Malaysia, **Indonesia**,
+Vietnam and the Philippines. The closest thing to a direct regional peer yet
+reviewed, and operating in the same market as Manuza.
+
+**What they sell:** Q3 Financials Cloud (payables, receivables, general
+ledger, fixed assets, bank reconciliation, multi-currency, USALI-shaped chart
+of accounts), Q3 Purchasing & Inventory (purchase requests, orders, receiving,
+stock take, recipe costing, barcode counting, multi-outlet visibility), four
+payment products, e-invoicing against the Malaysian IRBM mandate, and business
+reporting that consolidates POS with GrabFood, FoodPanda and Easi.
+
+**Integration is a product, not a feature.** Oracle Opera PMS, Simphony POS,
+Materials Control, bank interfaces, payroll. Their FAQ leads with terminal
+integration and PCI DSS rather than with any function of their own software.
+
+### Where the two products actually sit
+
+|  | Q3 Aurelia | CulinaryCoreOS |
+|---|---|---|
+| Accounting ledger | full | none, and deliberately |
+| Payments | four products | none, and deliberately |
+| E-invoicing / tax filing | yes | **nothing** |
+| Purchasing and inventory | yes | yes, and deeper on costing |
+| POS / PMS integration | core business | none |
+| Recipe costing and cascade | "link inventory to menu items" | five decimal places, cascading, tested |
+| Allergens and EU food law | not mentioned | EU 14, inherited, verified |
+| HACCP and food safety records | not mentioned | the venue's own forms |
+| Traceability, lots, recall | not mentioned | one step back, Article 18 |
+| HR, rota, certificates, training | not mentioned | built |
+| Maintenance and housekeeping | not mentioned | built |
+| Controls proved in the database | not claimed | the whole basis of the design |
+
+**They are a back office. We are an operation.** The overlap is one module out
+of eight, and on that module they are broader while we are deeper.
+
+### What that implies
+
+1. **Do not build a ledger, and do not build payments.** Seeing a competitor's
+   up close confirms the existing recommendation rather than unsettling it.
+   Both are large, both are undifferentiated, and both have incumbents.
+2. **E-invoicing is not optional.** It is the one thing on their list that is
+   a legal obligation rather than a convenience, and we have nothing. Gap 35.
+3. **Revenue does not arrive from one place.** Their reporting consolidates
+   delivery aggregators alongside the till. Any revenue model we build has to
+   carry a channel from the start, or it will be wrong by whatever GrabFood
+   took. Gap 36.
+4. **Our asset register is half a fixed-asset register already.** It holds a
+   purchase cost and does nothing financial with it. Depreciation would make
+   one record serve maintenance and finance at once. Gap 38.
+5. **The moat is compliance and operations.** Allergens, HACCP, traceability,
+   working-time rules, certificate gating, segregation of duties. None of it
+   appears anywhere in their material, and all of it is the part a venue
+   cannot buy its way out of. That is where the effort should stay.

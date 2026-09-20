@@ -69,7 +69,6 @@ function SubRecipeDetailForm() {
   const navigate = useNavigate();
   const getById = useSubRecipeStore((s) => s.getById);
   const getProduct = useProductStore((s) => s.getById);
-  const updateSubRecipe = useSubRecipeStore((s) => s.update);
 
   const loaded = useCatalogueLoaded();
   const existing = id ? getById(id) : undefined;

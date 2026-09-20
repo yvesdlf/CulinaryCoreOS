@@ -27,6 +27,8 @@ const StaffPortalPage = lazy(() => import("@/pages/portal").then((x) => ({ defau
 const AdministrationPage = lazy(() => import("@/pages/administration").then((x) => ({ default: x.AdministrationPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
+const MaintenancePage = lazy(() => import("@/pages/maintenance").then((x) => ({ default: x.MaintenancePage })));
+const HousekeepingPage = lazy(() => import("@/pages/housekeeping").then((x) => ({ default: x.HousekeepingPage })));
 const PeoplePage = lazy(() => import("@/pages/people").then((x) => ({ default: x.PeoplePage })));
 const PurchasingPage = lazy(() => import("@/pages/purchasing").then((x) => ({ default: x.PurchasingPage })));
 const TraceabilityPage = lazy(() => import("@/pages/traceability").then((x) => ({ default: x.TraceabilityPage })));
@@ -160,6 +162,8 @@ export function App() {
             Old links and bookmarks still work. */}
         <Route path="/people" element={<Navigate to="/human-resources" replace />} />
         <Route path="/hygiene" element={<HygienePage />} />
+        <Route path="/maintenance" element={<MaintenancePage />} />
+        <Route path="/housekeeping" element={<HousekeepingPage />} />
         <Route path="/administration" element={<AdministrationPage />} />
         {profile && (
           <Route path="/my" element={<StaffPortalPage profile={profile} />} />

@@ -62,7 +62,7 @@ async function loadOrganizations(): Promise<Organization[]> {
     }));
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   organizations: [],
   activeOrg: null,

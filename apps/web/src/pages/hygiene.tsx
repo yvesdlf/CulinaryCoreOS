@@ -67,7 +67,7 @@ export function HygienePage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void load();   }, []);
 
   const overdue = useMemo(() => forms.filter(isOverdue), [forms]);
   const overdueCcp = overdue.filter((f) => f.isCcp);

@@ -18,7 +18,7 @@
 // what "we do not buy this any more" actually means in a kitchen.
 // ---------------------------------------------------------------------------
 
-import type { Product, SubRecipe, Recipe, Collection } from "@ccos/shared";
+import type { SubRecipe, Recipe, Collection } from "@ccos/shared";
 import { getDependents } from "./cascade";
 
 export interface Blocker {

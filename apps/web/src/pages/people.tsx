@@ -117,7 +117,7 @@ export function PeoplePage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void load();   }, []);
 
   /*
    * The rota is read a week at a time rather than all at once. A year of
@@ -143,7 +143,7 @@ export function PeoplePage() {
     }
   }
 
-  useEffect(() => { void loadWeek(weekOf); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [weekOf]);
+  useEffect(() => { void loadWeek(weekOf);   }, [weekOf]);
 
   const counts = useMemo(() => headcount(employees), [employees]);
   const lapsing = useMemo(

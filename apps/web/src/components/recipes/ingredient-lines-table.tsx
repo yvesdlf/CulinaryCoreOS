@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { IngredientLine } from "@ccos/shared";
 import {
   Table,
@@ -12,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
-import { calculateGrossQty, calculateLineCost } from "@/engine/cost-engine";
+import { calculateLineCost } from "@/engine/cost-engine";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { COST_DECIMALS } from "@/lib/constants";
 import { Trash2 } from "lucide-react";
