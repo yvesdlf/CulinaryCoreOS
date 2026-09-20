@@ -88,6 +88,15 @@ jobs:
           # in as. Without it the suites would sign in and see nothing.
           supabase db reset --local
 
+      # The database controls, proved by trying to break them.
+      #
+      # Runs before the browser suites and before the app is even built,
+      # because it needs nothing but the schema and it is the cheapest way to
+      # discover that a trigger has gone missing. Everything it asserts was
+      # previously proved once, by hand, in a scratch file nobody kept.
+      - name: Database controls
+        run: ./supabase/tests/run.sh "$(supabase status -o json | jq -r .DB_URL)"
+
       - name: Write env
         run: |
           {
