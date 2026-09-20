@@ -11,10 +11,13 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
-import { Factory, Printer, Search, TriangleAlert, X } from "lucide-react";
+import { Factory, Printer, Search, TriangleAlert, X,
+  ChefHat, PackageOpen,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -228,9 +231,10 @@ export function ProductionPage() {
           )}
 
           {totalCovers === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing planned yet.
-            </p>
+            <EmptyState icon={Factory} title="Nothing planned yet">
+              Enter how many covers you expect of each dish and this becomes the prep list
+              — every preparation exploded out, in the order it has to be made.
+            </EmptyState>
           ) : (
             <Tabs defaultValue="prep">
               <TabsList className="print:hidden">
@@ -259,9 +263,10 @@ export function ProductionPage() {
 function PrepList({ plan }: { plan: ReturnType<typeof planProduction> }) {
   if (plan.prep.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        None of these dishes need a preparation made.
-      </p>
+      <EmptyState icon={ChefHat} title="Nothing to prepare">
+        None of the dishes you have planned are built on a preparation, so there is
+        nothing to make ahead.
+      </EmptyState>
     );
   }
   return (
@@ -322,9 +327,10 @@ function PullList({ plan }: { plan: ReturnType<typeof planProduction> }) {
 
   if (plan.pull.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        Nothing to pull.
-      </p>
+      <EmptyState icon={PackageOpen} title="Nothing to pull">
+        The pull list is what has to come out of the store for the batches above,
+        with whatever is already on the shelf subtracted.
+      </EmptyState>
     );
   }
 

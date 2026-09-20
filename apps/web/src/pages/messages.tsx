@@ -12,7 +12,9 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
-import { Inbox, PackageCheck, FileText, Check, Mail } from "lucide-react";
+import { Inbox, PackageCheck, FileText, Check, Mail,
+  Search, Receipt,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -161,9 +163,10 @@ export function MessagesPage() {
                 </p>
               )}
               {orders.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  No orders yet.
-                </p>
+                <EmptyState icon={FileText} title="No orders yet">
+                  Orders sent to you appear here. Acknowledging one tells the venue you have
+                  it.
+                </EmptyState>
               ) : (
                 <div className="overflow-x-auto rounded-lg border">
                   <Table>
@@ -218,9 +221,10 @@ export function MessagesPage() {
 
             <TabsContent value="rfqs" className="mt-4">
               {rfqs.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  Nobody has asked you to quote.
-                </p>
+                <EmptyState icon={Search} title="Nobody has asked you to quote">
+                  A request for quotation asks several suppliers the same question at the same
+                  time, and nobody sees anybody else's answer until it closes.
+                </EmptyState>
               ) : (
                 <div className="overflow-x-auto rounded-lg border">
                   <Table>
@@ -267,9 +271,10 @@ export function MessagesPage() {
 
             <TabsContent value="invoices" className="mt-4">
               {invoices.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  No invoices recorded against you yet.
-                </p>
+                <EmptyState icon={Receipt} title="No invoices yet">
+                  An invoice is checked against its order and against what was actually
+                  delivered before it is approved for payment.
+                </EmptyState>
               ) : (
                 <div className="overflow-x-auto rounded-lg border">
                   <Table>

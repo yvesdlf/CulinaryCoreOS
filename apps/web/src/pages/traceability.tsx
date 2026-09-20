@@ -19,10 +19,12 @@ import {
   CircleCheck,
   Thermometer,
   TriangleAlert,
+  BadgeCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -216,10 +218,10 @@ export function TraceabilityPage() {
               Loading…
             </p>
           ) : attention.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing needs attention. Lots appear here as they approach a date,
-              or when one is blocked or recalled.
-            </p>
+            <EmptyState icon={ShieldAlert} title="Nothing needs attention">
+              A lot appears here as it approaches its date, or when one is blocked or
+              recalled. Past a use-by date the database refuses to let it be used at all.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -394,9 +396,10 @@ export function TraceabilityPage() {
 
         <TabsContent value="certificates" className="mt-4">
           {certStates.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              No supplier certificate is expired or expiring within 30 days.
-            </p>
+            <EmptyState icon={BadgeCheck} title="Every certificate is current">
+              Supplier certificates appear here thirty days before they expire. An expired
+              HACCP certificate is the same shape of problem as an expired ingredient.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>

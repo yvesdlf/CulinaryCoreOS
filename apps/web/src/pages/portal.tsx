@@ -19,9 +19,12 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
+import { EmptyState } from "@/components/shared/empty-state";
 import {
   CalendarDays, GraduationCap, Inbox, LogOut, House,
-  Check, Paperclip, FileText, } from "lucide-react";
+  Check, Paperclip, FileText,
+  CalendarRange,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -217,9 +220,10 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
           {loading ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
           ) : documents.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing has been sent to you yet.
-            </p>
+            <EmptyState icon={Inbox} title="Nothing has been sent to you">
+              Policies, notices and payslips from HR arrive here. Anything needing you to
+              confirm you have read it will say so — and only you can confirm it.
+            </EmptyState>
           ) : documents.map((d) => (
             <button
               key={d.recipientId}
@@ -246,9 +250,11 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
 
         <TabsContent value="training" className="mt-4 space-y-2">
           {training.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              No training has been assigned to you.
-            </p>
+            <EmptyState icon={GraduationCap} title="No training assigned">
+              Courses and exams appear here when somebody assigns them. Anything that
+              grants a certificate is what lets you be rostered to the roles that need
+              one.
+            </EmptyState>
           ) : training.map((t) => (
             <div key={t.assignmentId} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
               <div className="min-w-48 flex-1">
@@ -276,10 +282,10 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
 
         <TabsContent value="rota" className="mt-4 space-y-2">
           {shifts.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing published for you yet. A rota appears here once it is
-              published — a draft is not a promise.
-            </p>
+            <EmptyState icon={CalendarRange} title="No rota published for you">
+              Your shifts appear here once the rota is published. A draft is not a
+              promise, so nothing is shown until it is committed.
+            </EmptyState>
           ) : shifts.map((s) => (
             <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
               <div>
@@ -311,9 +317,10 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
             </Button>
           </div>
           {leave.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              You have not applied for any leave.
-            </p>
+            <EmptyState icon={CalendarDays} title="No leave requested">
+              Requests you make appear here with their decision. Somebody other than you
+              decides them, whatever their role.
+            </EmptyState>
           ) : leave.map((l) => (
             <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
               <div>

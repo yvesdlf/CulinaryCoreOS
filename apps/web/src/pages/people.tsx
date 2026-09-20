@@ -353,9 +353,10 @@ export function PeoplePage() {
           </div>
 
           {leave.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              No leave recorded yet.
-            </p>
+            <EmptyState icon={CalendarDays} title="No leave recorded yet">
+              Requests appear here whether they came from a manager or from the staff
+              portal. Nobody decides their own, whatever their role.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -451,10 +452,11 @@ export function PeoplePage() {
             </div>
           )}
           {certifications.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              No certificates recorded. A job role lists what it requires, and
-              anyone without a current one cannot be rostered to it.
-            </p>
+            <EmptyState icon={BadgeCheck} title="No certificates recorded">
+              A job role lists what it requires, and the rota refuses to publish a shift
+              for anybody without a current one. The same list decides who can be sent a
+              maintenance job.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
