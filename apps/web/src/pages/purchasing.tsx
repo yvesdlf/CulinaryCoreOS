@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Trash2,
   ShoppingCart,
+  Search, FileSignature, PackageCheck, Receipt, Wallet, ChartNoAxesCombined,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -245,26 +246,56 @@ export function PurchasingPage() {
         </p>
       )}
 
-      <Tabs defaultValue="requisitions">
-        <TabsList>
-          <TabsTrigger value="requisitions">
-            <ClipboardList className="size-4" />
-            Requisitions ({requisitions.length})
+      {/*
+        * Grouped the way buying actually runs, rather than by the order the
+        * tabs were built.
+        *
+        * Sourcing and contracts come first because they settle what a thing
+        * costs before anybody asks for it. The chain is the middle, and it is
+        * one document under four names — a requisition becomes an order,
+        * becomes a delivery, becomes an invoice, carrying the same number
+        * throughout. Budgets and analytics watch it.
+        *
+        * Same shape as the People rail, deliberately: a manager should not
+        * have to learn two layouts to ask the same kind of question twice.
+        */}
+      <Tabs defaultValue="requisitions" orientation="vertical" className="items-start">
+        <TabsList variant="line" className="w-52 shrink-0 items-stretch gap-0.5">
+          <div aria-hidden="true" className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">
+            Before you buy
+          </div>
+          <TabsTrigger value="sourcing" className="justify-start">
+            <Search className="size-4" />Sourcing ({rfqs.length})
           </TabsTrigger>
-          <TabsTrigger value="orders">
-            <FileText className="size-4" />
-            Purchase orders ({orders.length})
+          <TabsTrigger value="contracts" className="justify-start">
+            <FileSignature className="size-4" />Contracts ({contracts.length})
           </TabsTrigger>
-          <TabsTrigger value="receiving">
-            Receiving ({receipts.length})
+
+          <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
+            The chain
+          </div>
+          <TabsTrigger value="requisitions" className="justify-start">
+            <ClipboardList className="size-4" />Requisitions ({requisitions.length})
           </TabsTrigger>
-          <TabsTrigger value="invoices">
-            Invoices ({invoices.length})
+          <TabsTrigger value="orders" className="justify-start">
+            <FileText className="size-4" />Purchase orders ({orders.length})
           </TabsTrigger>
-          <TabsTrigger value="budgets">Budgets</TabsTrigger>
-          <TabsTrigger value="sourcing">Sourcing ({rfqs.length})</TabsTrigger>
-          <TabsTrigger value="contracts">Contracts ({contracts.length})</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="receiving" className="justify-start">
+            <PackageCheck className="size-4" />Receiving ({receipts.length})
+          </TabsTrigger>
+          <TabsTrigger value="invoices" className="justify-start">
+            <Receipt className="size-4" />Invoices ({invoices.length})
+          </TabsTrigger>
+
+          <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
+            Watching it
+          </div>
+          <TabsTrigger value="budgets" className="justify-start">
+            <Wallet className="size-4" />Budgets
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="justify-start">
+            <ChartNoAxesCombined className="size-4" />Analytics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="requisitions" className="mt-4">

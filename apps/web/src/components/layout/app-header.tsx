@@ -75,6 +75,13 @@ export function AppHeader() {
   const signOut = useAuthStore((s) => s.signOut);
   const [isDark, setIsDark] = useState(() => currentTheme() === "dark");
   const breadcrumbs = useBreadcrumbs();
+  // Computed once per mount rather than per render: `new Date()` during render
+  // is impure, which the purity lint rule now refuses.
+  const [today] = useState(() =>
+    new Date().toLocaleDateString(undefined, {
+      weekday: "long", day: "numeric", month: "long",
+    }),
+  );
 
   function toggleTheme() {
     const next = !isDark;
@@ -110,6 +117,30 @@ export function AppHeader() {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
+
+        {/*
+          * Today's date, beside the breadcrumb.
+          *
+          * The interface review asked for venue, date, service and covers here.
+          * Venue is already on the right and the date is below. The other two
+          * are left out on purpose:
+          *
+          *   A service period — breakfast, lunch, dinner — can only be derived
+          *   from the clock, and no venue has told this application when its
+          *   services run. Printing "Dinner" at six because six is usually
+          *   dinner is the kind of guess this codebase refuses elsewhere.
+          *
+          *   Covers are held in one browser's local storage by the production
+          *   page, so they are one person's working figure rather than the
+          *   venue's. Showing that in a shared header would present a private
+          *   number as a fact everybody agreed.
+          *
+          *   Both become honest once units carry service periods and covers
+          *   are a shared record. Recorded in PLAN.md rather than faked.
+          */}
+        <p className="mr-3 hidden text-xs text-muted-foreground lg:block">
+          {today}
+        </p>
 
         <div className="flex items-center gap-1">
           {/* Which kitchen's data is on screen — RLS makes this the boundary
