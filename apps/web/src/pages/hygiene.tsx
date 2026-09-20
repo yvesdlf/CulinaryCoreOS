@@ -16,6 +16,7 @@ import { ClipboardList, TriangleAlert, ShieldCheck, Check, FileUp } from "lucide
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,9 +149,11 @@ export function HygienePage() {
           {loading ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
           ) : overdue.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing overdue. Forms appear here once they pass their rhythm.
-            </p>
+            <EmptyState icon={ShieldCheck} title="Nothing overdue">
+              A control sheet appears here once it passes its rhythm. This list is the
+              point of the section — a folder of neatly completed sheets with three
+              missing days is what an audit finds and nobody notices in advance.
+            </EmptyState>
           ) : (
             <FormTable forms={overdue} onFill={setFilling} showDue />
           )}
@@ -167,9 +170,11 @@ export function HygienePage() {
 
         <TabsContent value="records" className="mt-4">
           {records.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing recorded yet.
-            </p>
+            <EmptyState icon={ClipboardList} title="Nothing recorded yet">
+              Completed control sheets appear here, with who filled them in and who
+              countersigned. A breach cannot be recorded without saying what was done
+              about it.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
