@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { StaffCommsTab } from "@/components/people/staff-comms-tab";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,10 +220,11 @@ export function PeoplePage() {
           {loading ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
           ) : employees.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nobody on the books yet. An employee record does not need a login —
-              most kitchen staff will not have one.
-            </p>
+            <EmptyState icon={Users} title="Nobody on the books yet">
+              An employee record does not need a login; most kitchen staff will not
+              have one. What it does need is a job role, because that is what says
+              which certificates the work requires.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>

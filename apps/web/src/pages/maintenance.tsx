@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -174,7 +175,11 @@ export function MaintenancePage() {
           {loading ? (
             <Loading />
           ) : overdue.length === 0 ? (
-            <Empty>Nothing overdue. Plans appear here as they come round.</Empty>
+            <EmptyState icon={TriangleAlert} title="Nothing overdue">
+              A maintenance plan appears here once it passes its interval. Plans are
+              set against an asset or a location, and the job they produce is an
+              ordinary work order.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -237,7 +242,19 @@ export function MaintenancePage() {
         {/* ── Jobs ─────────────────────────────────────────────────────── */}
         <TabsContent value="jobs" className="mt-4">
           {open.length === 0 ? (
-            <Empty>No open jobs.</Empty>
+            <EmptyState
+              icon={Wrench}
+              title="No open jobs"
+              action={
+                <Button variant="outline" onClick={() => setRaisingFree(true)}>
+                  Raise a job
+                </Button>
+              }
+            >
+              Anything reported or planned appears here until somebody signs it off.
+              A job is assigned within the rota, and to somebody who holds the
+              certificate the work needs.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -327,7 +344,11 @@ export function MaintenancePage() {
         {/* ── Assets ───────────────────────────────────────────────────── */}
         <TabsContent value="assets" className="mt-4">
           {assets.length === 0 ? (
-            <Empty>No assets recorded yet.</Empty>
+            <EmptyState icon={Boxes} title="No assets recorded yet">
+              An asset is anything worth keeping a history against — a chiller, a
+              generator, an oven. Recording what it cost is what lets the repair
+              spend be judged against it later.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -378,7 +399,11 @@ export function MaintenancePage() {
         {/* ── Meters ───────────────────────────────────────────────────── */}
         <TabsContent value="meters" className="mt-4">
           {meters.length === 0 ? (
-            <Empty>No meters yet.</Empty>
+            <EmptyState icon={Gauge} title="No meters yet">
+              Electricity, water, LPG and fuel. Readings are kept as a ledger, so
+              consumption is worked out by the database rather than typed in, and a
+              meter that reads backwards has to say why.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -433,7 +458,10 @@ export function MaintenancePage() {
             </CardHeader>
             <CardContent>
               {manning.length === 0 ? (
-                <Empty>No staff records.</Empty>
+                <EmptyState icon={Users} title="No staff records">
+                  Technicians come from Human Resources. Their shifts decide who can
+                  be assigned work, and their certificates decide what work.
+                </EmptyState>
               ) : (
                 <Table>
                   <TableHeader>
@@ -517,9 +545,7 @@ function Stat({ label, value, hint, danger }: {
 function Loading() {
   return <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>;
 }
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-12 text-center text-sm text-muted-foreground">{children}</p>;
-}
+
 
 function RaiseJobDialog({ plan, free, onClose, onDone }: {
   plan: MaintenanceDueRow | null; free: boolean;

@@ -21,10 +21,12 @@ import {
   Send,
   ShieldCheck,
   Trash2,
+  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { Button } from "@/components/ui/button";
@@ -269,10 +271,11 @@ export function PurchasingPage() {
           {loading ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
           ) : requisitions.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing requested yet. A requisition is how a kitchen asks for
-              something; it becomes a purchase order once approved.
-            </p>
+            <EmptyState icon={ClipboardList} title="Nothing requested yet">
+              A requisition is how a kitchen asks for something. It is approved by
+              somebody other than whoever raised it, then becomes a purchase order
+              carrying the same number.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
@@ -384,10 +387,11 @@ export function PurchasingPage() {
 
         <TabsContent value="orders" className="mt-4">
           {orders.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              No purchase orders yet. They are raised from an approved
-              requisition, one per supplier.
-            </p>
+            <EmptyState icon={ShoppingCart} title="No purchase orders yet">
+              An order is raised from an approved requisition and keeps its number.
+              One request goes to one supplier, so it becomes exactly one order, one
+              delivery and one invoice.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>

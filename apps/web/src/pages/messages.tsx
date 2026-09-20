@@ -16,6 +16,7 @@ import { Inbox, PackageCheck, FileText, Check, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,10 +113,11 @@ export function MessagesPage() {
 
         <TabsContent value="inbox" className="mt-4">
           {notifications.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nothing yet. Messages appear as requisitions are raised, orders
-              go out, deliveries arrive and invoices are checked.
-            </p>
+            <EmptyState icon={Inbox} title="Nothing yet">
+              Messages appear as requisitions are raised, orders go out, deliveries
+              arrive and invoices are checked. They are raised by the database rather
+              than by the screens, so an import tells the same people a person would.
+            </EmptyState>
           ) : (
             <ul className="space-y-2">
               {notifications.map((n) => (
