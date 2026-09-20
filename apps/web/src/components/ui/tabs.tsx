@@ -13,6 +13,19 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
+      /*
+       * Forwarded, not just written to a data attribute.
+       *
+       * `orientation` was destructured out of props and used only for styling,
+       * so Base UI never learned about it and kept its horizontal keyboard
+       * model: in a vertical tablist, Arrow Down did nothing and Arrow Right
+       * moved between tabs. WAI-ARIA says the opposite.
+       *
+       * It went unnoticed because nothing was vertical until the People page
+       * was, and it is invisible to axe — automated scanning cannot press a
+       * key. Only the keyboard suite finds this class of defect.
+       */
+      orientation={orientation}
       data-orientation={orientation}
       className={cn(
         "group/tabs flex gap-2 data-horizontal:flex-col",
