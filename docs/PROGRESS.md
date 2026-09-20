@@ -11,13 +11,12 @@
 Typecheck, 537 unit tests, 72 browser tests and the axe sweep all green the
 same day. 49.500 lines of TypeScript, 13.100 of SQL.
 
-> **The database controls have no repeatable tests.** Every "proved in SQL"
-> claim in this file was proved once, by hand, in a scratch file that was not
-> kept. CI rebuilds the schema from empty and runs the browser suites, and
-> checks not one of the forty-odd triggers this system's honesty rests on. A
-> control that is not re-proved on every push is a control that can be
-> removed by accident. This is the largest process gap in the project and it
-> is now first in `PLAN.md`.
+> **The database controls are now tested.** `supabase/tests/` holds 98
+> checks across access, maintenance, housekeeping, purchasing and people, run
+> in CI against a schema rebuilt from empty. Proved to go red: dropping the
+> work-order assignment trigger fails four of them. Until 2026-09-20 every
+> "proved in SQL" claim in this file had been proved once, by hand, in a
+> scratch file nobody kept.
 
 > **CI is green, and now readable.** `gh` is authenticated and this working
 > copy had simply lost its `origin`; it was re-pointed at
@@ -881,8 +880,15 @@ Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
       add everything at or below its reorder point.
 
 ### Known gaps
-- [ ] **No repeatable proof of any database control.** See the note at the
-      top. Roughly forty triggers, each proved once by hand.
+- [ ] **An employee with no HR access cannot request their own leave.**
+      Found by writing the control suite. `leave_requests` carries the People
+      section guard with no self-service carve-out, so the staff portal's
+      leave feature works only because joining an organisation seeds a CHEF
+      with WRITE on every section — restrict somebody and it stops working for
+      them. The 0057 problem in reverse: there a guard was missing, here one is
+      too broad. The fix is the shape of the `leave_attachments` owner rule.
+      Asserted as it currently behaves in `05_people.sql`, so the suite goes
+      red when it is fixed.
 - [ ] **`main` is behind.** Seventeen commits sit on
       `chore/pr-workflow-and-docs` and on open PR #1, green, unmerged.
 - [ ] **`repository.ts` is 4.627 lines**, 9% of the front end in one file.
