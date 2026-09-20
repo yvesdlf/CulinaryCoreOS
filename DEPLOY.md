@@ -7,6 +7,12 @@ the built files.
 Nothing here has been run against a live project. It is written from how the
 local stack is configured and should be followed carefully the first time.
 
+**What is already connected:** a Vercel project, `culinary-core-os`, is linked
+to this repository and has been failing on every pull request. It had no
+configuration in the repository at all, so it was guessing at a pnpm workspace
+whose application lives in `apps/web`. `vercel.json` now says what to do — see
+§3. Nothing about the Supabase side exists yet.
+
 ## 1. Supabase project
 
 Create a project, then from the repository root:
@@ -16,9 +22,21 @@ supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-`db push` applies `supabase/migrations/*.sql` in order. The chain has been
-verified to rebuild a complete schema — 36 tables, 126 row-level security
-policies — from an empty database.
+`db push` applies `supabase/migrations/*.sql` in order. The chain rebuilds a
+complete schema from empty — 98 tables and 373 row-level security policies as
+of migration 0057 — and that is checked on every push, so a failure here is a
+connection or permission problem rather than a broken migration.
+
+Then prove the controls survived the trip:
+
+```bash
+./supabase/tests/run.sh "$DATABASE_URL"
+```
+
+98 checks. They are the same ones CI runs, and running them against the hosted
+database is the only way to know that the hosted database enforces what the
+local one does — a migration that applies is not the same as a trigger that
+fires.
 
 Then load the catalogue:
 
@@ -41,16 +59,39 @@ exercise those controls at all. Settings says so on screen.
 
 ## 3. Front end
 
-Build with the project's URL and anon key:
+`apps/web/dist` is a static bundle and any static host serves it. It needs one
+thing from the host: a rewrite sending every path that is not a built asset to
+`/index.html`, or client-side routes 404 on reload.
+
+### On Vercel, which is already connected
+
+`vercel.json` at the repository root sets the install and build commands, the
+output directory and that rewrite. Two things still have to be done in the
+Vercel dashboard, because they are account settings rather than repository
+settings:
+
+1. **Root Directory must be the repository root**, not `apps/web`. A root
+   directory of `apps/web` means `vercel.json` is never read and the workspace
+   cannot be installed from there.
+2. **Two environment variables**, for Production and Preview:
+
+   ```
+   VITE_SUPABASE_URL       https://<ref>.supabase.co
+   VITE_SUPABASE_ANON_KEY  <anon key>
+   ```
+
+   Without them the build still succeeds — the application checks
+   `isSupabaseConfigured` and runs on its mock catalogue — which is worth
+   knowing, because a deployment that looks fine and shows invented data is
+   the failure mode to watch for here.
+
+### Anywhere else
 
 ```bash
 VITE_SUPABASE_URL=https://<ref>.supabase.co \
 VITE_SUPABASE_ANON_KEY=<anon-key> \
 pnpm --filter web build
 ```
-
-`apps/web/dist` is a static bundle — any static host serves it. It needs a
-SPA rewrite so client-side routes resolve: every path to `/index.html`.
 
 The anon key is meant to be public. Every table is protected by row-level
 security, and the key alone grants nothing without a session. The service role
