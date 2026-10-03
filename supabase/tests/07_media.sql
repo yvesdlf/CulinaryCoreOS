@@ -231,7 +231,7 @@ select t.expect_value($$select count(*)::text from attachments where file_name='
 -- once by somebody in another venue, who must not.
 -- ---------------------------------------------------------------------------
 select '── media: whose file is it ──────────────────────────────────────';
-grant usage on schema t to authenticated;
+-- (the grant that makes this possible is in _harness.sql)
 
 /*
  * The path, worked out while it is still readable.

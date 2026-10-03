@@ -915,29 +915,129 @@ as $$
   on conflict (org_id, code) do nothing;
 $$;
 
+-- ── The orchestrator stops being a list in a function body ──────────────────
+/*
+ * This file was written to add one line to `seed_organization_defaults`, and
+ * it is the fifth migration to rewrite that function in full to do it. 0058
+ * said out loud what the pattern costs — "every rewrite is a chance to drop
+ * somebody else's" — and declined to touch it. This file did touch it, and
+ * dropped `seed_media_defaults`, because it was written on a branch where
+ * 0059 did not exist. Four control checks went red and said exactly which
+ * line was missing: a new venue got no retention policy at all, which means
+ * every photograph it ever takes is kept forever and nobody is told.
+ *
+ * Adding the line back would leave the sixth migration free to do the same
+ * thing, so the list becomes rows instead. A migration that adds a seeder now
+ * inserts one, and a migration that drops somebody else's has to delete a row
+ * to do it — which is a thing a reviewer can see.
+ *
+ * This is PLAN.md Part C applied to starting data: a new department arrives as
+ * data, not as an edit to a function every department shares.
+ *
+ * Ordinals in tens, so a seeder that must run between two existing ones can be
+ * slotted in without renumbering. The order is the order the five rewrites
+ * arrived at and it matters in at least one place: `seed_purchasing_defaults`
+ * creates the business units that its own budgets then reference.
+ */
+create table if not exists organization_seeders (
+  ordinal integer primary key,
+  function_name text not null unique,
+  note text,
+  constraint organization_seeders_name_shape
+    check (function_name ~ '^seed_[a-z0-9_]+$')
+);
+
+/*
+ * Nobody signed in reads or writes this.
+ *
+ * It names functions that a SECURITY DEFINER function then executes, so a
+ * caller who could insert a row here could run any `seed_*` function in the
+ * schema as its owner. `%I` in the loop below quotes the identifier, so the
+ * value can only ever be a function name and not a statement — but the name
+ * check above, row-level security with no policy, and no grant to
+ * `authenticated` are what make the question moot rather than merely
+ * difficult. Only the owner writes this table, which means only a migration.
+ */
+alter table organization_seeders enable row level security;
+revoke all on organization_seeders from authenticated;
+
+insert into organization_seeders (ordinal, function_name, note) values
+  (10, 'seed_venue_parameters',     'Costing targets and tolerances. 0038.'),
+  -- Before the rest of purchasing, because it creates the business units the
+  -- budgets in the same function are written against. 0058.
+  (20, 'seed_purchasing_defaults',  'Approval policy, business units, budgets, matching tolerances. 0040, 0058.'),
+  (30, 'seed_tax_and_channels',     'Tax rates and sales channels. 0040.'),
+  (40, 'seed_people_defaults',      'Business units and leave types. 0040, 0058.'),
+  (50, 'seed_haccp_forms',          'The food-safety form templates. 0039.'),
+  (60, 'seed_maintenance_defaults', 'The location tree a property starts with. 0055.'),
+  (70, 'seed_housekeeping_defaults','Room types. 0056.'),
+  (80, 'seed_media_defaults',       'How long photographs and video are kept. 0059.'),
+  (90, 'seed_production_defaults',  'The production variance tolerance. This file.')
+on conflict (ordinal) do nothing;
+
+/*
+ * Every seeder, in order, for one organisation.
+ *
+ * Each one is idempotent — `on conflict do nothing`, or an early return when
+ * the venue already has the rows — so this is safe to run again over a venue
+ * that has some of them. That property is what lets the backfill below repair
+ * an organisation created while the list was wrong.
+ */
 create or replace function public.seed_organization_defaults(p_org uuid)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare s record;
 begin
-  perform public.seed_venue_parameters(p_org);
-  perform public.seed_purchasing_defaults(p_org);
-  perform public.seed_tax_and_channels(p_org);
-  perform public.seed_people_defaults(p_org);
-  perform public.seed_haccp_forms(p_org);
-  perform public.seed_maintenance_defaults(p_org);
-  perform public.seed_housekeeping_defaults(p_org);
-  perform public.seed_production_defaults(p_org);
+  for s in select function_name from public.organization_seeders order by ordinal
+  loop
+    execute format('select public.%I($1)', s.function_name) using p_org;
+  end loop;
 end;
 $$;
 
+/*
+ * A registered seeder that does not exist fails here, at deploy, rather than
+ * on the first sign-up after it.
+ *
+ * `seed_organization_defaults` resolves its calls at run time, which is the
+ * price of the registry: a typo in a row above would otherwise be a venue that
+ * cannot be created, discovered by the first person trying to create one. This
+ * is that cost paid back.
+ */
+do $$
+declare missing text;
+begin
+  select string_agg(s.function_name, ', ' order by s.ordinal) into missing
+    from public.organization_seeders s
+   where not exists (
+     select 1 from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname = s.function_name
+        and p.pronargs = 1
+        and p.proargtypes[0] = 'uuid'::regtype);
+  if missing is not null then
+    raise exception 'organization_seeders names a function that does not exist: %', missing;
+  end if;
+end $$;
+
+/*
+ * Every organisation that already exists, through the whole list and not only
+ * this file's own seeder.
+ *
+ * A venue created between 0059 and this file has no retention policy, because
+ * that is the line this migration dropped. Running the full list repairs it,
+ * and repairs anything else an earlier rewrite lost, without overwriting a
+ * single figure a venue has changed for itself.
+ */
 do $$
 declare o record;
 begin
   for o in select id from public.organizations loop
-    perform public.seed_production_defaults(o.id);
+    perform public.seed_organization_defaults(o.id);
   end loop;
 end $$;
 
@@ -961,3 +1061,6 @@ comment on function public.production_variance(date, date) is
   'INV-FUNC-005. Theoretical against actual per ingredient, saying so where they cannot be compared.';
 comment on function public.record_production(uuid, numeric, text, jsonb, uuid, timestamptz, text, uuid, text) is
   'A batch and its consumption in one transaction. Runs as the caller, so both section guards apply.';
+
+comment on table organization_seeders is
+  'What runs when an organisation is created, as rows. Five migrations rewrote the function body and one of them dropped a line.';
