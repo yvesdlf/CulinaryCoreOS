@@ -45,3 +45,8 @@ DerivedData/
 **/tests/.auth/
 **/test-results/
 **/playwright-report/
+
+# Agent worktrees. These are real git repositories checked out inside the
+# repository, so `git add -A` stages them as gitlinks — three one-line
+# submodule entries that clone as empty directories for everybody else.
+.claude/worktrees/
