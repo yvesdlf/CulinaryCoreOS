@@ -50,7 +50,29 @@ select '── access by unit: which sections can be scoped ──────�
 select t.expect_value($$
   select string_agg(code, ',' order by code) from app_sections where scopes_by_unit$$,
   'the scopable sections come from the catalogue',
-  'MAINTENANCE,PARAMETERS,PEOPLE,PURCHASING');
+  'MAINTENANCE,PARAMETERS,PEOPLE,PURCHASING,REVENUE');
+
+/*
+ * Administration is not on that list, and the reason is worth its own
+ * assertion rather than being implied by the one above.
+ *
+ * `member_access` carries a `business_unit_id` and is guarded by ADMIN, so the
+ * derivation in 0062 put Administration on the list the next time anything
+ * re-ran it — which 0065 did. The column means something different there: on a
+ * work order it says where the row lives, on a grant it says what the grant is
+ * about. Reading the second as the first delegates permission-granting by
+ * department, so somebody holding Administration for the kitchen could write
+ * kitchen-scoped grants in every section, including one for themselves.
+ */
+select t.expect_value($$
+  select scopes_by_unit::text from app_sections where code='ADMIN'$$,
+  'Administration is never scopable, whatever the catalogue looks like', 'false');
+select t.expect_fail($$
+  insert into member_access (org_id, user_id, section_code, level, business_unit_id)
+  select o.id, 'a0000000-0000-0000-0000-000000000003', 'ADMIN', 'WRITE',
+         (select id from business_units where code='T-ENG' and org_id=o.id)
+    from organizations o where o.name='Demo Kitchen'$$,
+  'so nobody can be made an administrator of one department');
 
 select t.expect_value($$
   select scopes_by_unit::text from app_sections where code='RECIPES'$$,

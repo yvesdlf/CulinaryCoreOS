@@ -173,8 +173,13 @@ is why Stage 0 comes first.
 
 ### Stage 2 · The missing numbers — **M**
 
-- [ ] Pay rates *(9)* — **needs D1**
-- [ ] Daily takings *(10)* — **needs D2**
+- [x] Pay rates *(9)* — D1 answered by building the reversible middle: rates for
+      costing only, append-only periods, and a rate already in force cannot be
+      edited. Its own grant, held by nobody by default; 0064.
+- [x] Daily takings *(10)* — D2 answered by building the manual path: per unit
+      per day **per channel**, with gross and net kept apart because a figure
+      that reads only the till is wrong by whatever the platforms took. Covers
+      live here too, which closes gap 36b; 0065.
 - [x] Production records *(11)* — what was made, append-only, with the quantity
       generated rather than stated and the consumption in the one stock ledger.
       Theoretical against actual works, and the forward step of Article 18 is
@@ -183,6 +188,12 @@ is why Stage 0 comes first.
 
 **You get:** profit per department, the used-versus-should-have-used figure,
 and the ability to photograph a fault.
+
+**What you do not yet get, said plainly:** `unit_labour_against_revenue` sets
+labour against revenue per unit per day, and that is not a margin — cost of
+goods is not in it. Calling it profit would be wrong by the entire food cost.
+The platform knows that number; joining the three is a dashboard, and dashboards
+are Stage 4.
 
 ### Stage 3 · The platform can talk — **L**
 

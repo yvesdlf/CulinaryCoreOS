@@ -24,7 +24,10 @@ import {
   ShoppingCart,
   Search, FileSignature, PackageCheck, Receipt, Wallet, ChartNoAxesCombined,
 } from "lucide-react";
+import { Banknote } from "lucide-react";
 import { toast } from "sonner";
+import { TakingsTab } from "@/components/purchasing/takings-tab";
+import { useCanReadSection, useCanWriteSection } from "@/stores/access-store";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -143,6 +146,8 @@ export function PurchasingPage() {
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const canSeeRevenue = useCanReadSection("REVENUE");
+  const canSetRevenue = useCanWriteSection("REVENUE");
   const [policies, setPolicies] = useState<ApprovalPolicy[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [receipts, setReceipts] = useState<GoodsReceiptRow[]>([]);
@@ -307,6 +312,17 @@ export function PurchasingPage() {
           <TabsTrigger value="budgets" className="justify-start">
             <Wallet className="size-4" />Budgets
           </TabsTrigger>
+          {/*
+            * Beside budgets rather than on a screen of its own. A department's
+            * budget, its spend and its takings are read together or they are
+            * not read at all, and this page is already where the first two
+            * live.
+            */}
+          {canSeeRevenue && (
+            <TabsTrigger value="takings" className="justify-start">
+              <Banknote className="size-4" />Takings
+            </TabsTrigger>
+          )}
           <TabsTrigger value="analytics" className="justify-start">
             <ChartNoAxesCombined className="size-4" />Analytics
           </TabsTrigger>
@@ -522,6 +538,12 @@ export function PurchasingPage() {
         <TabsContent value="budgets" className="mt-4">
           <BudgetsTab positions={budgets} />
         </TabsContent>
+
+        {canSeeRevenue && (
+          <TabsContent value="takings" className="mt-4">
+            <TakingsTab units={businessUnits} canWrite={canSetRevenue} />
+          </TabsContent>
+        )}
 
         <TabsContent value="sourcing" className="mt-4">
           <SourcingTab rfqs={rfqs} suppliers={suppliers} products={products} onDone={load} />

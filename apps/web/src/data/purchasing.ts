@@ -1414,3 +1414,140 @@ export async function allocateReference(
   if (error) fail("allocateReference", error);
   return data as string;
 }
+
+// ── Revenue ─────────────────────────────────────────────────────────────────
+/*
+ * What came in, as against everything else in this module, which is what went
+ * out.
+ *
+ * Here rather than in a module of its own because the questions are the same
+ * questions — a department's budget, its spend and its takings are read by the
+ * same screens and compared with each other — and a seventh module holding one
+ * table would be a directory entry rather than a boundary.
+ *
+ * Gross and net are both carried and neither is called "the revenue". The
+ * customer paid the gross; the venue banked the net; a delivery platform kept
+ * the difference. Which one a report means decides whether a menu looks
+ * profitable, so the screen has to say which it is showing.
+ */
+
+export type RevenueChannelKind =
+  "DINE_IN" | "TAKEAWAY" | "DELIVERY" | "EVENT" | "OTHER";
+
+export interface RevenueChannel {
+  id: string;
+  code: string;
+  name: string;
+  kind: RevenueChannelKind;
+  /** Decimal string, or null where nobody has said. A default, never the figure of record. */
+  typicalCommissionPercent: string | null;
+  active: boolean;
+}
+
+export async function fetchRevenueChannels(): Promise<RevenueChannel[]> {
+  const { data, error } = await requireSupabase()
+    .from("revenue_channels").select("*").order("code");
+  if (error) fail("fetchRevenueChannels", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    kind: r.kind,
+    typicalCommissionPercent:
+      r.typical_commission_percent === null || r.typical_commission_percent === undefined
+        ? null : String(r.typical_commission_percent),
+    active: Boolean(r.active),
+  }));
+}
+
+export interface TakingsRow {
+  id: string;
+  businessUnitId: string;
+  businessUnitName: string;
+  onDate: string;
+  channelId: string;
+  channelCode: string;
+  channelName: string;
+  channelKind: RevenueChannelKind;
+  /** Decimal strings. What the customer paid, what was withheld, what was kept. */
+  grossAmount: string;
+  commissionAmount: string | null;
+  netAmount: string;
+  covers: number | null;
+  /** Null where nobody counted the covers. Never a figure invented from a blank. */
+  spendPerCover: string | null;
+  source: string;
+  recordedByEmail: string | null;
+  updatedAt: string;
+}
+
+export async function fetchTakings(
+  fromDate: string,
+  toDate: string,
+): Promise<TakingsRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("revenue_daily").select("*")
+    .gte("on_date", fromDate).lte("on_date", toDate)
+    .order("on_date", { ascending: false });
+  if (error) fail("fetchTakings", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.channel_id + ":" + r.business_unit_id + ":" + r.on_date,
+    businessUnitId: r.business_unit_id,
+    businessUnitName: r.business_unit_name,
+    onDate: r.on_date,
+    channelId: r.channel_id,
+    channelCode: r.channel_code,
+    channelName: r.channel_name,
+    channelKind: r.channel_kind,
+    grossAmount: String(r.gross_amount),
+    commissionAmount:
+      r.commission_amount === null || r.commission_amount === undefined
+        ? null : String(r.commission_amount),
+    netAmount: String(r.net_amount),
+    covers: r.covers === null || r.covers === undefined ? null : Number(r.covers),
+    spendPerCover:
+      r.spend_per_cover === null || r.spend_per_cover === undefined
+        ? null : String(r.spend_per_cover),
+    source: r.source,
+    recordedByEmail: r.recorded_by_email ?? null,
+    updatedAt: r.updated_at,
+  }));
+}
+
+/**
+ * Record or correct a day's takings for one unit through one channel.
+ *
+ * An upsert on (unit, channel, day), because that triple is what the venue
+ * means by "Tuesday's bar takings through the till" and there is exactly one
+ * of them. A correction is the same write with a different figure, and the
+ * database keeps what it was in `takings_changes` — unlike a pay rate, which
+ * cannot be corrected once it has been in force, because a rate costed a month
+ * and a day's takings only ever described themselves.
+ *
+ * Nothing here says who typed it. That comes from the caller's JWT by trigger.
+ */
+export async function recordTakings(input: {
+  businessUnitId: string;
+  channelId: string;
+  onDate: string;
+  grossAmount: string;
+  commissionAmount?: string | null;
+  covers?: number | null;
+  note?: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase()
+    .from("daily_takings")
+    .upsert(
+      {
+        business_unit_id: input.businessUnitId,
+        channel_id: input.channelId,
+        on_date: input.onDate,
+        gross_amount: input.grossAmount,
+        commission_amount: input.commissionAmount ?? null,
+        covers: input.covers ?? null,
+        note: input.note ?? null,
+      },
+      { onConflict: "business_unit_id,channel_id,on_date" },
+    );
+  if (error) fail("recordTakings", error);
+}
