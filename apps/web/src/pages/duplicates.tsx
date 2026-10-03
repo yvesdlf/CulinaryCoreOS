@@ -22,6 +22,7 @@ import { PermissionGate } from "@/components/shared/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
 import { useProductStore } from "@/stores/product-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
@@ -33,19 +34,10 @@ import {
 import { mergeProducts, mergeSupplierNames } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
-const GRADE: Record<Confidence, { label: string; className: string }> = {
-  identical: {
-    label: "Same price and supplier",
-    className: "bg-status-success-soft text-status-success",
-  },
-  likely: {
-    label: "Same price",
-    className: "bg-status-info-soft text-status-info",
-  },
-  review: {
-    label: "Needs a decision",
-    className: "bg-status-warning-soft text-status-warning",
-  },
+const GRADE: Record<Confidence, { label: string; tone: StatusTone }> = {
+  identical: { label: "Same price and supplier", tone: "success" },
+  likely: { label: "Same price", tone: "info" },
+  review: { label: "Needs a decision", tone: "warning" },
 };
 
 export function DuplicatesPage() {
@@ -160,11 +152,7 @@ export function DuplicatesPage() {
                               {g.members.map((m) => m.name).join("  ·  ")}
                             </CardTitle>
                             <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
-                              <span
-                                className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${grade.className}`}
-                              >
-                                {grade.label}
-                              </span>
+                              <StatusChip tone={grade.tone}>{grade.label}</StatusChip>
                               <span>{g.reason}</span>
                             </CardDescription>
                           </div>

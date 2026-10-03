@@ -20,12 +20,12 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -45,18 +45,18 @@ import {
   planDue, comparePlanUrgency, assetVerdict, manningVerdict, compareWorkOrders, isOpen,
 } from "@/engine/maintenance";
 
-const PRIORITY_CLASS: Record<string, string> = {
-  EMERGENCY: "bg-status-danger-soft text-status-danger",
-  HIGH: "bg-status-warning-soft text-status-warning",
-  NORMAL: "bg-muted text-muted-foreground",
-  LOW: "bg-muted text-muted-foreground",
+const PRIORITY_TONE: Record<string, StatusTone> = {
+  EMERGENCY: "danger",
+  HIGH: "warning",
+  NORMAL: "neutral",
+  LOW: "neutral",
 };
 
-const GRADE_CLASS: Record<string, string> = {
-  replace: "bg-status-danger-soft text-status-danger",
-  watch: "bg-status-warning-soft text-status-warning",
-  healthy: "bg-status-success-soft text-status-success",
-  unknown: "bg-muted text-muted-foreground",
+const GRADE_TONE: Record<string, StatusTone> = {
+  replace: "danger",
+  watch: "warning",
+  healthy: "success",
+  unknown: "neutral",
 };
 
 const LOAD_CLASS: Record<string, string> = {
@@ -202,9 +202,10 @@ export function MaintenancePage() {
                           <div className="text-xs text-muted-foreground">
                             {p.code} · every {p.intervalDays} days
                             {p.statutory && (
-                              <Badge className="ml-2 bg-status-danger-soft text-status-danger">
-                                <ShieldAlert className="size-3" />Statutory
-                              </Badge>
+                              <StatusChip tone="danger" className="ml-2">
+                                <ShieldAlert className="size-3" aria-hidden="true" />
+                                Statutory
+                              </StatusChip>
                             )}
                           </div>
                         </TableCell>
@@ -277,9 +278,9 @@ export function MaintenancePage() {
                         <div className="text-xs text-muted-foreground">{w.status}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={PRIORITY_CLASS[w.priority] ?? ""}>
+                        <StatusChip tone={PRIORITY_TONE[w.priority]}>
                           {w.priority.toLowerCase()}
-                        </Badge>
+                        </StatusChip>
                       </TableCell>
                       <TableCell>
                         <select
@@ -384,7 +385,7 @@ export function MaintenancePage() {
                           {a.downtimeMinutesYear > 0 ? minutes(a.downtimeMinutesYear) : "—"}
                         </TableCell>
                         <TableCell>
-                          <Badge className={GRADE_CLASS[v.grade]}>{v.grade}</Badge>
+                          <StatusChip tone={GRADE_TONE[v.grade]}>{v.grade}</StatusChip>
                           <div className="mt-1 text-xs text-muted-foreground">{v.reason}</div>
                         </TableCell>
                       </TableRow>

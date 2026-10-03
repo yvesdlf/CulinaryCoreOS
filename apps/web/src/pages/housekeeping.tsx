@@ -24,12 +24,12 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -52,12 +52,12 @@ import {
   type RoomLike, type AttendantLike,
 } from "@/engine/housekeeping";
 
-const STATE_CLASS: Record<string, string> = {
-  DIRTY: "bg-status-warning-soft text-status-warning",
-  IN_PROGRESS: "bg-status-info-soft text-status-info",
-  CLEAN: "bg-status-info-soft text-status-info",
-  INSPECTED: "bg-status-success-soft text-status-success",
-  OUT_OF_SERVICE: "bg-status-danger-soft text-status-danger",
+const STATE_TONE: Record<string, StatusTone> = {
+  DIRTY: "warning",
+  IN_PROGRESS: "info",
+  CLEAN: "info",
+  INSPECTED: "success",
+  OUT_OF_SERVICE: "danger",
 };
 
 const STATE_LABEL: Record<string, string> = {
@@ -269,9 +269,9 @@ export function HousekeepingPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={STATE_CLASS[r.state] ?? ""}>
+                          <StatusChip tone={STATE_TONE[r.state]}>
                             {STATE_LABEL[r.state] ?? r.state}
-                          </Badge>
+                          </StatusChip>
                           {r.outOfServiceReason && (
                             <div className="mt-1 text-xs text-muted-foreground">
                               {r.outOfServiceReason}
@@ -499,10 +499,9 @@ export function HousekeepingPage() {
                       <TableCell className="text-sm">{l.foundOn}</TableCell>
                       <TableCell className="text-sm">{l.holdUntil ?? "—"}</TableCell>
                       <TableCell>
-                        <Badge className={l.status === "HELD" ? "bg-muted text-muted-foreground"
-                          : "bg-status-success-soft text-status-success"}>
+                        <StatusChip tone={l.status === "HELD" ? "neutral" : "success"}>
                           {l.status.toLowerCase()}
-                        </Badge>
+                        </StatusChip>
                         {l.releasedTo && (
                           <div className="mt-1 text-xs text-muted-foreground">
                             to {l.releasedTo}

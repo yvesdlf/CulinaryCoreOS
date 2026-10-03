@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,12 +80,12 @@ import {
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
-const STATUS: Record<ParStatus, { label: string; className: string }> = {
-  out: { label: "Out of stock", className: "bg-status-danger-soft text-status-danger" },
-  reorder: { label: "Reorder", className: "bg-status-warning-soft text-status-warning" },
-  low: { label: "Low", className: "bg-status-info-soft text-status-info" },
-  ok: { label: "In stock", className: "bg-status-success-soft text-status-success" },
-  unmanaged: { label: "Not tracked", className: "bg-muted text-muted-foreground" },
+const STATUS: Record<ParStatus, { label: string; tone: StatusTone }> = {
+  out: { label: "Out of stock", tone: "danger" },
+  reorder: { label: "Reorder", tone: "warning" },
+  low: { label: "Low", tone: "info" },
+  ok: { label: "In stock", tone: "success" },
+  unmanaged: { label: "Not tracked", tone: "neutral" },
 };
 
 /** Waste reasons the kitchen actually gives — SRS INV-FUNC-003 AC2. */
@@ -300,13 +301,7 @@ function SummaryCard({
 
 function StatusBadge({ status }: { status: ParStatus }) {
   const s = STATUS[status];
-  return (
-    <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${s.className}`}
-    >
-      {s.label}
-    </span>
-  );
+  return <StatusChip tone={s.tone}>{s.label}</StatusChip>;
 }
 
 function StockTable({

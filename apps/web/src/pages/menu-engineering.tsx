@@ -32,6 +32,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,11 +71,11 @@ import {
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
-const QUADRANT: Record<MenuClass, { icon: typeof Star; className: string }> = {
-  star: { icon: Star, className: "bg-status-success-soft text-status-success" },
-  plowhorse: { icon: Tractor, className: "bg-status-info-soft text-status-info" },
-  puzzle: { icon: Puzzle, className: "bg-status-warning-soft text-status-warning" },
-  dog: { icon: Dog, className: "bg-status-danger-soft text-status-danger" },
+const QUADRANT: Record<MenuClass, { icon: typeof Star; tone: StatusTone }> = {
+  star: { icon: Star, tone: "success" },
+  plowhorse: { icon: Tractor, tone: "info" },
+  puzzle: { icon: Puzzle, tone: "warning" },
+  dog: { icon: Dog, tone: "danger" },
 };
 
 const ORDER: MenuClass[] = ["star", "plowhorse", "puzzle", "dog"];
@@ -285,11 +286,11 @@ function Analysis({ menu }: { menu: ReturnType<typeof engineerMenu> }) {
             <Card key={c}>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                  <span
-                    className={`flex size-6 items-center justify-center rounded-full ${q.className}`}
-                  >
-                    <q.icon className="size-3.5" />
-                  </span>
+                  {/* The disc is the chip with no words in it, which is only
+                      allowed because the quadrant name is right beside it. */}
+                  <StatusChip tone={q.tone} className="size-6 justify-center p-0">
+                    <q.icon className="size-3.5" aria-hidden="true" />
+                  </StatusChip>
                   {CLASS_LABEL[c]}s
                 </CardTitle>
               </CardHeader>
@@ -342,12 +343,10 @@ function Analysis({ menu }: { menu: ReturnType<typeof engineerMenu> }) {
                 <TableRow key={d.recipe.id}>
                   <TableCell className="font-medium">{d.recipe.name}</TableCell>
                   <TableCell>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${q.className}`}
-                    >
-                      <q.icon className="size-3" />
+                    <StatusChip tone={q.tone}>
+                      <q.icon className="size-3" aria-hidden="true" />
                       {CLASS_LABEL[d.classification]}
-                    </span>
+                    </StatusChip>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {d.unitsSold.toLocaleString()}
