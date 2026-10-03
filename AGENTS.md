@@ -31,7 +31,9 @@ supabase/seed*.sql     demo data. Never required for correctness.
 
 ```bash
 pnpm -C apps/web exec tsc --noEmit      # typecheck
-pnpm -C apps/web exec vitest run        # unit tests
+pnpm -C apps/web exec vitest run        # 537 unit tests
+pnpm --filter web lint                  # eslint
+./supabase/tests/run.sh                 # 98 database controls
 pnpm -C apps/web dev                    # dev server on 5173 (pinned)
 ```
 
@@ -40,6 +42,37 @@ resolves to `apps/web/apps/web` and fails with a confusing ENOENT.
 
 Migrations are applied by running each file in order against the local
 Postgres. There is no ORM and no migration runner.
+
+### Lint
+
+`pnpm --filter web lint` runs eslint. The script had been in `package.json`
+since the first week and eslint was never installed, so for months the command
+failed and reported nothing. **A check that cannot run is worse than no
+check**, because it sits in the script list and everybody assumes somebody runs
+it.
+
+The rule set is deliberately narrow, and `apps/web/eslint.config.js` says why
+at each rule. There is already a type checker in CI, 537 unit tests and 98
+database checks, so lint is not asked to find type errors or logic bugs. It is
+there for the category none of those catch: code that is dead, unreachable, or
+wrong in a way that still compiles.
+
+No style rules and no formatter. Formatting arguments cost more than they save
+on a codebase one person writes, and a thousand-violation baseline on day one
+teaches everybody to pass `--fix` without reading.
+
+`any` is a warning rather than an error, because every row from Supabase is
+untyped JSON and `repository.ts` maps it by hand — banning it there would mean
+either generating types from the schema, which is worth doing and is not that
+task, or writing casts that assert the same thing with more words. 129 warnings
+remain, visible rather than suppressed.
+
+`react-hooks/purity` is an error and earned it on the first run: `Date.now()`
+inside a `useMemo` on the housekeeping board, keyed on the board, so the
+staleness figure never changed as time passed. Two of the React Compiler rules
+are off, with the reasoning in the config — they report what a compiler this
+project does not use would prefer, which is not the same as something being
+wrong.
 
 ---
 
@@ -74,12 +107,51 @@ Write the SQL that attempts the thing that must not happen, and read what the
 database says. A test that only exercises the happy path proves nothing about
 a control.
 
-Two ways this has produced false passes in this repo, both worth knowing:
+**The proofs live in `supabase/tests/`, and CI runs them on every push.** 98
+checks across the section grid, maintenance, housekeeping, purchasing's
+segregation of duties and the rota, run by `supabase/tests/run.sh` against a
+schema rebuilt from empty. Before that suite existed, every "proved in SQL"
+claim in `docs/PROGRESS.md` had been proved once, by hand, in a scratch file
+nobody kept — which a month later is indistinguishable from never having proved
+it at all.
 
-- **`grep "^ERROR"` matches nothing.** psql prefixes errors with `file:line:`.
-  Use `grep -i "error:"`.
-- **Zero rows updated raises no exception.** An `UPDATE` that matches nothing
-  "succeeds". Check `get diagnostics n = row_count`, or the test is vacuous.
+**A new trigger or policy is not finished until it has a test there.** That is
+the rule this section now exists to state. Forty-odd triggers are what this
+system's honesty rests on, and the only thing standing between one of them and
+somebody quietly dropping it is a check that runs without being asked.
+
+A suite that cannot fail is decoration, so confirm it can: dropping the
+work-order assignment trigger turns four checks red and the runner exits 1.
+
+### Three ways this repository has produced a false pass
+
+Each one is why `_harness.sql` has a function rather than a bare statement.
+Read that file before adding a test — all three of these were paid for.
+
+- **An UPDATE matching zero rows raises nothing.** A refusal and an empty table
+  read identically, so a test asserting "no error" passes without ever
+  executing the rule it names. `expect_rows` asserts how many rows changed.
+  Where a fixture row would mean inventing three parent records,
+  `expect_guarded` checks the wiring instead — a table added later and never
+  listed is what actually goes missing.
+- **A trigger may silently correct what it did not refuse.** "The write was
+  allowed" is not "the write happened", so anything that matters is read back
+  afterwards with `expect_value`. Asserting the absence of an error is not
+  asserting the presence of the outcome.
+- **A fixture that fails takes every later assertion with it**, and the run
+  then reports a screenful of passes that never executed. Each fixture is
+  isolated in a subtransaction, and the runner refuses to assert anything at
+  all if any of them failed.
+
+One more, about reading the output rather than writing the test:
+**`grep "^ERROR"` matches nothing.** psql prefixes errors with `file:line:`.
+The runner counts `FAIL` lines instead and takes its exit code from the total,
+because `ON_ERROR_STOP` would abort on the first *expected* refusal.
+
+Where writing a test reveals that a control is wrong, assert the behaviour as
+it actually is, name it a gap in `docs/PROGRESS.md`, and let the check go red
+when it is fixed. A suite quietly patched to agree with the code it is meant to
+be testing is worth less than no suite.
 
 ## 3. Money is decimal, quantities are numbers
 
