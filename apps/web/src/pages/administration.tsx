@@ -258,7 +258,7 @@ export function AdministrationPage() {
                     {unitsWithoutApprover.map((d) => d.name).join(", ")}
                   </p>
                   <p className="text-muted-foreground">
-                    Hiring for those businessUnits cannot be approved until one is.
+                    Hiring for those units cannot be approved until one is.
                   </p>
                 </div>
               </CardContent>
@@ -582,9 +582,19 @@ export function AdministrationPage() {
                   onSaved={load}
                 />
               ))}
-              {businessUnits.length === 0 && (
+              {/*
+                * The list above is the live units, so the empty case has two
+                * readings and they need different sentences. A venue with no
+                * units at all is one nobody has seen, because every venue is
+                * created with four; a venue whose units are all closed is a
+                * venue somebody closed, and saying "none yet" there would be
+                * a lie about work already done.
+                */}
+              {liveUnits.length === 0 && (
                 <p className="py-3 text-sm text-muted-foreground">
-                  No businessUnits yet. Add them under People first.
+                  {businessUnits.length === 0
+                    ? "No business units. A venue is created with four, so this one has had them removed."
+                    : `Every business unit is closed (${businessUnits.length}). Reopen one to set its approver.`}
                 </p>
               )}
             </CardContent>

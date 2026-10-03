@@ -30,6 +30,7 @@ import {
 } from "@/engine/scheduling";
 import { fullName, isWorking, type Employee } from "@/engine/people";
 import { saveShift, deleteShift, clockIn, clockOut, type JobRole, type BusinessUnit } from "@/data/repository";
+import { unitOptions } from "@/engine/units";
 
 const DAY_MS = 86_400_000;
 
@@ -217,9 +218,13 @@ function ShiftDialog({
   onDone: () => void | Promise<void>;
 }) {
   const working = employees.filter(isWorking);
-  // Closed units are in the list so a past shift can still be named; a new
-  // shift is not rostered into one.
-  const liveUnits = businessUnits.filter((u) => u.active);
+  /*
+   * The live units, plus the one this shift is already on if somebody has
+   * since closed it. Filtering to the live ones alone would render this
+   * select blank on exactly that shift while the row still held the closed
+   * unit — see `unitOptions`, which is where that reasoning lives.
+   */
+  const unitChoices = unitOptions(businessUnits, shift?.businessUnitId ?? null);
   const [employeeId, setEmployeeId] = useState(shift?.employeeId ?? "");
   const [jobRoleId, setJobRoleId] = useState(shift?.jobRoleId ?? "");
   const [businessUnitId, setBusinessUnitId] = useState(shift?.businessUnitId ?? "");
@@ -296,7 +301,7 @@ function ShiftDialog({
             <select id="sh-dept" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
               value={businessUnitId} onChange={(e) => setBusinessUnitId(e.target.value)}>
               <option value="">—</option>
-              {liveUnits.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {unitChoices.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select>
           </div>
           <div className="space-y-2">

@@ -712,7 +712,18 @@ function NewRequisitionDialog({
     [existingReferences, unit],
   );
 
-  const valid = rows.some(
+  /*
+   * A unit as well as a line, which is new.
+   *
+   * `requisitions.business_unit_id` is nullable and will stay nullable —
+   * there are historic rows with none. But a request raised today with no
+   * unit is spend charged to nobody: it drops out of `budget_positions`, and
+   * it takes a GEN reference, which is the segment that means "this number
+   * cannot tell you whose order it was". The whole argument of migration 0058
+   * is that those questions should be answerable, and the cheapest place to
+   * keep them answerable is the screen that raises the document.
+   */
+  const valid = businessUnitId !== "" && rows.some(
     (r) => r.productId && Number(r.quantity) > 0,
   );
 
@@ -813,6 +824,7 @@ function NewRequisitionDialog({
                 value={businessUnitId}
                 onChange={(e) => setBusinessUnitId(e.target.value)}
               >
+                {liveUnits.length === 0 && <option value="">No open unit to charge this to</option>}
                 {liveUnits.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
