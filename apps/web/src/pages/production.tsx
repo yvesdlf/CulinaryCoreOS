@@ -65,6 +65,8 @@ import {
   varianceVerdict,
   compareVarianceRows,
   summariseVariance,
+  suggestLot,
+  type LotChoice,
   type ConsumptionLine,
   type VarianceRow,
   type VarianceVerdict,
@@ -76,6 +78,7 @@ import {
   fetchVarianceTolerance,
   ensureProductionPlan,
   recordProduction,
+  fetchStockLots,
   type ProductionRecordRow,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -249,6 +252,8 @@ export function ProductionPage() {
     batches: number;
     unit: string;
     consumption: ConsumptionLine[];
+    /** Product id to the lot it came off, where the venue tracks lots. */
+    lots: Record<string, string | null>;
     note: string | null;
     correctsId?: string | null;
     correctionReason?: string | null;
@@ -285,6 +290,15 @@ export function ProductionPage() {
         quantity: c.quantity,
         unit: c.unit,
         unitCost: c.unitCost,
+        /*
+         * The forward step of Article 18, and the line this screen was
+         * missing. Without it every movement the dialog wrote had a null lot,
+         * so `lot_forward_trace` came back empty for every lot in the venue —
+         * which reads as "nothing to report" rather than as "this screen never
+         * filled it in". The database half had been built and proved; nothing
+         * was calling it.
+         */
+        lotId: input.lots[c.productId] ?? null,
       })),
     });
     await Promise.all([loadRecords(), loadVariance()]);
@@ -760,6 +774,7 @@ function RecordDialog({
     batches: number;
     unit: string;
     consumption: ConsumptionLine[];
+    lots: Record<string, string | null>;
     note: string | null;
     correctsId?: string | null;
     correctionReason?: string | null;
@@ -773,7 +788,38 @@ function RecordDialog({
   const [note, setNote] = useState("");
   const [reason, setReason] = useState("");
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [lotPicks, setLotPicks] = useState<Record<string, string>>({});
+  const [lots, setLots] = useState<LotChoice[]>([]);
   const [busy, setBusy] = useState(false);
+
+  /*
+   * Loaded here rather than by the page, because this is the only screen that
+   * asks and a venue can hold several thousand of them.
+   */
+  useEffect(() => {
+    let live = true;
+    void fetchStockLots()
+      .then((rows) => {
+        if (!live) return;
+        setLots(rows.map((l) => ({
+          id: l.id,
+          productId: l.productId,
+          lotCode: l.lotCode,
+          receivedOn: l.receivedOn,
+          expiresOn: l.expiresOn,
+          status: l.status,
+        })));
+      })
+      .catch(() => {
+        /*
+         * A batch is still worth recording without the lot. Losing the forward
+         * step is a smaller loss than losing the completion, which is the same
+         * trade the prep-sheet save above makes.
+         */
+        if (live) setLots([]);
+      });
+    return () => { live = false; };
+  }, []);
 
   const count = Number(batches);
   const batchesValid = batches.trim() !== "" && Number.isFinite(count) && count > 0;
@@ -806,6 +852,54 @@ function RecordDialog({
     });
   }, [proposal, overrides]);
 
+  /*
+   * What each line will be filed against: whatever the cook picked, or the
+   * suggestion, or nothing where the venue does not lot-track that product.
+   *
+   * The suggestion is first expired, first out — `suggestLot` — and it is a
+   * default rather than a decision. A blank default would have been the honest
+   * UI choice and the dishonest food-safety one: nobody picks a lot off a
+   * dropdown for every ingredient of every batch, so the field would stay
+   * empty and Article 18's forward step would stay unanswerable.
+   */
+  const chosenLots = useMemo<Record<string, string | null>>(() => {
+    const picks: Record<string, string | null> = {};
+    for (const line of consumption) {
+      const available = lots.filter((l) => l.productId === line.productId);
+      const typed = lotPicks[line.productId];
+      picks[line.productId] = typed !== undefined
+        ? (typed === "" ? null : typed)
+        : (suggestLot(available)?.id ?? null);
+    }
+    return picks;
+  }, [consumption, lots, lotPicks]);
+
+  /*
+   * Only the ingredients that have a usable lot to offer. `suggestLot` already
+   * decides what usable means — status OK — and the database refuses the rest,
+   * so offering one is offering a refusal.
+   */
+  const lotRows = useMemo(
+    () =>
+      consumption
+        .map((line) => ({
+          productId: line.productId,
+          productName: line.productName,
+          choices: lots
+            .filter((l) => l.productId === line.productId && l.status === "OK")
+            .sort((a, b) => {
+              if (a.expiresOn !== b.expiresOn) {
+                if (a.expiresOn === null) return 1;
+                if (b.expiresOn === null) return -1;
+                return a.expiresOn < b.expiresOn ? -1 : 1;
+              }
+              return a.receivedOn < b.receivedOn ? -1 : 1;
+            }),
+        }))
+        .filter((row) => row.choices.length > 0),
+    [consumption, lots],
+  );
+
   const quantitiesValid = Object.values(overrides).every(
     (v) => v.trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0),
   );
@@ -824,6 +918,7 @@ function RecordDialog({
         batches: count,
         unit: sub.batchYield.unit,
         consumption,
+        lots: chosenLots,
         note: note.trim() || null,
         correctsId: correcting?.id ?? null,
         correctionReason: correcting ? reason.trim() : null,
@@ -949,6 +1044,48 @@ function RecordDialog({
                 </li>
               ))}
             </ul>
+          )}
+
+          {/*
+            * The lot each ingredient came off, where the venue tracks them.
+            *
+            * Separate from the quantity rows above rather than a fourth column
+            * on them: those rows already overflowed at laptop width, which is
+            * why they are a stacked list and not a table. Shown only for the
+            * ingredients that actually have lots, so a venue that lot-tracks
+            * two products out of forty sees two rows and not forty "—"s.
+            */}
+          {lotRows.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Which delivery each came off. First expired, first out is filled in;
+                change it if the shelf says otherwise. This is what lets a recall be
+                followed forward to the batch.
+              </p>
+              <ul className="divide-y rounded-lg border">
+                {lotRows.map((row) => (
+                  <li key={row.productId} className="flex items-center gap-3 px-3 py-2">
+                    <div className="min-w-0 flex-1 truncate text-sm">{row.productName}</div>
+                    <select
+                      className="h-9 w-56 shrink-0 rounded-md border bg-transparent px-2 text-sm"
+                      aria-label={`Lot of ${row.productName} used`}
+                      value={chosenLots[row.productId] ?? ""}
+                      onChange={(e) =>
+                        setLotPicks((o) => ({ ...o, [row.productId]: e.target.value }))
+                      }
+                    >
+                      {/* Not naming one is allowed and is not the default. */}
+                      <option value="">Not recorded</option>
+                      {row.choices.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.expiresOn ? `${c.lotCode} · ${c.expiresOn}` : c.lotCode}
+                        </option>
+                      ))}
+                    </select>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {proposal && proposal.consumption.length > 0 && (
