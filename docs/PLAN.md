@@ -261,21 +261,46 @@ better to find that out at department three than at department eight.
 
 Nothing before Stage 2 needs any of these.
 
-**D1 · Should the platform know what people are paid?** *(needed for gap 9)*
+**D1 · Should the platform know what people are paid?** *(building the
+middle option — 2026-10-03)*
+Unanswered, so the reversible option is being built: rates held **for
+calculating cost only**, with effective dates, in the restricted table beside
+the other personal data. No payslips, no payments, no filing. If the answer
+turns out to be "hours only", the table stays empty and nothing else breaks —
+which is the property that made it safe to start.
+
+**The original question**
 Holding rates gives you labour cost and real profit per department. It also
 means the most sensitive data you own sits in it. A middle option — rates used
 only for calculating cost, with actual payroll staying wherever it is now —
 gives the numbers without the platform becoming a payroll system.
 
-**D2 · How does it learn the daily takings?** *(needed for gap 10)*
+**D2 · How does it learn the daily takings?** *(building the manual path
+— 2026-10-03)*
+Unanswered, so takings are being built as something somebody types, per unit
+per day **per channel** — the channel because reviewing Q3 Aurelia showed
+revenue arriving from delivery platforms as well as the till, and a figure that
+reads only the till is wrong by whatever the aggregators took. A POS
+integration later writes to the same table.
+
+**The original question**
 Somebody types them, which works within a day of building it. Or it reads them
 from the till, which is better and needs the till system named. Starting with
 typing loses nothing.
 
-**D3 · One venue, or a group?** *(needed at Stage 1)*
-If an owner should open one screen and see every venue, that changes how the
-data is stacked at the very bottom — cheap now, expensive later. If each venue
-is its own separate world, nothing changes.
+**D3 · One venue, or a group?** *(no longer blocking Stage 1 — 2026-10-03)*
+Resolved by design rather than by answering it. A business unit is a **tree**
+inside an organisation, so a single venue is a shallow tree and a group is a
+head office with venues beneath it. Both shapes fit the same table.
+
+What the answer would still change is narrower than it looked: whether two
+venues must be separate **tenants** — separate organisations, with no shared
+reads at all — which is a data-isolation question rather than a hierarchy one.
+That can be answered after Stage 1 without rebuilding it.
+
+Flagging the one case that would still hurt: if a group needs a single sign-in
+that reaches several organisations, the organisation switcher in the backlog
+becomes a prerequisite rather than a convenience.
 
 **D4 · Housekeeping and the booking system.** *(Stage 5)*
 Who is arriving and leaving normally comes from a booking system. Until one is
