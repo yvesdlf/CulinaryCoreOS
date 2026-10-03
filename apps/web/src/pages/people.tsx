@@ -24,6 +24,13 @@ import { StaffCommsTab } from "@/components/people/staff-comms-tab";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
+import { PersonCell } from "@/components/shared/person-avatar";
+import { RowAction, RowActions } from "@/components/shared/row-actions";
+import {
+  DensityToggle,
+  useTableDensity,
+} from "@/components/shared/table-density";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,11 +68,24 @@ import {
 } from "@/data/repository";
 import type { Shift, AttendanceRecord } from "@/engine/scheduling";
 
-const STATUS_STYLE: Record<string, string> = {
-  ACTIVE: "bg-status-success-soft text-status-success",
-  PROBATION: "bg-status-info-soft text-status-info",
-  NOTICE: "bg-status-warning-soft text-status-warning",
-  SUSPENDED: "bg-status-danger-soft text-status-danger",
+const STATUS_TONE: Record<string, StatusTone> = {
+  ACTIVE: "success",
+  PROBATION: "info",
+  NOTICE: "warning",
+  SUSPENDED: "danger",
+};
+
+/*
+ * A leave request is not an employment status, so it gets its own map rather
+ * than being squeezed into the one above. REQUESTED is warning because it is
+ * somebody waiting on a manager, which is the only one of the four that is
+ * anybody's job to clear.
+ */
+const LEAVE_TONE: Record<string, StatusTone> = {
+  REQUESTED: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  CANCELLED: "neutral",
 };
 
 export function PeoplePage() {
@@ -91,6 +111,9 @@ export function PeoplePage() {
   const [weekOf, setWeekOf] = useState(() => new Date());
   const [adding, setAdding] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  // One call for the page, handed to both tables: two toggles disagreeing with
+  // each other across tabs would read as two settings rather than one.
+  const [density, setDensity] = useTableDensity();
 
   const today = useMemo(() => new Date(), []);
   const yearStart = useMemo(() => new Date(Date.UTC(today.getFullYear(), 0, 1)), [today]);
@@ -279,8 +302,15 @@ export function PeoplePage() {
               which certificates the work requires.
             </EmptyState>
           ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
+            <div className="rounded-lg border">
+              {/* The toggle sits inside the frame, above the scroll region, so
+                  it stays put while the rows it governs move. */}
+              <div className="flex justify-end border-b p-2">
+                <DensityToggle value={density} onChange={setDensity} />
+              </div>
+              {/* The team list is the longest table on the page and nobody
+                  pages it, so the column names go with the rows otherwise. */}
+              <Table stickyHeader density={density}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -300,7 +330,9 @@ export function PeoplePage() {
                     );
                     return (
                       <TableRow key={e.id}>
-                        <TableCell className="font-medium">{fullName(e)}</TableCell>
+                        <TableCell>
+                          <PersonCell name={fullName(e)} />
+                        </TableCell>
                         <TableCell className="font-mono text-xs">{e.employeeNumber}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {e.departmentId ? deptName.get(e.departmentId) ?? "—" : "—"}
@@ -312,10 +344,9 @@ export function PeoplePage() {
                           {e.employmentType.toLowerCase().replace("_", " ")}
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            STATUS_STYLE[e.employmentStatus] ?? "bg-muted text-muted-foreground"}`}>
+                          <StatusChip tone={STATUS_TONE[e.employmentStatus]}>
                             {e.employmentStatus.toLowerCase()}
-                          </span>
+                          </StatusChip>
                         </TableCell>
                         <TableCell className="max-w-xs whitespace-normal text-xs">
                           {!isWorking(e) ? (
@@ -380,8 +411,8 @@ export function PeoplePage() {
                       ? leaveBalance(emp, type, leave, yearStart, yearEnd) : null;
                     return (
                       <TableRow key={l.id}>
-                        <TableCell className="font-medium">
-                          {emp ? fullName(emp) : "Unknown"}
+                        <TableCell>
+                          <PersonCell name={emp ? fullName(emp) : "Unknown"} />
                         </TableCell>
                         <TableCell className="text-muted-foreground">{type?.name ?? "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{l.startsOn}</TableCell>
@@ -390,12 +421,19 @@ export function PeoplePage() {
                         <TableCell className="text-right tabular-nums text-muted-foreground">
                           {balance && type?.annualEntitlementDays ? balance.remaining : "—"}
                         </TableCell>
-                        <TableCell className="text-xs">{l.status.toLowerCase()}</TableCell>
+                        <TableCell>
+                          <StatusChip tone={LEAVE_TONE[l.status]}>
+                            {l.status.toLowerCase()}
+                          </StatusChip>
+                        </TableCell>
                         <TableCell>
                           {l.status === "REQUESTED" && (
                             <PermissionGate>
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost"
+                              <RowActions>
+                                <RowAction
+                                  icon={Check}
+                                  label="Approve"
+                                  context={`leave for ${emp ? fullName(emp) : "unknown"}`}
                                   onClick={async () => {
                                     try {
                                       await decideLeave(l.id, "APPROVED", null);
@@ -406,11 +444,12 @@ export function PeoplePage() {
                                         description: err instanceof Error ? err.message : String(err),
                                       });
                                     }
-                                  }}>
-                                  <Check className="size-4" />
-                                  <span className="sr-only">Approve</span>
-                                </Button>
-                                <Button size="sm" variant="ghost"
+                                  }}
+                                />
+                                <RowAction
+                                  icon={X}
+                                  label="Reject"
+                                  context={`leave for ${emp ? fullName(emp) : "unknown"}`}
                                   onClick={async () => {
                                     try {
                                       await decideLeave(l.id, "REJECTED", null);
@@ -421,11 +460,9 @@ export function PeoplePage() {
                                         description: err instanceof Error ? err.message : String(err),
                                       });
                                     }
-                                  }}>
-                                  <X className="size-4" />
-                                  <span className="sr-only">Reject</span>
-                                </Button>
-                              </div>
+                                  }}
+                                />
+                              </RowActions>
                             </PermissionGate>
                           )}
                         </TableCell>
@@ -474,8 +511,8 @@ export function PeoplePage() {
                     const lapse = lapsing.find((l) => l.certification.id === c.id);
                     return (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">
-                          {emp ? fullName(emp) : "Unknown"}
+                        <TableCell>
+                          <PersonCell name={emp ? fullName(emp) : "Unknown"} />
                         </TableCell>
                         <TableCell>{c.kind}</TableCell>
                         <TableCell className="text-muted-foreground">

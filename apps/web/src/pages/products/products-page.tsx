@@ -34,6 +34,10 @@ import {
   TablePagination,
   usePagination,
 } from "@/components/shared/table-pagination";
+import {
+  DensityToggle,
+  useTableDensity,
+} from "@/components/shared/table-density";
 import { PriceImportDialog } from "@/components/products/price-import-dialog";
 import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
 import { activeOnly } from "@/lib/archive";
@@ -135,6 +139,7 @@ export function ProductsPage() {
   }, [products, search, category, status, reviewOnly, showArchived]);
 
   const pagination = usePagination(filtered);
+  const [density, setDensity] = useTableDensity();
 
   /*
    * The other half of the round trip: export, edit in Excel, import back.
@@ -270,14 +275,22 @@ export function ProductsPage() {
           Show archived
         </label>
 
-        {/* Count */}
-        <span className="ml-auto text-sm text-muted-foreground">
-          {filtered.length} product{filtered.length !== 1 ? "s" : ""}
-        </span>
+        {/* Count and row height travel together, so that when the bar wraps
+            they wrap as one right-hand group rather than the toggle landing
+            alone under the search box. */}
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+          </span>
+          <DensityToggle value={density} onChange={setDensity} />
+        </div>
       </div>
 
       {/* ── Table ───────────────────────────────────────────────────────── */}
-      <Table>
+      {/* Sticky header: 25 rows is taller than the window, so the column
+          names and this filter bar both scrolled away on the page people
+          spend the most time reading. */}
+      <Table stickyHeader density={density}>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
