@@ -161,7 +161,10 @@ version other people can actually open. **Nothing here needs a decision.**
 - [x] Write the add-a-department recipe *(7)* — Part C below, now a test rather
       than a claim: `12_department_contract.sql` adds Security as one row and
       exercises every bullet, and the Numbers tab has the form.
-- [ ] Split the oversized file *(8)*
+- [x] Split the oversized file *(8)* — six modules by area behind a barrel, so
+      not one import site changed. 5.260 lines became 26; the largest piece is
+      1.417. The exported surface is identical, checked by comparing the two
+      lists rather than by trusting the compiler.
 
 **You get:** the ability to say "this person manages the kitchen's staff and
 nothing else", the ability to ask what any department spent on anything, and a
