@@ -166,7 +166,7 @@ is why Stage 0 comes first.
 - [ ] Pay rates *(9)* — **needs D1**
 - [ ] Daily takings *(10)* — **needs D2**
 - [ ] Production records *(11)*
-- [ ] Photo and video storage *(12)*
+- [x] Photo and video storage *(12)* — one bucket, the parent record's own access, and wired into completing a work order. Retention is a column and a query; nothing sweeps it yet.
 
 **You get:** profit per department, the used-versus-should-have-used figure,
 and the ability to photograph a fault.
