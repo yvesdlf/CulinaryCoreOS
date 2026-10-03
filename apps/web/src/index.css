@@ -94,6 +94,19 @@
     --color-chart-4: #5d5faf;
     --color-chart-5: #a97d2d;
 
+    /* Elevation (DOC4 Appendix A, `--cc-shadow-sm` … `-xl`).
+       Four steps were specified and none of them were ever wired up, so the
+       whole app was flat and every surface read as the same sheet of paper.
+       Mapped onto Tailwind's own `shadow-*` names deliberately: the popovers,
+       sheets and menus that already say `shadow-md` then move onto the
+       specified scale instead of the framework default, which is the only way
+       elevation stays one system rather than two. Indirected through
+       `--elevation-*` so each theme can carry its own values. */
+    --shadow-sm: var(--elevation-sm);
+    --shadow-md: var(--elevation-md);
+    --shadow-lg: var(--elevation-lg);
+    --shadow-xl: var(--elevation-xl);
+
     /* Radius (§5): 12 px controls, 16 px dialogs */
     --radius-sm: calc(var(--radius) * 0.66);
     --radius-md: calc(var(--radius) * 0.83);
@@ -105,42 +118,58 @@
 }
 
 :root {
-    /* Surfaces */
-    --surface-base: #f8f7f4;      /* Ivory 50 — DDL-0001, not pure white */
+    /* Surfaces.
+       Ivory 50 sat at 1,07:1 against a white card, which is below the point
+       where an eye separates two planes — so a page of cards read as one flat
+       sheet and no amount of border work fixed it. Deepened and warmed to
+       1,13:1, matching the separation the dark theme already had. Still not
+       pure white anywhere on the page, which is DDL-0001's actual point. */
+    --surface-base: #f4f1ea;      /* Ivory 100 — DDL-0001, not pure white */
     --surface-raised: #ffffff;
     --surface-overlay: #ffffff;
-    --surface-muted: #efeeea;
+    /* Follows the page down, or a hover fill stops registering as one. */
+    --surface-muted: #e9e5da;
     --surface-nav: #1f2428;       /* Graphite 900 */
 
     /* Text */
     --text-primary: #222222;
-    /* Darkened twice. The first pass cleared the page background at 4,65:1;
-       raised surfaces are darker still (#efeeea for a selected command item
-       or an inactive tab), where it fell to 4,29:1. Tuning a token against
-       one background only holds until it is used on another. */
-    --text-secondary: #616876;    /* 5,23:1 on page, 4,82:1 on raised */
+    /* Darkened three times now, every time for the same reason. The first pass
+       cleared the page background at 4,65:1; muted surfaces are darker still
+       (a selected command item or an inactive tab), where it fell to 4,29:1;
+       and the third was this commit deepening the page under it. Tuning a
+       token against one background only holds until the background moves. */
+    --text-secondary: #5a6170;    /* 5,51:1 on page, 6,22:1 on raised,
+                                     4,94:1 on muted */
     --text-muted: #8a9099;
     --text-inverse: #ffffff;
 
-    /* Borders */
-    --border-subtle: #e5e7eb;
-    --border-strong: #bfc5cd;
+    /* Borders, warmed to the new ground. A blue-grey rule on warm ivory reads
+       as a different design system wandering in. */
+    --border-subtle: #e4dfd3;
+    --border-strong: #b7b0a3;
 
-    /* Actions — DDL-0002, accessible sage */
-    --action-primary: #5a7554;
+    /* Actions — DDL-0002, accessible sage, taken a step towards forest. Sage
+       at #5a7554 was 4,77:1 on the old ivory; the deeper ground took it to
+       4,50:1, and `text-primary` is a link style on buttons and badges, so it
+       is body text and has to clear 4,5:1 with room to spare, not exactly. */
+    --action-primary: #536e4d;
     --action-secondary: #ffffff;
 
-    /* Status. The darkened variants are the Bible's accessible text values. */
-    --status-success: #367b50;      /* darkened from Forest 650 for §12 */
+    /* Status. The darkened variants are the Bible's accessible text values.
+       Success, warning and info were each between 4,77:1 and 4,96:1 on the old
+       page background — all three would have crossed under on the new one, so
+       each is darkened by roughly the amount the background moved. Danger was
+       already far enough clear to leave alone. */
+    --status-success: #31704a;      /* darkened from Forest 650 for §12 */
     --status-success-soft: #eaf4ee;
     --status-success-border: #b9dcc7;
-    --status-warning: #966300;      /* darkened from Amber 700 for §12 */
+    --status-warning: #8d5d00;      /* darkened from Amber 700 for §12 */
     --status-warning-soft: #faf1de;
     --status-warning-border: #e6cf9c;
     --status-danger: #b33737;
     --status-danger-soft: #f9eaea;
     --status-danger-border: #e5b4b4;
-    --status-info: #3a6ea5;
+    --status-info: #366a9e;
     --status-info-soft: #e9f0f7;
     --status-info-border: #b6cde4;
     --ai-accent: #a97d2d;
@@ -155,27 +184,39 @@
     --module-recipes: #6f8a68;
     --radius: 0.75rem;            /* 12 px */
 
-    --shadow-raised: 0 1px 2px rgb(34 34 34 / 0.05),
-      0 8px 24px rgb(34 34 34 / 0.06);
+    /* DOC4 Appendix A verbatim. The token this replaces, --shadow-raised, was
+       defined in both themes and referenced by nothing — a second elevation
+       idea that never shipped, which is how the app ended up flat while the
+       specification said otherwise. */
+    --elevation-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+    --elevation-md: 0 4px 12px rgb(0 0 0 / 0.08);
+    --elevation-lg: 0 8px 24px rgb(0 0 0 / 0.12);
+    --elevation-xl: 0 16px 48px rgb(0 0 0 / 0.16);
 }
 
 .dark {
-    --surface-base: #171717;
-    --surface-raised: #232323;
-    --surface-overlay: #2b2b2b;
-    --surface-muted: #2a2a2a;
-    --surface-nav: #101010;
+    /* The same move as the light theme, in the direction dark mode allows:
+       the page drops rather than the card rising, because there is no headroom
+       above #232323 that does not start looking like a lit surface. Both
+       neutrals carry a trace of warmth so the two themes are recognisably the
+       same product, which is all "the dark-mode equivalent of warm off-white"
+       can honestly mean — a dark page cannot be warm by being lighter. */
+    --surface-base: #141312;
+    --surface-raised: #201f1d;
+    --surface-overlay: #282624;
+    --surface-muted: #262422;
+    --surface-nav: #0d0c0b;
 
     --text-primary: #f7f7f7;
     --text-secondary: #b4b4b4;
     --text-muted: #8e8e8e;
-    --text-inverse: #171717;
+    --text-inverse: #141312;
 
-    --border-subtle: #3a3a3a;
-    --border-strong: #686868;
+    --border-subtle: #37342f;
+    --border-strong: #6b655c;
 
     --action-primary: #8fad89;
-    --action-secondary: #232323;
+    --action-secondary: #201f1d;  /* tracks --surface-raised */
 
     /* Dark mode is a full theme, not an inversion (§14) — the soft fills are
        re-derived against the dark surface rather than lightened. */
@@ -195,12 +236,19 @@
 
     --nav-text: #f2f2f0;
     --nav-text-muted: #9a9a9a;
-    --nav-accent: #1e1e1e;
-    --nav-border: #2a2a2a;
+    --nav-accent: #1c1b19;
+    --nav-border: #292725;
 
     --module-recipes: #8fad89;
 
-    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.24), 0 10px 30px rgb(0 0 0 / 0.24);
+    /* Same four steps, same geometry, re-derived alpha — black at 5% over a
+       near-black page is nothing at all, so the light values would have left
+       dark mode flat while the stylesheet claimed otherwise. Dark mode is a
+       full theme, not an inversion (§14). */
+    --elevation-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --elevation-md: 0 4px 12px rgb(0 0 0 / 0.5);
+    --elevation-lg: 0 8px 24px rgb(0 0 0 / 0.6);
+    --elevation-xl: 0 16px 48px rgb(0 0 0 / 0.7);
 }
 
 @layer base {
