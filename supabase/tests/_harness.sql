@@ -28,6 +28,24 @@
 
 create schema if not exists t;
 
+/*
+ * `authenticated` can call the harness.
+ *
+ * The suite connects as `postgres`, which owns every table in `public` and is
+ * therefore exempt from row-level security: a refusal proved on this
+ * connection is a *trigger* refusing, and a policy would not have fired at
+ * all. Any file asserting something about a policy has to `set local role
+ * authenticated` and ask again — and without this grant the first `t.expect_*`
+ * call after that raises "permission denied for schema t", which aborts the
+ * transaction and takes every later assertion in the file with it. That is the
+ * third false pass in the list below, arriving as a wall of red rather than a
+ * wall of green, but it still costs an hour.
+ *
+ * Here rather than in each file, which is where it was: two files had the line
+ * and the third did not.
+ */
+grant usage on schema t to authenticated;
+
 /* A statement that must be refused. Passes only if it raised. */
 create or replace function t.expect_fail(p_sql text, p_label text)
 returns text language plpgsql as $$

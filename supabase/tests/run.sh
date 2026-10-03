@@ -52,6 +52,22 @@ for f in "$HERE"/[0-9]*.sql; do
   echo
 done
 
+# The venue the fixtures built outlives the files that used it, so it is taken
+# down here rather than only before the next run. Seven visual tests went red
+# once because a T- recipe was still sitting in the seeded venue afterwards;
+# the screenshots were right and the database was dirty.
+#
+# Run whatever happened above, including a failure, so a red run does not leave
+# a mess for whatever looks at the database next. Its own output is shown only
+# when it has something to say.
+teardown="$(run "$HERE/_teardown.sql" | grep -E '^(FAIL|ERROR)' || true)"
+if [ -n "$teardown" ]; then
+  echo "Teardown did not finish cleanly — the test venue is still in the database:"
+  printf '%s\n' "$teardown"
+  echo
+  failed=$((failed + 1))
+fi
+
 echo "────────────────────────────────────────────────────────────"
 if [ "$failed" -eq 0 ]; then
   echo "$total checks, all passing."

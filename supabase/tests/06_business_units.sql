@@ -30,7 +30,7 @@ begin;
  * what lets the harness functions still be called once the role has changed.
  * It is granted inside the transaction and goes away with the rollback.
  */
-grant usage on schema t to authenticated;
+-- (the grant that makes this possible is in _harness.sql)
 
 select '── units: the two trees are one ─────────────────────────────────';
 

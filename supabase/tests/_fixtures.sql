@@ -11,43 +11,12 @@
 -- ---------------------------------------------------------------------------
 
 /*
- * Re-runnable.
+ * Re-runnable, and tidy afterwards.
  *
- * CI always starts from `supabase db reset`, so this is strictly for running
- * the suite twice on a laptop. Everything the fixtures create is prefixed
- * T- or belongs to a test user, and is removed in dependency order first.
+ * The same cleanup runs here and again from `run.sh` when the last file is
+ * done — see `_teardown.sql` for why the second one matters.
  */
-delete from meter_readings where meter_id in (select id from meters where code='T-ELEC');
-delete from housekeeping_inspections where task_id in (
-  select id from housekeeping_tasks where room_id in (select id from rooms where room_number='900'));
-delete from housekeeping_tasks where room_id in (select id from rooms where room_number='900');
-delete from work_orders where title like 'T-%' or plan_id in (select id from maintenance_plans where code='T-PM');
-delete from rooms where room_number='900';
-delete from maintenance_plans where code='T-PM';
-delete from meters where code='T-ELEC';
-delete from assets where code='T-CH';
-delete from locations where code in ('T-PLANT','T-R900');
-delete from leave_requests where employee_id in (select id from employees where employee_number like 'T-%');
-delete from shifts where employee_id in (select id from employees where employee_number like 'T-%');
-delete from employee_certifications where employee_id in (select id from employees where employee_number like 'T-%');
-delete from employees where employee_number like 'T-%';
-delete from observation_checklists where course_id in (select id from training_courses where code='T-COURSE');
-delete from quiz_questions where course_id in (select id from training_courses where code='T-COURSE');
-delete from training_courses where code='T-COURSE';
-delete from checklist_templates where title='T-checklist';
-delete from department_approvers where department_id in (select id from departments where code='T-ENG');
-delete from employee_exits where employee_id in (select id from employees where employee_number like 'T-%');
-delete from organization_invitations where email='invitee@test.local';
-delete from job_roles where title='Test electrician';
-delete from departments where code='T-ENG';
-delete from member_access where user_id::text like 'a0000000-%';
-delete from organization_members where user_id::text like 'a0000000-%';
-delete from auth.users where id::text like 'a0000000-%';
--- `on_auth_user_created` gives every new sign-up an organisation of its own.
--- The test users therefore arrive in four separate tenants, which is correct
--- behaviour and useless here, so the invented ones are removed and the
--- membership is repointed at the venue that holds the data.
-delete from organizations where name in ('owner','chef','nobody','staff');
+\ir _teardown.sql
 
 select coalesce(string_agg(f, E'\n'), '') as fixture_problems from (
   select t.fixture($$
@@ -211,4 +180,61 @@ select coalesce(string_agg(f, E'\n'), '') as fixture_problems from (
     insert into organization_invitations (organization_id, email, role, invited_by_email)
     select id,'invitee@test.local','CHEF','owner@test.local'
       from organizations where name='Demo Kitchen' limit 1 $$)
+
+  /*
+   * Production: three ingredients, two preparations and a lot.
+   *
+   * Its own catalogue rather than the seeded one. `seed.sql` is demo data and
+   * AGENTS.md says demo data is never required for correctness, so a control
+   * test that asserts "200 g of flour" against a seeded recipe somebody edits
+   * next month is a test that goes red for the wrong reason.
+   *
+   * Three ingredients because the variance report has three different things
+   * to say: T-flour appears on both sides, T-salt on the recipe side only, and
+   * T-oil in the ledger only.
+   */
+  union all select t.fixture($$
+    insert into products (org_id, category, name, pack_unit, units_per_pack,
+                          total_qty, total_unit, gross_price_per_unit, par_level)
+    select o.id, 'Dry Goods', x.n, 'bag', 1000, 1000, x.u, x.price, 500
+      from organizations o
+      cross join (values ('T-flour','g',10),('T-salt','g',4),('T-oil','ml',20)) as x(n,u,price)
+     where o.name='Demo Kitchen' $$)
+  union all select t.fixture($$
+    insert into sub_recipes (org_id, name, batch_yield_qty, batch_yield_unit)
+    select id,'T-prep',1000,'g' from organizations where name='Demo Kitchen' limit 1 $$)
+  -- A preparation nobody gave a yield. Recording a batch of it is refused,
+  -- because there is no quantity it made and nothing to derive usage from.
+  union all select t.fixture($$
+    insert into sub_recipes (org_id, name)
+    select id,'T-prep-no-yield' from organizations where name='Demo Kitchen' limit 1 $$)
+  union all select t.fixture($$
+    insert into sub_recipe_lines (sub_recipe_id, line_number, product_id,
+                                  nett_qty, nett_unit, ref_percent, gross_qty, gross_unit)
+    select (select id from sub_recipes where name='T-prep'), x.n,
+           (select id from products where name=x.p), x.q, x.u, 0, x.q, x.u
+      from (values (1,'T-flour',100,'g'),(2,'T-salt',5,'g')) as x(n,p,q,u) $$)
+  union all select t.fixture($$
+    insert into recipes (org_id, name) select id,'T-dish'
+      from organizations where name='Demo Kitchen' limit 1 $$)
+  union all select t.fixture($$
+    insert into production_plans (org_id, planned_for, service, note, created_by_email)
+    select id, current_date, 'DINNER', 'T-plan', 'chef@test.local'
+      from organizations where name='Demo Kitchen' limit 1 $$)
+  union all select t.fixture($$
+    insert into production_plan_lines (plan_id, recipe_id, covers)
+    select (select id from production_plans where note='T-plan'),
+           (select id from recipes where name='T-dish'), 20 $$)
+  union all select t.fixture($$
+    insert into stock_lots (org_id, product_id, lot_code, received_on)
+    select o.id,(select id from products where name='T-flour'),'T-LOT',current_date
+      from organizations o where o.name='Demo Kitchen' $$)
+  -- Something on the shelf to consume. A usage movement against an empty
+  -- product would still be accepted, but a ledger that goes negative makes
+  -- every later figure read as a bug rather than as the test's doing.
+  union all select t.fixture($$
+    insert into stock_movements (org_id, product_id, kind, quantity, unit, unit_cost, reason, lot_id)
+    select o.id,(select id from products where name='T-flour'),'RECEIPT',5000,'g',10,'T-opening',
+           (select id from stock_lots where lot_code='T-LOT')
+      from organizations o where o.name='Demo Kitchen' $$)
 ) x where f is not null;
