@@ -23,7 +23,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ShieldCheck, UserPlus, SlidersHorizontal, BriefcaseBusiness, Lock,
-  Eye, PencilLine, Check, X, TriangleAlert, History, Users, Mail, MapPin,
+  Eye, PencilLine, Check, X, TriangleAlert, History, Users, Mail, MapPin, Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,7 +50,8 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import {
   fetchAppSections, fetchAccessGrid, setSectionAccess,
   fetchVenueParameters, saveVenueParameter, fetchParameterChanges,
-  fetchBusinessUnits, fetchDepartmentApprovers, saveDepartmentApprover,
+  fetchBusinessUnits, createBusinessUnit, updateBusinessUnit,
+  fetchDepartmentApprovers, saveDepartmentApprover,
   fetchHiringRequests, decideHiringRequest, fetchJobRoles, createHiringRequest,
   inviteToOrg, fetchInvitations, revokeInvitation,
   fetchGeofences, saveGeofence, type Geofence,
@@ -576,6 +577,12 @@ export function AdministrationPage() {
 
           <ClockingCard
             fences={geofences}
+            disabled={!canSetParameters}
+            onSaved={load}
+          />
+
+          <DepartmentsCard
+            units={businessUnits}
             disabled={!canSetParameters}
             onSaved={load}
           />
@@ -1379,6 +1386,179 @@ function ClockingCard({ fences, disabled, onSaved }: {
             <Check aria-hidden="true" /> Save
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The departments, and the form that adds one.
+ *
+ * PLAN.md Part C's claim is that adding Security, a bakery or a second café is
+ * filling in a form rather than a job for a programmer. Everything underneath
+ * was true — `12_department_contract.sql` adds Security as one row and then
+ * gives it document numbers, a budget, a rota, a location, a camera, its own
+ * paperwork and a permission scoped to it, with no migration anywhere — and
+ * there was no form. The claim was true about the database and false about the
+ * platform.
+ *
+ * Under Numbers rather than Access, because migration 0058 moved the unit to
+ * the Venue parameters section: a unit carries an approval threshold, the
+ * budget's cost centre and the prefix printed on every supplier document, so
+ * creating one is a finance act that happens also to change an HR label.
+ *
+ * Closed rather than deleted, always. Last year's orders and the record of
+ * somebody who worked there still name the unit; a delete would either fail on
+ * those references or take them with it, and the second is worse.
+ */
+function DepartmentsCard({
+  units, disabled, onSaved,
+}: {
+  units: BusinessUnit[];
+  disabled: boolean;
+  onSaved: () => void | Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  /*
+   * The first three characters are the segment of every document number this
+   * department will ever issue, and two units cannot share one — KITCHEN and
+   * KITCHENETTE would both issue PO-KIT-260919-00n from the same daily counter
+   * and the supplier would hold two orders whose numbers claim to be the same
+   * department's. The database refuses it; saying so here means finding out
+   * while typing rather than on save.
+   */
+  const prefix = code.trim().slice(0, 3).toUpperCase();
+  const clash = prefix !== "" && units.find(
+    (u) => u.code.slice(0, 3).toUpperCase() === prefix);
+
+  const valid = code.trim() !== "" && name.trim() !== "" && !clash
+    && code.trim() === code.trim().toUpperCase();
+
+  async function save() {
+    setBusy(true);
+    try {
+      await createBusinessUnit({ code: code.trim(), name: name.trim() });
+      toast.success(`${name.trim()} added`, {
+        description: `Its documents will be numbered ${prefix}.`,
+      });
+      setCode(""); setName(""); setAdding(false);
+      await onSaved();
+    } catch (err) {
+      toast.error("Could not add the department", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setActive(unit: BusinessUnit, active: boolean) {
+    try {
+      await updateBusinessUnit(unit.id, { active });
+      await onSaved();
+    } catch (err) {
+      toast.error(active ? "Could not reopen it" : "Could not close it", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between gap-4 pb-2">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Building2 aria-hidden="true" className="size-4" /> Departments
+          </CardTitle>
+          <p className="pt-1 text-xs text-muted-foreground">
+            A department is also its cost centre and the prefix on its documents.
+            Adding one needs nothing built.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" disabled={disabled}
+          onClick={() => setAdding((o) => !o)}>
+          {adding ? "Cancel" : "Add a department"}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {adding && (
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="unit-code">Code</Label>
+                <Input
+                  id="unit-code"
+                  value={code}
+                  placeholder="SECURITY"
+                  onChange={(e) => setCode(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {clash
+                    ? `${clash.name} already uses ${prefix}, and two departments cannot share a document prefix.`
+                    : code.trim() !== "" && code.trim() !== code.trim().toUpperCase()
+                      ? "Capitals only. It is printed on supplier documents."
+                      : prefix !== ""
+                        ? `Documents will read WO-${prefix}-, PO-${prefix}- and so on.`
+                        : "Capitals, and the first three characters number its documents."}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="unit-name">Name</Label>
+                <Input
+                  id="unit-name"
+                  value={name}
+                  placeholder="Security"
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button size="sm" disabled={!valid || busy} onClick={() => void save()}>
+                Add it
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Department</TableHead>
+              <TableHead>Documents</TableHead>
+              <TableHead className="text-right">Open</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {units.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell className="font-medium">{u.name}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {u.code.slice(0, 3).toUpperCase()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => void setActive(u, !u.active)}
+                  >
+                    {u.active ? "Close it" : "Reopen"}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {units.length === 0 && (
+          <p className="py-3 text-sm text-muted-foreground">
+            No departments. A venue is created with four, so this one has had
+            them removed.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

@@ -151,9 +151,16 @@ version other people can actually open. **Nothing here needs a decision.**
 
 ### Stage 1 · One list of departments, and who sees what — **L**
 
-- [ ] Merge the two department lists into one *(5)*
-- [ ] Add "which department" to permissions *(6)*
-- [ ] Write the add-a-department recipe *(7)* — Part C
+- [x] Merge the two department lists into one *(5)* — `business_units` is the
+      department, the cost centre and the owner of a location. The old names are
+      writable views and nothing was dropped; 0058.
+- [x] Add "which department" to permissions *(6)* — one nullable column, null
+      meaning every unit so no existing grant changed. Two grants stack and the
+      wider one wins. A move between units needs standing in both, which is the
+      escape the control suite found; 0062.
+- [x] Write the add-a-department recipe *(7)* — Part C below, now a test rather
+      than a claim: `12_department_contract.sql` adds Security as one row and
+      exercises every bullet, and the Numbers tab has the form.
 - [ ] Split the oversized file *(8)*
 
 **You get:** the ability to say "this person manages the kitchen's staff and
@@ -165,7 +172,10 @@ is why Stage 0 comes first.
 
 - [ ] Pay rates *(9)* — **needs D1**
 - [ ] Daily takings *(10)* — **needs D2**
-- [ ] Production records *(11)*
+- [x] Production records *(11)* — what was made, append-only, with the quantity
+      generated rather than stated and the consumption in the one stock ledger.
+      Theoretical against actual works, and the forward step of Article 18 is
+      answerable for the first time; 0060.
 - [x] Photo and video storage *(12)* — one bucket, the parent record's own access, and wired into completing a work order. Retention is a column and a query; nothing sweeps it yet.
 
 **You get:** profit per department, the used-versus-should-have-used figure,
@@ -209,18 +219,35 @@ form. If it needs a programmer, the design is wrong.
 
 ### What a new department gets automatically
 
-One entry in the department list, and all of this works without code:
+One entry in the department list, and all of this works without code.
 
-- [ ] Its own code, its manager, and where it sits under another department
-- [ ] Its own budget and spending limits — it *is* the money code, not a copy of one
-- [ ] Its own document numbers — `WO-SEC-260919-001` for Security's first job today
-- [ ] Its people: rota, leave, attendance, certificates, training
-- [ ] The places it looks after, and every piece of equipment in them
-- [ ] Its own suppliers, and the full ordering chain through the same approvals
-- [ ] Its own compliance forms and its own list of what is overdue
+**This is no longer a claim.** `supabase/tests/12_department_contract.sql` adds
+Security to the venue as one row — the same write the form makes — and then
+tries to do each of these. There is no DDL anywhere in the file, so a bullet
+that needed a migration fails there rather than being discovered by whoever is
+adding department eight.
+
+- [x] Its own code, its manager, and where it sits under another department
+- [x] Its own budget and spending limits — it *is* the money code, not a copy of one
+- [x] Its own document numbers — `WO-SEC-260919-001` for Security's first job today
+- [x] Its people: rota, leave, attendance, certificates, training
+- [x] The places it looks after, and every piece of equipment in them
+- [x] Its own suppliers, and the full ordering chain through the same approvals
+- [x] Its own compliance forms and its own list of what is overdue
 - [ ] The ability to raise a request to any other department, and receive theirs
-- [ ] A tile on the overview screen
-- [ ] Permissions that can be limited to it
+      — **two of five shapes.** It can raise a maintenance job and a
+      requisition today. An incident, a complaint and a staff request have no
+      shared route, which is the one front door in Stage 3.
+- [ ] A tile on the overview screen — the overview is still per-section, not
+      per-unit.
+- [x] Permissions that can be limited to it
+
+One thing the test found rather than confirmed: a work order with a unit and no
+reference numbered itself `WO-SEC-`, and a requisition raised the same way
+raised a not-null violation, because the purchasing screen allocated the number
+and nothing else could. The capability was there and only one screen knew the
+trick, which is a promise about that screen rather than about the platform.
+0063 makes a requisition number itself the way a work order already did.
 
 ### The only three things that differ each time
 

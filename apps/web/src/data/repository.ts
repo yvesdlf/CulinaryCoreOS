@@ -1030,6 +1030,86 @@ export async function fetchBusinessUnits(): Promise<BusinessUnit[]> {
   }));
 }
 
+/**
+ * Create a department.
+ *
+ * PLAN.md Part C says adding Security, a bakery or a second café should be
+ * filling in a form. Everything underneath was in place — a unit is its own
+ * cost centre, its own document prefix, the thing a rota and a budget and a
+ * permission hang off — and there was no form. A department could only be
+ * created by somebody with a SQL client, which makes the claim true about the
+ * database and false about the platform.
+ *
+ * The code is refused rather than folded to upper case, which is what the
+ * database does and what this therefore says before the round trip. A trigger
+ * that quietly corrects what it did not refuse is one of the three false
+ * passes the control suite is built around: the caller never learns their code
+ * was not the code they asked for.
+ */
+export async function createBusinessUnit(input: {
+  code: string;
+  name: string;
+  parentId?: string | null;
+  managerEmployeeId?: string | null;
+  /** Decimal string. Null means the organisation's approval policy alone. */
+  approvalThreshold?: string | null;
+}): Promise<BusinessUnit> {
+  const { data, error } = await requireSupabase()
+    .from("business_units")
+    .insert({
+      code: input.code,
+      name: input.name,
+      parent_id: input.parentId ?? null,
+      manager_employee_id: input.managerEmployeeId ?? null,
+      approval_threshold: input.approvalThreshold ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) fail("createBusinessUnit", error);
+  const r = data as any;
+  return {
+    id: r.id, code: r.code, name: r.name,
+    parentId: r.parent_id ?? null,
+    managerEmployeeId: r.manager_employee_id ?? null,
+    approvalThreshold: r.approval_threshold === null || r.approval_threshold === undefined
+      ? null : String(r.approval_threshold),
+    active: Boolean(r.active),
+  };
+}
+
+/**
+ * Rename a department, move it in the tree, or close it.
+ *
+ * Closing rather than deleting is the only option offered: last year's orders
+ * and the record of somebody who worked there still name it, and a delete would
+ * either fail on those references or take them with it. `active = false` keeps
+ * the name readable everywhere it is already written and keeps it out of the
+ * pickers that choose where new work goes.
+ */
+export async function updateBusinessUnit(
+  id: string,
+  patch: {
+    code?: string;
+    name?: string;
+    parentId?: string | null;
+    managerEmployeeId?: string | null;
+    approvalThreshold?: string | null;
+    active?: boolean;
+  },
+): Promise<void> {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.code !== undefined) row.code = patch.code;
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.parentId !== undefined) row.parent_id = patch.parentId;
+  if (patch.managerEmployeeId !== undefined) row.manager_employee_id = patch.managerEmployeeId;
+  if (patch.approvalThreshold !== undefined) row.approval_threshold = patch.approvalThreshold;
+  if (patch.active !== undefined) row.active = patch.active;
+
+  const { error } = await requireSupabase()
+    .from("business_units").update(row).eq("id", id);
+  if (error) fail("updateBusinessUnit", error);
+}
+
 export async function fetchApprovalPolicies(): Promise<ApprovalPolicy[]> {
   const { data, error } = await requireSupabase()
     .from("approval_policies")
