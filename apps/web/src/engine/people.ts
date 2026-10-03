@@ -20,7 +20,7 @@ export interface Employee {
   employeeNumber: string;
   firstName: string;
   lastName: string;
-  departmentId: string | null;
+  businessUnitId: string | null;
   jobRoleId: string | null;
   managerId: string | null;
   employmentStatus: EmploymentStatus;
@@ -154,7 +154,7 @@ export interface LeaveConflict {
 }
 
 /**
- * Who else in the same department is already off across these dates.
+ * Who else in the same business unit is already off across these dates.
  *
  * Not a refusal — a venue sometimes has to let two chefs go at once — but the
  * manager approving it should not have to remember.
@@ -163,7 +163,7 @@ export function overlappingLeave(
   candidate: { employeeId: string; startsOn: string; endsOn: string },
   requests: LeaveRequest[],
   employees: Employee[],
-  departmentId: string | null,
+  businessUnitId: string | null,
 ): LeaveConflict[] {
   const byId = new Map(employees.map((e) => [e.id, e]));
   return requests
@@ -172,7 +172,7 @@ export function overlappingLeave(
     .filter((r) => {
       const other = byId.get(r.employeeId);
       if (!other) return false;
-      if (departmentId && other.departmentId !== departmentId) return false;
+      if (businessUnitId && other.businessUnitId !== businessUnitId) return false;
       // Overlap if neither range ends before the other begins.
       return !(r.endsOn < candidate.startsOn || r.startsOn > candidate.endsOn);
     })
@@ -289,7 +289,7 @@ export interface Headcount {
   total: number;
   working: number;
   byStatus: Record<string, number>;
-  byDepartment: { departmentId: string | null; count: number }[];
+  byBusinessUnit: { businessUnitId: string | null; count: number }[];
   /** Full-time equivalent, from contracted hours. */
   fte: string;
 }
@@ -300,9 +300,9 @@ export function headcount(employees: Employee[]): Headcount {
   for (const e of employees) {
     byStatus[e.employmentStatus] = (byStatus[e.employmentStatus] ?? 0) + 1;
   }
-  const byDepartment = new Map<string | null, number>();
+  const byBusinessUnit = new Map<string | null, number>();
   for (const e of working) {
-    byDepartment.set(e.departmentId, (byDepartment.get(e.departmentId) ?? 0) + 1);
+    byBusinessUnit.set(e.businessUnitId, (byBusinessUnit.get(e.businessUnitId) ?? 0) + 1);
   }
   const fte = working.reduce(
     (acc, e) =>
@@ -319,8 +319,8 @@ export function headcount(employees: Employee[]): Headcount {
     total: employees.length,
     working: working.length,
     byStatus,
-    byDepartment: [...byDepartment.entries()]
-      .map(([departmentId, count]) => ({ departmentId, count }))
+    byBusinessUnit: [...byBusinessUnit.entries()]
+      .map(([businessUnitId, count]) => ({ businessUnitId, count }))
       .sort((a, b) => b.count - a.count),
     fte: fte.toFixed(2),
   };

@@ -71,7 +71,7 @@ import { nextReferenceLocal, unitCode } from "@/engine/references";
 import {
   fetchRequisitions,
   fetchPurchaseOrders,
-  fetchCostCentres,
+  fetchBusinessUnits,
   fetchApprovalPolicies,
   fetchSuppliers,
   fetchMyRole,
@@ -82,7 +82,7 @@ import {
   recordApproval,
   type Requisition,
   type PurchaseOrder,
-  type CostCentre,
+  type BusinessUnit,
   type Supplier,
 } from "@/data/repository";
 import type { ApprovalPolicy, OrgRole } from "@/engine/purchasing";
@@ -142,7 +142,7 @@ export function PurchasingPage() {
   const products = useProductStore((s) => s.products);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-  const [costCentres, setCostCentres] = useState<CostCentre[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [policies, setPolicies] = useState<ApprovalPolicy[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [receipts, setReceipts] = useState<GoodsReceiptRow[]>([]);
@@ -187,7 +187,7 @@ export function PurchasingPage() {
       const [r, o, c, p, s, role, gr, inv, bud, tol] = await Promise.all([
         fetchRequisitions(),
         fetchPurchaseOrders(),
-        fetchCostCentres(),
+        fetchBusinessUnits(),
         fetchApprovalPolicies(),
         fetchSuppliers(),
         fetchMyRole(),
@@ -211,7 +211,7 @@ export function PurchasingPage() {
       setRfqs(await fetchRfqs());
       setRequisitions(r);
       setOrders(o);
-      setCostCentres(c);
+      setBusinessUnits(c);
       setPolicies(p);
       setSuppliers(s);
       setReceipts(gr);
@@ -543,7 +543,7 @@ export function PurchasingPage() {
           suppliers={suppliers}
           levels={levels}
           supplierLinks={supplierLinks}
-          costCentres={costCentres}
+          businessUnits={businessUnits}
           existingReferences={requisitions.map((r) => r.reference)}
           onClose={() => setCreating(false)}
           onCreated={async () => {
@@ -585,7 +585,7 @@ export function PurchasingPage() {
 function NewRequisitionDialog({
   products,
   suppliers,
-  costCentres,
+  businessUnits,
   existingReferences,
   levels,
   supplierLinks,
@@ -594,7 +594,7 @@ function NewRequisitionDialog({
 }: {
   products: ReturnType<typeof useProductStore.getState>["products"];
   suppliers: Supplier[];
-  costCentres: CostCentre[];
+  businessUnits: BusinessUnit[];
   existingReferences: string[];
   levels: Map<string, { onHand: number; lastMovementAt: string | null }>;
   /** Supplier id to the products they sell. */
@@ -602,7 +602,10 @@ function NewRequisitionDialog({
   onClose: () => void;
   onCreated: () => void | Promise<void>;
 }) {
-  const [costCentreId, setCostCentreId] = useState(costCentres[0]?.id ?? "");
+  // New spend is not charged to a closed unit, though the lookup below still
+  // has to resolve one for an order that already names it.
+  const liveUnits = businessUnits.filter((u) => u.active);
+  const [businessUnitId, setBusinessUnitId] = useState(liveUnits[0]?.id ?? "");
   const [neededBy, setNeededBy] = useState("");
   const [justification, setJustification] = useState("");
   const [rows, setRows] = useState<
@@ -701,8 +704,8 @@ function NewRequisitionDialog({
    * — which is exactly the case that used to produce a duplicate.
    */
   const unit = useMemo(
-    () => unitCode(costCentres.find((c) => c.id === costCentreId)?.code),
-    [costCentres, costCentreId],
+    () => unitCode(businessUnits.find((c) => c.id === businessUnitId)?.code),
+    [businessUnits, businessUnitId],
   );
   const reference = useMemo(
     () => nextReferenceLocal("REQ", unit, existingReferences),
@@ -762,7 +765,7 @@ function NewRequisitionDialog({
           // No reference: the database allocates it, so two people saving at
           // once get 001 and 002 rather than colliding.
           unitCode: unit,
-          costCentreId: costCentreId || null,
+          businessUnitId: businessUnitId || null,
           neededBy: neededBy || null,
           justification: justification.trim() || null,
           lines: group.map((l, i) => ({ ...l, lineNumber: i + 1 })),
@@ -803,14 +806,14 @@ function NewRequisitionDialog({
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="req-cc">Cost centre</Label>
+              <Label htmlFor="req-cc">Business unit</Label>
               <select
                 id="req-cc"
                 className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-                value={costCentreId}
-                onChange={(e) => setCostCentreId(e.target.value)}
+                value={businessUnitId}
+                onChange={(e) => setBusinessUnitId(e.target.value)}
               >
-                {costCentres.map((c) => (
+                {liveUnits.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -1190,7 +1193,7 @@ function RaiseOrdersDialog({
           reference,
           supplierId: draft.supplierId!,
           requisitionId: requisition.id,
-          costCentreId: requisition.costCentreId,
+          businessUnitId: requisition.businessUnitId,
           expectedOn: requisition.neededBy,
           taxPercent: DEFAULT_TAX_PERCENT,
           lines: draft.lines.map((l) => ({

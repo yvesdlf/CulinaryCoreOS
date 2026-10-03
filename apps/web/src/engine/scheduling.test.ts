@@ -14,7 +14,7 @@ import {
 
 let n = 0;
 const shift = (over: Partial<Shift> = {}): Shift => ({
-  id: `s${n++}`, employeeId: "e1", departmentId: "kitchen", jobRoleId: "cdp",
+  id: `s${n++}`, employeeId: "e1", businessUnitId: "kitchen", jobRoleId: "cdp",
   startsAt: "2026-08-03T09:00:00Z", endsAt: "2026-08-03T17:00:00Z",
   breakMinutes: 30, status: "PUBLISHED", ...over,
 });

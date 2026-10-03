@@ -4,7 +4,7 @@
 // REQ-KIT-260809-001
 // │   │   │      └── sequence, restarting each day
 // │   │   └───────── the date, yymmdd
-// │   └───────────── the business unit, first three letters of its cost centre
+// │   └───────────── the business unit, first three letters of its code
 // └───────────────── what kind of document this is
 //
 // Four segments because each answers a question somebody asks out loud. "Which
@@ -90,7 +90,7 @@ export function withType(ref: string, type: DocumentType | string): string | nul
 }
 
 /**
- * The unit code for a cost centre or department.
+ * The unit code for a business unit.
  *
  * First three letters, upper case, letters and digits only. "Kitchen" gives
  * KIT, "Front of house" gives FOH via its code rather than its name, and "IT"

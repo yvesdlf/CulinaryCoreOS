@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/table";
 import {
   sendStaffDocument, fetchStaffDocuments, signedFileUrl, assignTraining,
-  type StaffDocument, type StaffDocumentKind, type Department,
+  type StaffDocument, type StaffDocumentKind, type BusinessUnit,
   type TrainingCourse,
 } from "@/data/repository";
 import type { Employee } from "@/engine/people";
@@ -50,13 +50,15 @@ const KINDS: { value: StaffDocumentKind; label: string; hint: string }[] = [
 ];
 
 export function StaffCommsTab({
-  employees, departments, courses, onDone,
+  employees, businessUnits, courses, onDone,
 }: {
   employees: Employee[];
-  departments: Department[];
+  businessUnits: BusinessUnit[];
   courses: TrainingCourse[];
   onDone: () => void | Promise<void>;
 }) {
+  // Only live units are offered as an audience. A closed unit has nobody in it.
+  const liveUnits = businessUnits.filter((u) => u.active);
   const [documents, setDocuments] = useState<StaffDocument[]>([]);
   const [kind, setKind] = useState<StaffDocumentKind>("NEWSLETTER");
   const [title, setTitle] = useState("");
@@ -96,8 +98,8 @@ export function StaffCommsTab({
     });
   }
 
-  function selectDepartment(departmentId: string) {
-    const ids = reachable.filter((e) => e.departmentId === departmentId).map((e) => e.id);
+  function selectBusinessUnit(businessUnitId: string) {
+    const ids = reachable.filter((e) => e.businessUnitId === businessUnitId).map((e) => e.id);
     setSelected((s) => {
       const next = new Set(s);
       const allIn = ids.every((id) => next.has(id));
@@ -282,12 +284,12 @@ export function StaffCommsTab({
               >
                 {selected.size === reachable.length ? "None" : "Everyone"}
               </Button>
-              {departments.map((d) => (
+              {liveUnits.map((d) => (
                 <Button
                   key={d.id}
                   size="xs"
                   variant="outline"
-                  onClick={() => selectDepartment(d.id)}
+                  onClick={() => selectBusinessUnit(d.id)}
                 >
                   {d.name}
                 </Button>
@@ -307,7 +309,7 @@ export function StaffCommsTab({
                       {e.firstName} {e.lastName}
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {departments.find((d) => d.id === e.departmentId)?.name ?? ""}
+                      {businessUnits.find((d) => d.id === e.businessUnitId)?.name ?? ""}
                     </span>
                   </label>
                 </li>

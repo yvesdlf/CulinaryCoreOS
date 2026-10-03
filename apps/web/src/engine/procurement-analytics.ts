@@ -19,7 +19,7 @@ export interface OrderSummary {
   reference: string;
   supplierId: string;
   supplierName: string | null;
-  costCentreId: string | null;
+  businessUnitId: string | null;
   status: string;
   orderedOn: string | null;
   expectedOn: string | null;

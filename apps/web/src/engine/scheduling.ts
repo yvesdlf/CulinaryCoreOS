@@ -34,7 +34,7 @@ export const BREAK_DUE_AFTER_HOURS = 6;
 export interface Shift {
   id: string;
   employeeId: string | null;
-  departmentId: string | null;
+  businessUnitId: string | null;
   jobRoleId: string | null;
   startsAt: string;
   endsAt: string;
