@@ -4811,3 +4811,301 @@ export async function uploadAttachments(
 export async function attachmentUrl(a: AttachmentRow, seconds = 300): Promise<string> {
   return signedFileUrl(a.bucketId, a.objectPath, seconds);
 }
+
+// ── Production records ──────────────────────────────────────────────────────
+/*
+ * Reads here are plain; the write is an RPC.
+ *
+ * `record_production` puts the completion and the stock movements it consumed
+ * in one transaction. Doing it as two inserts from the browser leaves a window
+ * in which a batch exists that consumed nothing, and a batch that consumed
+ * nothing reads in the variance report as a kitchen producing food out of thin
+ * air. Same argument as recordMovements above, for the same reason.
+ */
+
+import type { VarianceRow } from "@/engine/production-records";
+
+export interface ProductionPlanRow {
+  id: string;
+  plannedFor: string;
+  service: string | null;
+  note: string | null;
+  createdByEmail: string | null;
+  createdAt: string;
+  /** Covers per dish, as the sheet was worked out. */
+  covers: { recipeId: string; covers: number }[];
+}
+
+export async function fetchProductionPlans(limit = 30): Promise<ProductionPlanRow[]> {
+  const db = requireSupabase();
+  const { data, error } = await db
+    .from("production_plans")
+    .select("*, production_plan_lines(recipe_id, covers)")
+    .order("planned_for", { ascending: false })
+    .limit(limit);
+  if (error) fail("fetchProductionPlans", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    plannedFor: r.planned_for,
+    service: r.service ?? null,
+    note: r.note ?? null,
+    createdByEmail: r.created_by_email ?? null,
+    createdAt: r.created_at ?? "",
+    covers: (r.production_plan_lines ?? []).map((l: any) => ({
+      recipeId: l.recipe_id,
+      covers: Number(l.covers),
+    })),
+  }));
+}
+
+/**
+ * The plan a completion will point at, reused where nothing has changed.
+ *
+ * Covers get adjusted as a service firms up, and saving a new sheet on every
+ * keystroke would give the kitchen forty plans a day and make "which sheet was
+ * this made against" meaningless. A plan is reused when its date, service and
+ * covers all match; otherwise a new one is written, because a different set of
+ * covers is a different sheet.
+ */
+export async function ensureProductionPlan(input: {
+  plannedFor: string;
+  service: string | null;
+  covers: { recipeId: string; covers: number }[];
+}): Promise<string> {
+  const db = requireSupabase();
+  const key = (covers: { recipeId: string; covers: number }[]) =>
+    covers
+      .map((c) => `${c.recipeId}:${c.covers}`)
+      .sort()
+      .join("|");
+  const wanted = key(input.covers);
+
+  const existing = await fetchProductionPlans(50);
+  const match = existing.find(
+    (p) =>
+      p.plannedFor === input.plannedFor &&
+      (p.service ?? null) === input.service &&
+      key(p.covers) === wanted,
+  );
+  if (match) return match.id;
+
+  const { data: auth } = await db.auth.getUser();
+  const { data, error } = await db
+    .from("production_plans")
+    .insert({
+      planned_for: input.plannedFor,
+      service: input.service,
+      created_by_id: auth.user?.id ?? null,
+      created_by_email: auth.user?.email ?? null,
+    })
+    .select("id")
+    .single();
+  if (error || !data) fail("ensureProductionPlan", error);
+
+  if (input.covers.length > 0) {
+    const { error: lineError } = await db.from("production_plan_lines").insert(
+      input.covers.map((c) => ({
+        plan_id: data.id,
+        recipe_id: c.recipeId,
+        covers: c.covers,
+      })),
+    );
+    if (lineError) fail("ensureProductionPlan lines", lineError);
+  }
+  return data.id;
+}
+
+export interface ProductionRecordRow {
+  id: string;
+  planId: string | null;
+  subRecipeId: string;
+  preparationName: string;
+  batches: number;
+  batchYieldQty: number;
+  quantityMade: number;
+  unit: string;
+  occurredAt: string;
+  producedByEmail: string | null;
+  note: string | null;
+  correctsId: string | null;
+  correctionReason: string | null;
+  /** The preparation has been edited since this batch was made. */
+  recipeChangedSince: boolean;
+}
+
+/** Only the records nothing supersedes. A corrected batch is not what was made. */
+export async function fetchProductionRecords(
+  fromIso?: string,
+  toIso?: string,
+): Promise<ProductionRecordRow[]> {
+  let q = requireSupabase()
+    .from("production_records_effective")
+    .select("*")
+    .order("occurred_at", { ascending: false })
+    .limit(500);
+  if (fromIso) q = q.gte("occurred_at", fromIso);
+  if (toIso) q = q.lte("occurred_at", toIso);
+  const { data, error } = await q;
+  if (error) fail("fetchProductionRecords", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    planId: r.plan_id ?? null,
+    subRecipeId: r.sub_recipe_id,
+    preparationName: r.preparation_name ?? "",
+    batches: Number(r.batches),
+    batchYieldQty: Number(r.batch_yield_qty),
+    quantityMade: Number(r.quantity_made),
+    unit: r.unit ?? "",
+    occurredAt: r.occurred_at ?? "",
+    producedByEmail: r.produced_by_email ?? null,
+    note: r.note ?? null,
+    correctsId: r.corrects_id ?? null,
+    correctionReason: r.correction_reason ?? null,
+    recipeChangedSince: Boolean(r.recipe_changed_since),
+  }));
+}
+
+export interface NewConsumption {
+  productId: string;
+  /** Positive: what came off the shelf. The ledger holds the sign. */
+  quantity: number;
+  unit: string;
+  unitCost: string | null;
+  lotId?: string | null;
+  note?: string | null;
+}
+
+export async function recordProduction(input: {
+  subRecipeId: string;
+  batches: number;
+  /** The preparation's own yield unit; the database refuses anything else. */
+  unit: string;
+  consumption: NewConsumption[];
+  planId?: string | null;
+  occurredAt?: string | null;
+  note?: string | null;
+  correctsId?: string | null;
+  correctionReason?: string | null;
+}): Promise<string> {
+  const { data, error } = await requireSupabase().rpc("record_production", {
+    p_sub_recipe_id: input.subRecipeId,
+    p_batches: input.batches,
+    p_unit: input.unit,
+    p_consumption: input.consumption.map((c) => ({
+      product_id: c.productId,
+      quantity: c.quantity,
+      unit: c.unit,
+      unit_cost: c.unitCost,
+      lot_id: c.lotId ?? null,
+      note: c.note ?? null,
+    })),
+    p_plan_id: input.planId ?? null,
+    p_occurred_at: input.occurredAt ?? null,
+    p_note: input.note ?? null,
+    p_corrects_id: input.correctsId ?? null,
+    p_correction_reason: input.correctionReason ?? null,
+  });
+  if (error) fail("recordProduction", error);
+  return data as string;
+}
+
+/**
+ * Theoretical against actual usage — SRS INV-FUNC-005.
+ *
+ * Nulls are carried through as nulls rather than coerced to zero. "Nobody
+ * recorded any" and "none" are different statements and the report's whole
+ * value is in keeping them apart.
+ */
+export async function fetchProductionVariance(
+  fromDate: string,
+  toDate: string,
+): Promise<VarianceRow[]> {
+  const { data, error } = await requireSupabase().rpc("production_variance", {
+    p_from: fromDate,
+    p_to: toDate,
+  });
+  if (error) fail("fetchProductionVariance", error);
+  const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return ((data ?? []) as any[]).map((r: any) => ({
+    productId: r.product_id,
+    productName: r.product_name,
+    category: r.category ?? null,
+    unit: r.unit ?? "",
+    theoreticalQty: num(r.theoretical_qty),
+    actualQty: num(r.actual_qty),
+    actualQtyUnlinked: Number(r.actual_qty_unlinked ?? 0),
+    varianceQty: num(r.variance_qty),
+    variancePercent: num(r.variance_percent),
+    unitCost: String(r.unit_cost ?? "0"),
+    theoreticalCost: r.theoretical_cost === null ? null : String(r.theoretical_cost),
+    actualCost: r.actual_cost === null ? null : String(r.actual_cost),
+    varianceCost: r.variance_cost === null ? null : String(r.variance_cost),
+    batchesRecorded: Number(r.batches_recorded ?? 0),
+    movements: Number(r.movements ?? 0),
+    recipeChanged: Boolean(r.recipe_changed),
+    comparable: Boolean(r.comparable),
+    note: r.note ?? null,
+  }));
+}
+
+export interface ForwardTraceRow {
+  movementId: string;
+  kind: string;
+  quantity: number;
+  unit: string;
+  occurredAt: string;
+  reason: string | null;
+  actorEmail: string | null;
+  preparationName: string | null;
+  batches: number | null;
+  quantityMade: number | null;
+  madeUnit: string | null;
+  producedByEmail: string | null;
+  plannedFor: string | null;
+  service: string | null;
+  /** BATCH, UNRECORDED_USAGE, or the movement kind for waste and returns. */
+  stepForward: string;
+}
+
+/** Where a lot went — Regulation 178/2002 Article 18, one step forward. */
+export async function fetchLotForwardTrace(lotId: string): Promise<ForwardTraceRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("lot_forward_trace")
+    .select("*")
+    .eq("lot_id", lotId)
+    .order("occurred_at", { ascending: false });
+  if (error) fail("fetchLotForwardTrace", error);
+  return (data ?? []).map((r: any) => ({
+    movementId: r.movement_id,
+    kind: r.kind,
+    quantity: Number(r.quantity),
+    unit: r.unit ?? "",
+    occurredAt: r.occurred_at ?? "",
+    reason: r.reason ?? null,
+    actorEmail: r.actor_email ?? null,
+    preparationName: r.preparation_name ?? null,
+    batches: r.batches === null || r.batches === undefined ? null : Number(r.batches),
+    quantityMade:
+      r.quantity_made === null || r.quantity_made === undefined
+        ? null
+        : Number(r.quantity_made),
+    madeUnit: r.made_unit ?? null,
+    producedByEmail: r.produced_by_email ?? null,
+    plannedFor: r.planned_for ?? null,
+    service: r.service ?? null,
+    stepForward: r.step_forward ?? "",
+  }));
+}
+
+/** The venue's own tolerance for a production variance, as a percentage. */
+export async function fetchVarianceTolerance(): Promise<number> {
+  const { data, error } = await requireSupabase()
+    .from("venue_parameters")
+    .select("value")
+    .eq("code", "PRODUCTION_VARIANCE_TOLERANCE")
+    .maybeSingle();
+  if (error) fail("fetchVarianceTolerance", error);
+  // A venue seeded before 0060 has no parameter row. Five per cent is the
+  // seeded default; falling back to zero would paint every gram red.
+  return data ? Number((data as { value: number }).value) : 5;
+}
