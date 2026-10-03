@@ -129,22 +129,22 @@ Each stage says what you can do at the end of it that you could not do before.
 
 ### Stage 0 · Make it safe to work on — **M**
 
-- [ ] Turn the forty hand-tested safety rules into automatic tests *(gap 1)*
-- [ ] Install the code style checker *(2)*
-- [ ] Merge the outstanding branch *(4)*
-- [ ] Put it online for real *(3)*
+- [x] Turn the forty hand-tested safety rules into automatic tests *(gap 1)* — 98 checks, in CI
+- [x] Install the code style checker *(2)* — and fixed the 29 pieces of dead code and one impure render it found
+- [x] Merge the outstanding branch *(4)*
+- [ ] Put it online for real *(3)* — `vercel.json` landed and the build passes; the Supabase project and the two dashboard settings are the owner's to do
 
 **You get:** confidence that nothing already built can break silently, and a
 version other people can actually open. **Nothing here needs a decision.**
 
 ### Stage 0.5 · Make it feel like a product — **M**, runs alongside Stage 0
 
-- [ ] Group the sidebar *(30)*
-- [ ] Replace the two overloaded tab bars with side menus *(31)*
-- [ ] Rewrite the fifteen empty screens *(32)*
-- [ ] Add venue, date, service and covers to the top bar
-- [ ] Tables: photos, status chips, filters that stay put
-- [ ] The visual pass — background, headers, spacing, shadows *(34)*
+- [x] Group the sidebar *(30)*
+- [x] Replace the two overloaded tab bars with side menus *(31)*
+- [x] Rewrite the empty screens *(32)* — 25 of them, and zero one-line empty states remain
+- [x] Add the date to the top bar — service and covers deliberately left out, see gaps 35b and 36b
+- [x] Tables: avatars, status chips, a density toggle and headers that stay put
+- [x] The visual pass — background, headers, spacing, shadows *(34)*
 
 **You get:** something you would be comfortable demonstrating.
 **Nothing here needs a decision.**
