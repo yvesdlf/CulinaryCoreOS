@@ -202,15 +202,34 @@ export function AdministrationPage() {
     (d) => !approvers.some((a) => a.businessUnitId === d.id),
   );
 
-  async function changeLevel(userId: string, code: string, level: AccessLevel) {
-    // Optimistic: the grid is a lot of small edits and a round trip per click
-    // makes it feel broken. Reverted below if the database disagrees.
+  /**
+   * `unitId` null is the grant that covers the whole venue — the one this
+   * screen has always written. A unit narrows it to that department.
+   *
+   * The optimistic update only covers the venue-wide case. A scoped grant
+   * changes the *shape* of the row — a grant appears or disappears from a list
+   * rather than a cell changing value — and guessing that shape in the browser
+   * would mean a list that disagreed with the database until the next reload.
+   * So those reload instead, which is one round trip on an action nobody
+   * performs in a rhythm.
+   */
+  async function changeLevel(
+    userId: string,
+    code: string,
+    level: AccessLevel,
+    unitId: string | null = null,
+  ) {
     const before = grid;
-    setGrid((rows) =>
-      rows.map((r) => (r.userId === userId
-        ? { ...r, sections: { ...r.sections, [code]: level } } : r)));
+    if (unitId === null) {
+      // Optimistic: the grid is a lot of small edits and a round trip per click
+      // makes it feel broken. Reverted below if the database disagrees.
+      setGrid((rows) =>
+        rows.map((r) => (r.userId === userId
+          ? { ...r, sections: { ...r.sections, [code]: level } } : r)));
+    }
     try {
-      await setSectionAccess(userId, code, level);
+      await setSectionAccess(userId, code, level, unitId);
+      if (unitId !== null) setGrid(await fetchAccessGrid());
       if (userId === grid.find((g) => g.email === myEmail)?.userId) {
         // Changing your own access must change your own menus immediately.
         await reloadMyAccess();
@@ -361,6 +380,56 @@ export function AdministrationPage() {
                       disabled={!canAdminister || person.role === "OWNER"}
                       onChange={(level) => void changeLevel(person.userId, s.code, level)}
                     />
+
+                    {/*
+                      * Only where it would mean something. The database decides
+                      * which sections can be narrowed — it reads the guards
+                      * actually attached — so this offers exactly what will
+                      * work rather than a list somebody keeps in step by hand.
+                      *
+                      * The whole block is on its own line under the picker,
+                      * because a grant per unit is a list and the thing above
+                      * it is a single choice.
+                      */}
+                    {s.scopesByUnit && person.role !== "OWNER" && (
+                      <div className="w-full space-y-1 pl-2">
+                        {person.unitGrants
+                          .filter((g) => g.sectionCode === s.code)
+                          .map((g) => (
+                            <div key={g.businessUnitId} className="flex items-center gap-3">
+                              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                                {g.businessUnitName}
+                              </span>
+                              <LevelPicker
+                                value={g.level}
+                                disabled={!canAdminister}
+                                onChange={(level) =>
+                                  void changeLevel(person.userId, s.code, level, g.businessUnitId)}
+                              />
+                            </div>
+                          ))}
+                        {canAdminister && (
+                          <select
+                            className="h-8 rounded-md border bg-transparent px-2 text-xs"
+                            aria-label={`Add ${s.name} access for one business unit`}
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                void changeLevel(person.userId, s.code, "WRITE", e.target.value);
+                              }
+                            }}
+                          >
+                            <option value="">Add a unit…</option>
+                            {liveUnits
+                              .filter((u) => !person.unitGrants.some(
+                                (g) => g.sectionCode === s.code && g.businessUnitId === u.id))
+                              .map((u) => (
+                                <option key={u.id} value={u.id}>{u.name}</option>
+                              ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {!person && (

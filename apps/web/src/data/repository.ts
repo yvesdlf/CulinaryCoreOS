@@ -2966,6 +2966,15 @@ export interface AppSection {
   description: string;
   sortOrder: number;
   isCore: boolean;
+  /**
+   * Whether a grant here can name one business unit.
+   *
+   * Four sections guard tables that carry a unit; the rest do not, and a scoped
+   * grant on one of them would be accepted, mean nothing, and then refuse every
+   * write. The database computes this from the guards actually attached rather
+   * than from a list, so the screen offers exactly what will work.
+   */
+  scopesByUnit: boolean;
 }
 
 export async function fetchAppSections(): Promise<AppSection[]> {
@@ -2975,15 +2984,36 @@ export async function fetchAppSections(): Promise<AppSection[]> {
   return (data ?? []).map((r: any) => ({
     code: r.code, name: r.name, description: r.description,
     sortOrder: r.sort_order ?? 0, isCore: Boolean(r.is_core),
+    scopesByUnit: Boolean(r.scopes_by_unit),
   }));
+}
+
+/** A grant that names one business unit. Absent means the person has none. */
+export interface UnitGrant {
+  sectionCode: string;
+  sectionName: string;
+  businessUnitId: string;
+  businessUnitCode: string;
+  businessUnitName: string;
+  level: AccessLevel;
 }
 
 export interface AccessRow {
   userId: string;
   email: string;
   role: OrgRole;
-  /** Section code to level. Every section is present. */
+  /**
+   * Section code to the level held across the whole venue. Every section is
+   * present, which is what makes this a grid.
+   */
   sections: Record<string, AccessLevel>;
+  /**
+   * The grants that name one unit, which are not a grid: a unit somebody was
+   * never granted is an absence, not a cell reading NONE. Folding these into
+   * `sections` would have let a kitchen-only WRITE overwrite the venue-wide
+   * NONE beside it and read as full access.
+   */
+  unitGrants: UnitGrant[];
 }
 
 /**
@@ -3001,10 +3031,24 @@ export async function fetchAccessGrid(): Promise<AccessRow[]> {
   for (const r of (data ?? []) as any[]) {
     let row = byUser.get(r.user_id);
     if (!row) {
-      row = { userId: r.user_id, email: r.email, role: r.role, sections: {} };
+      row = {
+        userId: r.user_id, email: r.email, role: r.role,
+        sections: {}, unitGrants: [],
+      };
       byUser.set(r.user_id, row);
     }
-    row.sections[r.section_code] = r.level as AccessLevel;
+    if (r.business_unit_id === null || r.business_unit_id === undefined) {
+      row.sections[r.section_code] = r.level as AccessLevel;
+    } else {
+      row.unitGrants.push({
+        sectionCode: r.section_code,
+        sectionName: r.section_name,
+        businessUnitId: r.business_unit_id,
+        businessUnitCode: r.business_unit_code,
+        businessUnitName: r.business_unit_name,
+        level: r.level as AccessLevel,
+      });
+    }
   }
   return [...byUser.values()];
 }
@@ -3012,34 +3056,53 @@ export async function fetchAccessGrid(): Promise<AccessRow[]> {
 /**
  * Grant, narrow or remove access to one section for one person.
  *
- * NONE deletes the row rather than storing it, so the table holds grants and
- * not a mixture of grants and denials — there is only one way to represent
- * "no access", which keeps the grid and the database agreeing.
+ * `businessUnitId` null means every unit, which is what every grant written
+ * before migration 0062 means and what the screen offers by default.
+ *
+ * Through an RPC rather than an upsert, and not for tidiness. "One grant per
+ * person per section" became "one unscoped grant, plus one per unit", which is
+ * two partial unique indexes — and a partial index can arbitrate an ON CONFLICT
+ * only when the statement repeats its WHERE clause, which PostgREST's
+ * `onConflict` cannot send. `set_section_access` is SECURITY INVOKER, so the
+ * Administration guard and the row-level policies apply exactly as they did to
+ * the upsert this replaces.
+ *
+ * NONE still removes the row rather than storing it, so the table holds grants
+ * and never denials: there is one way to say "no access" and the grid and the
+ * database cannot disagree about which it is.
  */
 export async function setSectionAccess(
   userId: string,
   sectionCode: string,
   level: AccessLevel,
+  businessUnitId: string | null = null,
 ): Promise<void> {
-  const db = requireSupabase();
-  if (level === "NONE") {
-    const { error } = await db.from("member_access").delete()
-      .eq("user_id", userId).eq("section_code", sectionCode);
-    if (error) fail("setSectionAccess", error);
-    return;
-  }
-  const { data: auth } = await db.auth.getUser();
-  const { error } = await db.from("member_access").upsert(
-    {
-      user_id: userId, section_code: sectionCode, level,
-      granted_by_email: auth.user?.email ?? null, granted_at: new Date().toISOString(),
-    },
-    { onConflict: "org_id,user_id,section_code" },
-  );
+  const { error } = await requireSupabase().rpc("set_section_access", {
+    p_user: userId,
+    p_section: sectionCode,
+    p_level: level,
+    p_unit: businessUnitId,
+  });
   if (error) fail("setSectionAccess", error);
 }
 
-/** What the signed-in user may reach, for the screens to reflect honestly. */
+/** Access levels in the order they widen, so "the best of these" is a max. */
+const ACCESS_RANK: Record<AccessLevel, number> = { NONE: 0, READ: 1, WRITE: 2 };
+
+/**
+ * What the signed-in user may reach, for the screens to reflect honestly.
+ *
+ * The best level held anywhere in each section, because that is the question
+ * this answer is used for: whether the section appears at all, and whether its
+ * buttons are enabled. Somebody with WRITE on People for the kitchen alone
+ * should see the People screen with its controls live — and be refused by the
+ * database on anybody else's record, which is where that refusal belongs.
+ *
+ * Taking the best is new and is not a widening: before migration 0062 there
+ * was one row per section and the loop below assigned whichever arrived last.
+ * With a row per unit that would have been a different answer on every load,
+ * which is worse than either reading.
+ */
 export async function fetchMySectionAccess(): Promise<Record<string, AccessLevel>> {
   const db = requireSupabase();
   const { data: auth } = await db.auth.getUser();
@@ -3049,7 +3112,13 @@ export async function fetchMySectionAccess(): Promise<Record<string, AccessLevel
     .eq("user_id", auth.user.id);
   if (error) fail("fetchMySectionAccess", error);
   const out: Record<string, AccessLevel> = {};
-  for (const r of (data ?? []) as any[]) out[r.section_code] = r.level as AccessLevel;
+  for (const r of (data ?? []) as any[]) {
+    const level = r.level as AccessLevel;
+    const held = out[r.section_code];
+    if (held === undefined || ACCESS_RANK[level] > ACCESS_RANK[held]) {
+      out[r.section_code] = level;
+    }
+  }
   return out;
 }
 

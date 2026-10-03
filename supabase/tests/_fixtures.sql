@@ -53,12 +53,14 @@ select coalesce(string_agg(f, E'\n'), '') as fixture_problems from (
       from app_sections,
            (values ('a0000000-0000-0000-0000-000000000003'::uuid),
                    ('a0000000-0000-0000-0000-000000000004'::uuid)) as x(u)
-    on conflict (org_id, user_id, section_code) do update set level='NONE' $$)
+    on conflict (org_id, user_id, section_code) where business_unit_id is null
+      do update set level='NONE' $$)
   union all select t.fixture($$
     insert into member_access (org_id, user_id, section_code, level)
     select (select id from organizations where name='Demo Kitchen' limit 1),
            'a0000000-0000-0000-0000-000000000002', code, 'WRITE' from app_sections
-    on conflict (org_id, user_id, section_code) do update set level='WRITE' $$)
+    on conflict (org_id, user_id, section_code) where business_unit_id is null
+      do update set level='WRITE' $$)
 
   union all select t.fixture($$
     insert into departments (org_id, code, name)
