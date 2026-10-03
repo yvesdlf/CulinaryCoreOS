@@ -93,7 +93,16 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+      {/*
+        * On the raised surface, not the page's.
+        *
+        * The page ground is now a warm off-white a clear step below white, and
+        * a bar painted the same colour as the page it sits above is not a bar —
+        * the breadcrumb and the venue name were floating in the same plane as
+        * the content. Taking the raised surface makes the top chrome read as
+        * chrome, which is the same reason the sidebar is dark in both themes.
+        */}
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-card px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
 
