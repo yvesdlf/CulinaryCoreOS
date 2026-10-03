@@ -6,17 +6,37 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `121153f` · 57 migrations · 537 unit tests · 5 browser spec files ·
-98 tables / 373 policies / 118 functions, rebuilt from empty on 2026-09-19.
-Typecheck, 537 unit tests, 72 browser tests and the axe sweep all green the
-same day. 49.500 lines of TypeScript, 13.100 of SQL.
+**Head:** `f504b51` · 57 migrations · 537 unit tests · 98 database controls ·
+5 browser spec files · 98 tables / 373 policies / 120 functions / 234 triggers,
+rebuilt from empty on 2026-10-03. Typecheck, lint, 537 unit tests, 98 database
+controls and 39 browser tests all green the same day. 49.822 lines of
+TypeScript under `apps/web/src`, 13.123 of SQL in migrations.
 
-> **The database controls are now tested.** `supabase/tests/` holds 98
-> checks across access, maintenance, housekeeping, purchasing and people, run
-> in CI against a schema rebuilt from empty. Proved to go red: dropping the
-> work-order assignment trigger fails four of them. Until 2026-09-20 every
-> "proved in SQL" claim in this file had been proved once, by hand, in a
+> The function count was recorded here as 118 for a fortnight and measured 120
+> on a rebuild. No migration changed in between, so the figure was simply
+> wrong when it was written. `DEPLOY.md` had the same shape of error in it,
+> claiming 36 tables and 126 policies against an actual 98 and 373.
+
+> **The database controls are tested, and now in CI.** `supabase/tests/` holds
+> 98 checks across access, maintenance, housekeeping, purchasing and people,
+> run against a schema rebuilt from empty. Proved to go red: dropping the
+> work-order assignment trigger fails four of them. The CI step that calls them
+> landed separately from the suite itself, because the token in use had no
+> `workflow` scope and GitHub refuses a push that touches
+> `.github/workflows` — so for one commit the suite was one command rather than
+> automatic, which is most of the value and not all of it. Until 2026-09-20
+> every "proved in SQL" claim in this file had been proved once, by hand, in a
 > scratch file nobody kept.
+
+> **The visual baselines are stale, and nothing in CI notices.** Running the
+> whole desktop project gives 39 passes and 15 failures, every failure a
+> screenshot comparison in `visual.spec.ts`. The baselines were last updated on
+> 2026-08-02; the sidebar regrouping, the empty states and the two tab rails
+> all landed in September and all changed what those pages render. The suite is
+> excluded from CI on the grounds that macOS-rendered snapshots will not match
+> Linux, which is true and also means the only check on them is a person
+> remembering to run it. The 39 are the honest figure for what is guarded; CI
+> itself runs 35 of them, the axe, keyboard and screen-reader files.
 
 > **CI is green, and now readable.** `gh` is authenticated and this working
 > copy had simply lost its `origin`; it was re-pointed at
@@ -28,6 +48,11 @@ same day. 49.500 lines of TypeScript, 13.100 of SQL.
 >
 > Note the workflow only fires on `pull_request` and on pushes to `main`, so
 > a commit pushed to a branch with no PR open is not checked by anything.
+>
+> **`main` has caught up.** The seventeen commits that sat on a side branch
+> were merged through pull requests across 2026-09-20, and five more branches
+> have landed the same way since. `main` is `f504b51`, 110 commits, and is now
+> the line this file describes rather than one well behind it.
 
 ## Where the app stands
 
@@ -45,7 +70,10 @@ employee signs in to; and an administration page where per-section access is
 granted and the protected numbers are set.
 
 The line the whole system is built on: **every control is enforced in the
-database and proved by SQL that tries to break it.** See `AGENTS.md`.
+database and proved by SQL that tries to break it.** See `AGENTS.md`. Since
+2026-09-20 ninety-eight of those proofs run on every push rather than having
+been run once by hand, which is the difference between a control and a claim
+about a control.
 
 Since then: every purchasing document carries one reference number for its
 whole life — REQ becomes PR becomes PO becomes GRN becomes INV, allocated by
@@ -59,8 +87,15 @@ the room board, assignment sheets, inspections and lost property. Both are
 wired to HR for who may be sent, to Purchasing for what they order, and to
 each other for whether a room may be sold.
 
+Most recently the work has been on the things that make it safe to keep
+building rather than on new modules: a database control suite that runs in CI,
+eslint installed at last, and a pass over the interface — a grouped sidebar,
+vertical tab rails on the two overloaded pages, and an empty state on every
+screen that has one. No migration changed in that stretch.
+
 Not started: AI recipe import, the wider reporting suite, and the native
-shells (Capacitor/Tauri) in DOC1.
+shells (Capacitor/Tauri) in DOC1. Still not deployed anywhere, though the
+configuration for it now exists.
 
 ## Done
 
@@ -318,10 +353,18 @@ operator's job, not automated.
       merged rather than replacing, so a file carrying only kcal does not blank
       macros entered by hand.
 - [x] CI: three jobs, green. It failed on all seven of its first runs while
-      reporting nothing, because it died at pnpm setup before a test ran.
-- [x] WCAG 2.2 AA: axe, keyboard and screen-reader suites in both themes.
-      Defects found and fixed include unlabelled selects, a scroll region no
-      keyboard could reach, and tokens tuned against one background only.
+      reporting nothing, because it died at pnpm setup before a test ran. The
+      static job now runs typecheck, 537 unit tests, lint and the production
+      build; the browser job runs the 98 database controls against a schema
+      rebuilt from empty before it starts a browser at all, because that step
+      needs nothing but the schema and is the cheapest way to find a missing
+      trigger.
+- [x] WCAG 2.2 AA: axe, keyboard and screen-reader suites in both themes — 35
+      tests on the desktop project. Defects found and fixed include unlabelled
+      selects, a scroll region no keyboard could reach, tokens tuned against one
+      background only, and a vertical tablist whose arrow keys moved along the
+      wrong axis. That last one axe passed clean both before and after: a
+      scanner cannot press a key.
 - [x] Dark mode that survives a reload.
 - [x] Catalogue re-reads when the tab regains focus, so a colleague's price
       change does not stay invisible until someone reloads.
@@ -490,9 +533,155 @@ public-area scheduling beyond ad-hoc tasks.
       leave branch at all needs the shift published first and the leave
       approved after, because the rota already refuses the other order.
 
+## Done since `121153f`
+
+Stages 0 and 0.5 of `PLAN.md`. Six working branches, all merged to `main`
+through pull requests on 2026-09-20 and 2026-10-03. Nothing in this section
+added a table or a migration: it is testing, tooling and the interface.
+
+### The database control suite
+
+- [x] **98 checks in `supabase/tests/`, run by `run.sh` against any connection
+      string**, across five areas: the section grid, the maintenance rules, the
+      housekeeping rules, purchasing's segregation of duties, and the rota.
+      Verified here on a schema rebuilt from empty: 98 checks, all passing.
+- [x] **Proved to go red.** Dropping the work-order assignment trigger turns
+      four checks red — one of them caught by reading the row back rather than
+      by the write being refused — and the runner exits 1. A suite that cannot
+      fail is decoration.
+- [x] **Runs in CI**, before the browser suites and before the app is built,
+      because it needs nothing but the schema and is the cheapest way to learn
+      that a trigger has gone missing. It landed one commit after the suite:
+      the token in use had no `workflow` scope, and GitHub refuses a push that
+      touches `.github/workflows`.
+- [x] The harness records the three false-pass modes this repository has
+      actually produced, in `_harness.sql` rather than only in a commit
+      message, because the next person to add a test needs them before they
+      write it: an `UPDATE` matching zero rows raises nothing, a trigger may
+      silently correct what it did not refuse, and a fixture that fails takes
+      every later assertion with it. Now also in `AGENTS.md`.
+- [x] Three of the suite's own assertions were wrong before they were right,
+      each in a way it is built to catch: one passed because a column did not
+      exist, one because the table was empty, and one because the user under
+      test had been seeded as an administrator.
+
+Honestly partial: 98 checks cover five areas, not forty-odd triggers one by
+one. Costing, allergens, traceability and the vendor portal have no file here
+yet — their controls are still proved only by the one-time SQL recorded further
+up this document.
+
+### eslint, and what it found
+
+- [x] **`pnpm lint` runs.** The script had been in `package.json` since the
+      first week and eslint was never installed, so the command failed and
+      reported nothing. Measured here: 0 errors, 129 warnings.
+- [x] **One real defect, found by `react-hooks/purity`**: `Date.now()` inside a
+      `useMemo` on the housekeeping board. The memo was keyed on the board, so
+      the staleness figure never changed as time passed and the same data
+      rendered differently depending on when the component happened to
+      re-render. Now measured from the moment the data arrived, which is also
+      the more honest reading.
+- [x] **29 pieces of dead code removed**, mostly imports left by refactors. The
+      script that did it was wrong twice — it ate a name and left the `type`
+      keyword in front of it, and it removed one `byId` that was in use because
+      an identical unused declaration sat further down the same file. Lint
+      caught the first and `tsc` the second, within a minute, which is the
+      argument for having them.
+- [x] The rule set is deliberately narrow and the reasoning sits at each rule
+      in `eslint.config.js`: no style rules, no formatter, `any` warned rather
+      than errored at the database boundary, and two React Compiler rules off
+      because they describe what a compiler this project does not use would
+      prefer.
+
+### The sidebar, the rails and the empty states
+
+- [x] **The sidebar is six groups rather than twenty items in a flat list** —
+      Today, Culinary, Supply, Operations, People, System. The list had come to
+      be ordered by the date each section shipped, which is the one ordering no
+      user has a reason to know. Measured here: 20 destinations in 6 groups.
+      Deliberately not collapsible: a collapsed group hides where something is
+      from the person who least knows where it is, and the whole list still
+      fits on a laptop screen.
+- [x] **People and Purchasing have vertical grouped tab rails.** Eleven tabs
+      and eight tabs are both past what a tab row carries. Still one tablist
+      each, so arrow keys walk every tab in order and the group headings are
+      hidden from assistive technology — which is what makes it a layout change
+      rather than a restructuring.
+- [x] **The `Tabs` component was styling vertical and behaving horizontal.**
+      `orientation` was destructured out of the wrapper's props and used only to
+      set a data attribute, never forwarded to the Base UI primitive. So in a
+      vertical tablist Arrow Down did nothing and Arrow Right moved between
+      tabs, which is the opposite of what WAI-ARIA specifies. It had been there
+      since the design system landed and had never mattered, because nothing
+      was vertical until now.
+
+      Worth stating plainly: **axe passed with zero violations both before and
+      after the fix.** Automated scanning cannot press a key. The only thing
+      that found this was driving the keyboard, which is why that suite exists
+      separately and why it now has a case for exactly this.
+- [x] **A shared `EmptyState` component, adopted across the whole
+      application** — an icon, what is not here, why, and where such a thing
+      exists the button that fills it. Measured here: 40 uses across 13 files,
+      and no one-line empty states left. The copy was mostly already good; what
+      the screens lacked was shape and a way to act.
+
+      `action` is optional and most of them do not take one, because most of
+      these screens fill as a consequence of work done elsewhere — orders
+      arrive because somebody ordered, certificates expire because time passed.
+      Inventing a button that leads nowhere useful is worse than admitting the
+      screen is waiting on something.
+
+      The sixteen "Loading…" lines are untouched: a loading state is not an
+      empty state and should stay one line.
+- [x] A local component in `menu-engineering.tsx` also called `EmptyState` was
+      predicted to collide the moment that file was converted, and did, on the
+      first attempt. Renamed `ImportGuidance`, which is what it actually is.
+- [x] Two things found while looking: "1 room have no recent occupancy", which
+      only reads wrong when exactly one room is stale and so had survived being
+      looked at several times; and the lost property screen offering "Book an
+      item in" twice once the empty state grew its own button.
+- [x] The header carries today's date beside the breadcrumb, computed once per
+      mount rather than during render, because the purity rule refuses
+      `new Date()` in a render path and is right to.
+
+Two things the interface review asked for that are deliberately absent, and are
+gaps in `PLAN.md` rather than oversights: a **service period** in the top bar
+can only be derived from the clock, and no venue has told this application when
+its services run — printing "Dinner" at six because six is usually dinner is
+the guess refused everywhere else in this codebase. And **covers** live in one
+browser's local storage, put there by the production page; putting a personal
+working figure in a shared header presents one person's number as something
+everybody agreed.
+
+### Deployment configuration
+
+- [x] **`vercel.json` states the install command, the build command, the output
+      directory, and the rewrite every single-page application needs** — without
+      which everything that is not a built asset 404s on reload. Assets get a
+      long cache header, since their names are content-hashed.
+- [x] The cause of a Vercel project failing on every pull request for months
+      was not a broken build: there was no configuration in the repository at
+      all, so Vercel was guessing at a pnpm workspace whose application lives
+      in `apps/web`, and guessing wrong. Nobody noticed because `main` had not
+      moved since August and the red check only appeared on a pull request
+      nobody was merging.
+- [x] `DEPLOY.md` corrected: it claimed the migration chain rebuilds 36 tables
+      and 126 policies. It is 98 and 373. It now also says to run the control
+      suite against the hosted database once the migrations are applied — a
+      migration that applies is not the same as a trigger that fires.
+
+**Still not deployed.** Two things remain and neither is a repository setting:
+the Vercel Root Directory has to be the repository root rather than `apps/web`,
+or `vercel.json` is never read and the workspace cannot be installed, and the
+two environment variables have to be set in the dashboard. Worth knowing before
+that happens: **without those variables the build still succeeds.** The
+application checks `isSupabaseConfigured` and falls back to its mock catalogue,
+so the failure mode is a deployment that looks perfectly fine and shows
+invented data.
+
 ## Done since `546abcd`
 
-Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
+Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 
 ### One reference number per transaction
 - [x] **References say what, where and when**: `REQ-KIT-260809-001` is
@@ -889,10 +1078,17 @@ Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
       too broad. The fix is the shape of the `leave_attachments` owner rule.
       Asserted as it currently behaves in `05_people.sql`, so the suite goes
       red when it is fixed.
-- [ ] **`main` is behind.** Seventeen commits sit on
-      `chore/pr-workflow-and-docs` and on open PR #1, green, unmerged.
+- [ ] **The visual regression baselines are eight weeks stale and CI does not
+      run them.** All 15 screenshot comparisons in `visual.spec.ts` fail against
+      baselines dated 2026-08-02, because the sidebar regrouping, the empty
+      states and the two tab rails all changed what those pages render. The
+      exclusion from CI is defensible — macOS-rendered snapshots will not match
+      Linux — but it means the only thing checking them is somebody remembering
+      to, and for eight weeks nobody did. Either a Linux baseline set exists and
+      the suite runs, or it is not a check.
 - [ ] **`repository.ts` is 4.627 lines**, 9% of the front end in one file.
-      Not a bug, and the clearest structural smell in the codebase.
+      Not a bug, and the clearest structural smell in the codebase. Re-measured
+      at this head: unchanged.
 - [ ] **Two organisation trees.** `departments` (HR) and `cost_centres`
       (money) are separate, three of five departments have no cost centre and
       one cost centre has no department. "What did the bar spend on staff" is
@@ -900,8 +1096,15 @@ Nine commits on `chore/pr-workflow-and-docs`, none of them on `main`.
 - [ ] **No pay rate and no unit revenue anywhere in the schema.** Hours are
       recorded; rates are not, so there is no labour cost and no unit profit
       and loss.
-- [ ] Never deployed. `DEPLOY.md` is untested.
-- [ ] `pnpm lint` fails — eslint is not installed.
+- [ ] **Never deployed**, and `DEPLOY.md` is still untested. `vercel.json` now
+      says what to build, which was the missing half; the other half is two
+      account settings nobody with repository access can make. The failure mode
+      to watch for is a build that succeeds without the environment variables
+      and serves the mock catalogue as though it were real data.
+- [ ] **The control suite covers five areas, not every control.** Costing,
+      allergens, traceability and the vendor portal have no file in
+      `supabase/tests/`; their controls are recorded in this document as proved
+      once, by hand, which is the state the suite exists to end.
 - [ ] Realtime sync was built, could not be made to work, and was deliberately
       reverted rather than shipped. Undiagnosed.
 - [ ] The WhatsApp and email adapters have never made a real network call,
