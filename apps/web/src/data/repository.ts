@@ -4625,3 +4625,170 @@ export async function fetchHousekeepingReplenishment(): Promise<ReplenishmentRow
     afterToday: Number(r.after_today ?? 0),
   }));
 }
+
+// ── Photographs and short video ─────────────────────────────────────────────
+/*
+ * Attachments, and why the limits are fetched rather than written down here.
+ *
+ * The database holds one list of allowed types and size caps —
+ * `public.media_limits()` — and both the bucket's own configuration and the
+ * insert trigger read it. Copying that list into a constant in this file would
+ * give the screen a third opinion, and the one that drifts is always the one
+ * in the client: a venue whose administrator widens the list gets a file
+ * picker that still refuses it, and nobody can see why. So the screen asks.
+ *
+ * The limits are advice here and nothing more. Every one of them is refused by
+ * the storage service, by the row trigger, or by both; checking in the browser
+ * only means a porter finds out before a three-minute upload rather than
+ * after it.
+ */
+
+export type AttachmentParentType = "WORK_ORDER" | "HACCP_RECORD" | "STOCK_MOVEMENT";
+
+export interface MediaLimit {
+  mimeType: string;
+  kind: "IMAGE" | "VIDEO";
+  maxBytes: number;
+}
+
+/** Thirty seconds, from the check constraint on `attachments.duration_seconds`. */
+export const MAX_VIDEO_SECONDS = 30;
+
+export async function fetchMediaLimits(): Promise<MediaLimit[]> {
+  const { data, error } = await requireSupabase().rpc("media_limits");
+  if (error) fail("fetchMediaLimits", error);
+  return (data ?? []).map((r: any) => ({
+    mimeType: r.mime_type, kind: r.kind, maxBytes: Number(r.max_bytes),
+  }));
+}
+
+export interface AttachmentRow {
+  id: string;
+  parentType: AttachmentParentType;
+  parentId: string;
+  bucketId: string;
+  objectPath: string;
+  fileName: string;
+  mimeType: string;
+  kind: "IMAGE" | "VIDEO";
+  byteSize: number;
+  durationSeconds: number | null;
+  caption: string | null;
+  uploadedByEmail: string | null;
+  uploadedAt: string;
+  deleteAfter: string | null;
+}
+
+function attachmentFromRow(r: any): AttachmentRow {
+  return {
+    id: r.id, parentType: r.parent_type, parentId: r.parent_id,
+    bucketId: r.bucket_id, objectPath: r.object_path,
+    fileName: r.file_name, mimeType: r.mime_type, kind: r.kind,
+    byteSize: Number(r.byte_size),
+    durationSeconds: r.duration_seconds === null ? null : Number(r.duration_seconds),
+    caption: r.caption ?? null,
+    uploadedByEmail: r.uploaded_by_email ?? null,
+    uploadedAt: r.uploaded_at,
+    deleteAfter: r.delete_after ?? null,
+  };
+}
+
+export async function fetchAttachments(
+  parentType: AttachmentParentType,
+  parentId: string,
+): Promise<AttachmentRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("attachments").select("*")
+    .eq("parent_type", parentType).eq("parent_id", parentId)
+    .order("uploaded_at");
+  if (error) fail("fetchAttachments", error);
+  return (data ?? []).map(attachmentFromRow);
+}
+
+export interface StagedMedia {
+  file: File;
+  /** Measured in the browser where the file is a video; null for a photograph. */
+  durationSeconds: number | null;
+  caption: string | null;
+}
+
+/**
+ * Attach files to a record that already exists.
+ *
+ * The file goes up first and the row second, which is the order
+ * `sendStaffDocument` already uses and the order the insert trigger insists
+ * on: it refuses a row whose object is not there, because a row pointing at
+ * nothing shows in the list as a photograph that opens to an error.
+ *
+ * Nothing here tells the database who is uploading. `uploaded_by_email` comes
+ * from the caller's JWT by trigger, and anything this file sent would be
+ * discarded — see migration 0054, which exists because a decision was filed
+ * under somebody else's name.
+ *
+ * One failure stops the rest, and the files already attached stay attached.
+ * They are legitimately attached; unwinding them would mean deleting evidence,
+ * which is the one thing this table does not allow.
+ */
+export async function uploadAttachments(
+  parentType: AttachmentParentType,
+  parentId: string,
+  items: StagedMedia[],
+  orgId?: string,
+): Promise<AttachmentRow[]> {
+  if (items.length === 0) return [];
+  const db = requireSupabase();
+
+  /*
+   * The organisation in the path has to be the parent record's own, and the
+   * storage policy checks exactly that. Falling back to the caller's default
+   * organisation is correct while gap 20 stands — there is no organisation
+   * switcher, so a user works in one — and a caller that knows the parent's
+   * organisation should pass it. A mismatch is refused by the policy rather
+   * than written wrongly, which is the right way round.
+   */
+  const org = orgId ?? (await currentOrgId());
+  const written: AttachmentRow[] = [];
+
+  for (const item of items) {
+    const dot = item.file.name.lastIndexOf(".");
+    const extension = dot > 0 ? item.file.name.slice(dot).toLowerCase() : "";
+    const path = `${org}/${parentType}/${parentId}/${crypto.randomUUID()}${extension}`;
+
+    const { error: upErr } = await db.storage.from("media").upload(path, item.file, {
+      upsert: false,
+      contentType: item.file.type,
+    });
+    if (upErr) fail(`uploadAttachments (${item.file.name})`, upErr);
+
+    const { data, error } = await db.from("attachments").insert({
+      parent_type: parentType,
+      parent_id: parentId,
+      bucket_id: "media",
+      object_path: path,
+      file_name: item.file.name,
+      mime_type: item.file.type,
+      // Replaced by the trigger from the type above, which is the figure that
+      // decides the size cap and the retention. Sent because the column is
+      // NOT NULL and a client is not trusted to get it right.
+      kind: item.file.type.startsWith("video/") ? "VIDEO" : "IMAGE",
+      byte_size: item.file.size,
+      duration_seconds: item.durationSeconds,
+      caption: item.caption,
+    }).select("*").single();
+    if (error) fail(`uploadAttachments (${item.file.name})`, error);
+    written.push(attachmentFromRow(data));
+  }
+  return written;
+}
+
+/**
+ * A link to one attachment, good for five minutes.
+ *
+ * The bucket is private and stays private, so there is no permanent URL to
+ * hold on to. The link is signed against the caller's own session, so somebody
+ * from another venue asking for one is refused by the same policy that hides
+ * the row.
+ */
+export async function attachmentUrl(a: AttachmentRow, seconds = 300): Promise<string> {
+  return signedFileUrl(a.bucketId, a.objectPath, seconds);
+}

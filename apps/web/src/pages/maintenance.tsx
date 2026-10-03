@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
+import { MediaUpload } from "@/components/shared/media-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,9 +37,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchAssets, fetchMaintenanceDue, fetchWorkOrders, fetchMaintenanceManning,
   fetchMeters, createWorkOrder, assignWorkOrder, updateWorkOrderStatus,
-  recordMeterReading, fetchEmployees,
+  recordMeterReading, fetchEmployees, uploadAttachments,
   type AssetRow, type MaintenanceDueRow, type WorkOrderRow,
-  type ManningRow, type MeterRow,
+  type ManningRow, type MeterRow, type StagedMedia,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
@@ -629,15 +630,35 @@ function RaiseJobDialog({ plan, free, onClose, onDone }: {
   );
 }
 
+/*
+ * Completing a job, with a photograph of what was done.
+ *
+ * The one place attachments are wired in, deliberately. Five half-proved
+ * upload paths are worth less than one that has been used: this is the
+ * completion of a work order, which is the moment somebody is standing in
+ * front of the thing holding a phone, and it is the record the next person
+ * reads when the same pump fails again.
+ *
+ * The files are uploaded *after* the status change succeeds, not before. The
+ * completion is refused if the note is empty or the job is already signed off,
+ * and a photograph attached to a completion that was then refused could never
+ * be removed — `attachments` has no delete. The order of the two writes is the
+ * difference between an orphan and nothing at all.
+ *
+ * An upload that fails is reported and the completion is not undone. It
+ * happened; the database says so, and pretending otherwise to tidy up a
+ * failed upload would mean lying about a maintenance record.
+ */
 function CompleteDialog({ order, onClose, onDone }: {
   order: WorkOrderRow | null; onClose: () => void; onDone: () => Promise<void>;
 }) {
   const [note, setNote] = useState("");
   const [labour, setLabour] = useState("");
   const [downtime, setDowntime] = useState("");
+  const [media, setMedia] = useState<StagedMedia[]>([]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setNote(""); setLabour(""); setDowntime(""); }, [order]);
+  useEffect(() => { setNote(""); setLabour(""); setDowntime(""); setMedia([]); }, [order]);
   if (!order) return null;
 
   async function save() {
@@ -648,6 +669,20 @@ function CompleteDialog({ order, onClose, onDone }: {
         labourMinutes: labour ? Number(labour) : null,
         downtimeMinutes: downtime ? Number(downtime) : null,
       });
+      if (media.length > 0) {
+        try {
+          await uploadAttachments("WORK_ORDER", order!.id, media);
+        } catch (e) {
+          toast.error(
+            e instanceof Error
+              ? `The job is recorded. ${e.message}`
+              : "The job is recorded, but the photographs did not attach.",
+          );
+          onClose();
+          await onDone();
+          return;
+        }
+      }
       toast.success("Recorded. Somebody else signs it off.");
       onClose();
       await onDone();
@@ -688,6 +723,17 @@ function CompleteDialog({ order, onClose, onDone }: {
             Downtime is not the same as time worked: a part on order keeps an asset down
             while nobody is touching it.
           </p>
+          <MediaUpload
+            id="wo-media"
+            label="Photographs of the work"
+            value={media}
+            onChange={setMedia}
+            disabled={saving}
+            hint={
+              "What it looked like, and what it looks like now. Only the people who " +
+              "can see this job can see these."
+            }
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
