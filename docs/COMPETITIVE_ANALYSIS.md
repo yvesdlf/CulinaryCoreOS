@@ -132,13 +132,19 @@ integration and PCI DSS rather than with any function of their own software.
 | E-invoicing / tax filing | yes | **nothing** |
 | Purchasing and inventory | yes | yes, and deeper on costing |
 | POS / PMS integration | core business | none |
+| Multi-currency | yes | single currency |
+| Chart of accounts | USALI-shaped | none |
+| Barcode counting | yes | not built, deferred to the phone app |
+| Real-time stock across outlets | sold as a headline | not possible yet — one unit spine first |
+| Fixed assets | full register, depreciation, disposal | asset register for maintenance only; purchase cost held, nothing financial done with it |
 | Recipe costing and cascade | "link inventory to menu items" | five decimal places, cascading, tested |
 | Allergens and EU food law | not mentioned | EU 14, inherited, verified |
 | HACCP and food safety records | not mentioned | the venue's own forms |
 | Traceability, lots, recall | not mentioned | one step back, Article 18 |
 | HR, rota, certificates, training | not mentioned | built |
 | Maintenance and housekeeping | not mentioned | built |
-| Controls proved in the database | not claimed | the whole basis of the design |
+| Controls proved in the database | not claimed | the whole basis of the design — and since 2026-09-20, 98 of those proofs run in CI on every push rather than having been run once by hand |
+| Shipping to paying customers | yes — a commercial product sold across six countries | **no — it runs on one laptop** |
 
 **They are a back office. We are an operation.** The overlap is one module out
 of eight, and on that module they are broader while we are deeper.
@@ -161,3 +167,40 @@ of eight, and on that module they are broader while we are deeper.
    working-time rules, certificate gating, segregation of duties. None of it
    appears anywhere in their material, and all of it is the part a venue
    cannot buy its way out of. That is where the effort should stay.
+
+### Progress since — reviewed 2026-10-03
+
+Thirteen days, and **none of the eight gaps this review identified has moved.**
+Gaps 35 to 42 in `PLAN.md` — e-invoicing, revenue by channel, the daily revenue
+report, depreciation, barcode counting, multi-currency, a USALI chart of
+accounts and real-time stock across outlets — are all still open, and all of
+them sit behind Stage 1 or Stage 4 of that plan. Nothing here has been started,
+and this note exists so that nobody reads the table above as having improved.
+
+What did move is the part of the comparison that was a claim about the design
+rather than a feature:
+
+- **The database controls are now proved automatically.** The last row of the
+  table above said the controls were "the whole basis of the design", which was
+  true of the design and overstated the evidence: every one of them had been
+  proved once, by hand, in a scratch file nobody kept. `supabase/tests/` now
+  holds 98 checks across access, maintenance, housekeeping, purchasing and the
+  rota, run against a schema rebuilt from empty on every push, and proved able
+  to fail. That is the one line in this comparison that was closest to marketing
+  and is now the best-evidenced thing in it.
+- **A lint gate exists**, which found one real defect and 29 pieces of dead
+  code. Minor competitively; it belongs here only because the row above about
+  being able to trust the thing is the row this document leans on.
+- **Deployment configuration exists**, and the product is still not deployed.
+  The gap between those two sentences is the honest position: they are selling
+  a running product across six countries, and nobody outside this building has
+  ever opened ours. Of everything in this document that row is the one that
+  matters most, and it is unchanged.
+
+**What this says about the comparison.** The two products still barely overlap,
+and the overlap has not shifted. Where the effort has gone in the past fortnight
+is into making the existing claims checkable rather than into closing their
+lead on finance — which is the right order, given that the recommendation is not
+to compete on finance at all. But it does mean nothing in the "What that
+implies" list above has been acted on, and the e-invoicing obligation in point 2
+is still a legal requirement with nothing built against it.
