@@ -16,6 +16,7 @@ import { UserPlus, ShieldCheck, Mail, X, Check, TriangleAlert } from "lucide-rea
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -256,10 +257,11 @@ export function SettingsPage() {
 
         <TabsContent value="invitations" className="mt-4">
           {invitations.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Nobody invited yet. An invitation is by email; the person accepts
-              it themself after signing up.
-            </p>
+            <EmptyState icon={Mail} title="Nobody invited yet">
+              An invitation goes by email and the person accepts it themself after signing
+              up. Approvals need a second person, so nobody can approve their own
+              requisition or their own leave until somebody else is here.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>

@@ -24,10 +24,12 @@ import {
   Info,
   Trash2,
   FlaskConical,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { Button } from "@/components/ui/button";
@@ -244,11 +246,13 @@ export function MenuEngineeringPage() {
       {loading ? (
         <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
       ) : periods.length === 0 ? (
-        <EmptyState />
+        <ImportGuidance />
       ) : menu.dishes.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          No dish in this period matches a recipe that still exists.
-        </p>
+        <EmptyState icon={ChartNoAxesCombined} title="Nothing in this period matches a recipe">
+          Every row in the import was either a category total or a dish that has since
+          been deleted. The unmatched rows are listed above, largest first — that list
+          is the only check that a real dish was not missed.
+        </EmptyState>
       ) : (
         <Analysis menu={menu} />
       )}
@@ -370,7 +374,14 @@ function Analysis({ menu }: { menu: ReturnType<typeof engineerMenu> }) {
   );
 }
 
-function EmptyState() {
+/**
+ * How to get a sales export out of a POS and into this page.
+ *
+ * Was called EmptyState, which collided with the shared component the moment
+ * this file used one. It is not a generic empty state — it is the instructions
+ * for the one import this page accepts.
+ */
+function ImportGuidance() {
   return (
     <Card>
       <CardContent className="space-y-4 py-10 text-center">

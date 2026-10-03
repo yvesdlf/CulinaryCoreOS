@@ -8,7 +8,10 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
-import { PackageCheck, FileWarning, Wallet, TriangleAlert, Check } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PackageCheck, FileWarning, Wallet, TriangleAlert, Check,
+  Receipt, ChartNoAxesCombined, FileSignature, Search,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -388,10 +391,11 @@ export function InvoicesTab({
       </div>
 
       {invoices.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          No invoices yet. An invoice is checked against its order and against
-          what was actually received before it can be approved for payment.
-        </p>
+        <EmptyState icon={Receipt} title="No invoices yet">
+          An invoice is checked against its order and against what was actually
+          received before it can be approved for payment — three-way matching, within
+          tolerances finance sets.
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
@@ -724,10 +728,11 @@ function EnterInvoiceDialog({
 export function BudgetsTab({ positions }: { positions: BudgetPosition[] }) {
   if (positions.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        No budgets set. A budget is per cost centre and period, and counts both
-        committed and invoiced spend.
-      </p>
+      <EmptyState icon={Wallet} title="No budgets set">
+        A budget is per cost centre and period, and counts committed spend as well
+        as invoiced — an approved order has already been promised, whether or not
+        the invoice has arrived.
+      </EmptyState>
     );
   }
   return (
@@ -842,10 +847,11 @@ export function AnalyticsTab({
 
   if (orders.length === 0 && invoices.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        Nothing to report yet. These figures come from orders, deliveries and
-        invoices as they are recorded.
-      </p>
+      <EmptyState icon={ChartNoAxesCombined} title="Nothing to report yet">
+        These figures come from orders, deliveries and invoices as they are
+        recorded. Nothing is entered here directly, so the report cannot disagree
+        with the documents.
+      </EmptyState>
     );
   }
 
@@ -1087,10 +1093,11 @@ export function ContractsTab({
       )}
 
       {contracts.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          No contracts recorded. An agreement here is checked against what
-          suppliers actually invoice — that is the point of holding it.
-        </p>
+        <EmptyState icon={FileSignature} title="No contracts recorded">
+          An agreement recorded here is checked against what the supplier actually
+          invoices, which is the point of holding it. Notice dates lead the attention
+          list, because missing one is how a contract renews itself.
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
@@ -1408,10 +1415,10 @@ export function SourcingTab({
       </div>
 
       {rfqs.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          Nothing out for quotation. A request asks several suppliers the same
-          question so the answers can be compared.
-        </p>
+        <EmptyState icon={Search} title="Nothing out for quotation">
+          A request asks several suppliers the same question at the same time, and
+          nobody sees anybody else's answer until it closes.
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>

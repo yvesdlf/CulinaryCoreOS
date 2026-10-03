@@ -331,11 +331,7 @@ function StockTable({
     return <p className="py-12 text-center text-sm text-muted-foreground">Loading stock…</p>;
   }
   if (lines.length === 0) {
-    return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        {emptyMessage}
-      </p>
-    );
+    return <EmptyState icon={Warehouse} title={emptyMessage} />;
   }
 
   return (
@@ -982,9 +978,11 @@ function MovementHistory({
 
   if (movements.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-muted-foreground">
-        Nothing recorded yet.
-      </p>
+      <EmptyState icon={Warehouse} title="Nothing recorded yet">
+        Movements appear here as stock is received, counted or wasted. Nothing is
+        ever edited — a correction is another movement, which is what keeps “why is
+        this four kilos short” answerable a week later.
+      </EmptyState>
     );
   }
 
