@@ -11,7 +11,7 @@
 //             on their behalf — see the note on the invite dialog.
 //   Numbers   the settings that decide what everything costs, and the spend
 //             above which an order needs a signature.
-//   Hiring    which department head signs off a hire, and the requests waiting
+//   Hiring    which business unit head signs off a hire, and the requests waiting
 //             for them.
 //
 // None of it is enforced by this screen. Every control here has a trigger
@@ -50,12 +50,12 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import {
   fetchAppSections, fetchAccessGrid, setSectionAccess,
   fetchVenueParameters, saveVenueParameter, fetchParameterChanges,
-  fetchDepartments, fetchDepartmentApprovers, saveDepartmentApprover,
+  fetchBusinessUnits, fetchDepartmentApprovers, saveDepartmentApprover,
   fetchHiringRequests, decideHiringRequest, fetchJobRoles, createHiringRequest,
   inviteToOrg, fetchInvitations, revokeInvitation,
   fetchGeofences, saveGeofence, type Geofence,
   type AppSection, type AccessRow, type AccessLevel, type VenueParameter,
-  type ParameterChange, type Department, type DepartmentApprover,
+  type ParameterChange, type BusinessUnit, type DepartmentApprover,
   type HiringRequest, type JobRole, type Invitation,
 } from "@/data/repository";
 import { useAccessStore, useCanWriteSection } from "@/stores/access-store";
@@ -142,7 +142,7 @@ export function AdministrationPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [parameters, setParameters] = useState<VenueParameter[]>([]);
   const [changes, setChanges] = useState<ParameterChange[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [approvers, setApprovers] = useState<DepartmentApprover[]>([]);
   const [hiring, setHiring] = useState<HiringRequest[]>([]);
   const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
@@ -165,11 +165,11 @@ export function AdministrationPage() {
     try {
       const [s, g, p, c, d, a, h, j, i] = await Promise.all([
         fetchAppSections(), fetchAccessGrid(), fetchVenueParameters(),
-        fetchParameterChanges(), fetchDepartments(), fetchDepartmentApprovers(),
+        fetchParameterChanges(), fetchBusinessUnits(), fetchDepartmentApprovers(),
         fetchHiringRequests(), fetchJobRoles(), fetchInvitations(),
       ]);
       setSections(s); setGrid(g); setParameters(p); setChanges(c);
-      setDepartments(d); setApprovers(a); setHiring(h); setJobRoles(j);
+      setBusinessUnits(d); setApprovers(a); setHiring(h); setJobRoles(j);
       setInvitations(i);
       setGeofences(await fetchGeofences());
       setSelected((cur) => cur ?? g[0]?.userId ?? null);
@@ -191,8 +191,15 @@ export function AdministrationPage() {
 
   const pendingHires = hiring.filter((h) => h.status === "SUBMITTED");
   const liveInvitations = invitations.filter((i) => !i.acceptedAt && !i.revokedAt);
-  const departmentsWithoutApprover = departments.filter(
-    (d) => !approvers.some((a) => a.departmentId === d.id),
+  /*
+   * `fetchBusinessUnits` returns closed units too, because last year's orders
+   * and a leaver's record still have to name one. Nothing is chosen into a
+   * closed unit, so the pickers and the "who is missing an approver" list are
+   * on the live ones.
+   */
+  const liveUnits = businessUnits.filter((u) => u.active);
+  const unitsWithoutApprover = liveUnits.filter(
+    (d) => !approvers.some((a) => a.businessUnitId === d.id),
   );
 
   async function changeLevel(userId: string, code: string, level: AccessLevel) {
@@ -224,7 +231,7 @@ export function AdministrationPage() {
       />
 
       {/* What needs attention, before anything that merely can be changed. */}
-      {(pendingHires.length > 0 || departmentsWithoutApprover.length > 0) && (
+      {(pendingHires.length > 0 || unitsWithoutApprover.length > 0) && (
         <div className="grid gap-3 sm:grid-cols-2">
           {pendingHires.length > 0 && (
             <Card className="border-amber-500/40">
@@ -235,23 +242,23 @@ export function AdministrationPage() {
                     {pendingHires.length} hiring {pendingHires.length === 1 ? "request" : "requests"} waiting
                   </p>
                   <p className="text-muted-foreground">
-                    Each goes to the head of the department that pays for it.
+                    Each goes to the head of the business unit that pays for it.
                   </p>
                 </div>
               </CardContent>
             </Card>
           )}
-          {departmentsWithoutApprover.length > 0 && (
+          {unitsWithoutApprover.length > 0 && (
             <Card className="border-destructive/40">
               <CardContent className="flex items-center gap-3 py-4">
                 <TriangleAlert className="size-5 text-destructive" aria-hidden="true" />
                 <div className="text-sm">
                   <p className="font-medium">
                     No approver set for{" "}
-                    {departmentsWithoutApprover.map((d) => d.name).join(", ")}
+                    {unitsWithoutApprover.map((d) => d.name).join(", ")}
                   </p>
                   <p className="text-muted-foreground">
-                    Hiring for those departments cannot be approved until one is.
+                    Hiring for those units cannot be approved until one is.
                   </p>
                 </div>
               </CardContent>
@@ -559,25 +566,35 @@ export function AdministrationPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Who approves a hire</CardTitle>
               <p className="text-sm text-muted-foreground">
-                The head of the department that will pay for the person, not
+                The head of the business unit that will pay for the person, not
                 whoever happens to hold an admin role. A deputy stands in when
                 the first is away, or hiring stops every time somebody takes a
                 holiday.
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {departments.map((d) => (
+              {liveUnits.map((d) => (
                 <ApproverRow
                   key={d.id}
-                  department={d}
-                  approver={approvers.find((a) => a.departmentId === d.id) ?? null}
+                  unit={d}
+                  approver={approvers.find((a) => a.businessUnitId === d.id) ?? null}
                   disabled={!canAdminister}
                   onSaved={load}
                 />
               ))}
-              {departments.length === 0 && (
+              {/*
+                * The list above is the live units, so the empty case has two
+                * readings and they need different sentences. A venue with no
+                * units at all is one nobody has seen, because every venue is
+                * created with four; a venue whose units are all closed is a
+                * venue somebody closed, and saying "none yet" there would be
+                * a lie about work already done.
+                */}
+              {liveUnits.length === 0 && (
                 <p className="py-3 text-sm text-muted-foreground">
-                  No departments yet. Add them under People first.
+                  {businessUnits.length === 0
+                    ? "No business units. A venue is created with four, so this one has had them removed."
+                    : `Every business unit is closed (${businessUnits.length}). Reopen one to set its approver.`}
                 </p>
               )}
             </CardContent>
@@ -601,7 +618,7 @@ export function AdministrationPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Reference</TableHead>
-                      <TableHead>Department</TableHead>
+                      <TableHead>Business unit</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead className="text-right">Heads</TableHead>
                       <TableHead className="text-right">Monthly cost</TableHead>
@@ -612,8 +629,8 @@ export function AdministrationPage() {
                   </TableHeader>
                   <TableBody>
                     {hiring.map((h) => {
-                      const dept = departments.find((d) => d.id === h.departmentId);
-                      const approver = approvers.find((a) => a.departmentId === h.departmentId);
+                      const dept = businessUnits.find((d) => d.id === h.businessUnitId);
+                      const approver = approvers.find((a) => a.businessUnitId === h.businessUnitId);
                       const mine = myEmail && (
                         approver?.approverEmail === myEmail ||
                         approver?.deputyEmail === myEmail);
@@ -669,14 +686,14 @@ export function AdministrationPage() {
       <RaiseHireDialog
         open={raising}
         onOpenChange={setRaising}
-        departments={departments}
+        businessUnits={businessUnits}
         jobRoles={jobRoles}
         onDone={load}
       />
       <DecideHireDialog
         request={deciding}
-        department={departments.find((d) => d.id === deciding?.departmentId) ?? null}
-        approver={approvers.find((a) => a.departmentId === deciding?.departmentId) ?? null}
+        unit={businessUnits.find((d) => d.id === deciding?.businessUnitId) ?? null}
+        approver={approvers.find((a) => a.businessUnitId === deciding?.businessUnitId) ?? null}
         onClose={() => setDeciding(null)}
         onDone={load}
       />
@@ -769,9 +786,9 @@ function ParameterCard({
 }
 
 function ApproverRow({
-  department, approver, disabled, onSaved,
+  unit, approver, disabled, onSaved,
 }: {
-  department: Department;
+  unit: BusinessUnit;
   approver: DepartmentApprover | null;
   disabled: boolean;
   onSaved: () => Promise<void>;
@@ -786,11 +803,11 @@ function ApproverRow({
     setSaving(true);
     try {
       await saveDepartmentApprover({
-        departmentId: department.id,
+        businessUnitId: unit.id,
         approverEmail: main,
         deputyEmail: deputy || null,
       });
-      toast.success(`${department.name} approver saved`);
+      toast.success(`${unit.name} approver saved`);
       await onSaved();
     } catch (err) {
       toast.error("Could not save the approver", {
@@ -801,13 +818,13 @@ function ApproverRow({
 
   return (
     <div className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[8rem_1fr_1fr_auto] sm:items-end">
-      <p className="text-sm font-medium">{department.name}</p>
+      <p className="text-sm font-medium">{unit.name}</p>
       <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground" htmlFor={`app-${department.id}`}>
+        <Label className="text-xs text-muted-foreground" htmlFor={`app-${unit.id}`}>
           Approver
         </Label>
         <Input
-          id={`app-${department.id}`}
+          id={`app-${unit.id}`}
           type="email"
           placeholder="head@venue"
           value={main}
@@ -816,11 +833,11 @@ function ApproverRow({
         />
       </div>
       <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground" htmlFor={`dep-${department.id}`}>
+        <Label className="text-xs text-muted-foreground" htmlFor={`dep-${unit.id}`}>
           Deputy
         </Label>
         <Input
-          id={`dep-${department.id}`}
+          id={`dep-${unit.id}`}
           type="email"
           placeholder="optional"
           value={deputy}
@@ -934,15 +951,17 @@ function InviteDialog({
 }
 
 function RaiseHireDialog({
-  open, onOpenChange, departments, jobRoles, onDone,
+  open, onOpenChange, businessUnits, jobRoles, onDone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  departments: Department[];
+  businessUnits: BusinessUnit[];
   jobRoles: JobRole[];
   onDone: () => Promise<void>;
 }) {
-  const [departmentId, setDepartmentId] = useState("");
+  // Nobody is hired into a closed unit.
+  const liveUnits = businessUnits.filter((u) => u.active);
+  const [businessUnitId, setBusinessUnitId] = useState("");
   const [jobRoleId, setJobRoleId] = useState("");
   const [headcount, setHeadcount] = useState("1");
   const [reason, setReason] = useState("");
@@ -950,13 +969,13 @@ function RaiseHireDialog({
   const [cost, setCost] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const rolesHere = jobRoles.filter((j) => j.departmentId === departmentId);
+  const rolesHere = jobRoles.filter((j) => j.businessUnitId === businessUnitId);
 
   async function submit() {
     setSaving(true);
     try {
       await createHiringRequest({
-        departmentId,
+        businessUnitId,
         jobRoleId: jobRoleId || null,
         headcount: Number(headcount) || 1,
         employmentType: "FULL_TIME",
@@ -965,7 +984,7 @@ function RaiseHireDialog({
         estimatedMonthlyCost: cost ? Number(cost) : null,
       });
       toast.success("Request submitted", {
-        description: "It now waits for the head of that department.",
+        description: "It now waits for the head of that business unit.",
       });
       onOpenChange(false);
       setReason(""); setCost(""); setNeededBy("");
@@ -983,25 +1002,25 @@ function RaiseHireDialog({
         <DialogHeader>
           <DialogTitle>Request a hire</DialogTitle>
           <DialogDescription>
-            This goes to the head of the department that will pay for the
+            This goes to the head of the business unit that will pay for the
             person. You cannot approve your own request.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label>Department</Label>
+            <Label>Business unit</Label>
             <Select
-              value={departmentId}
-              onValueChange={(v) => { setDepartmentId(v ?? ""); setJobRoleId(""); }}
+              value={businessUnitId}
+              onValueChange={(v) => { setBusinessUnitId(v ?? ""); setJobRoleId(""); }}
             >
-              <SelectTrigger className="w-full" aria-label="Department">
+              <SelectTrigger className="w-full" aria-label="Business unit">
                 <SelectValue placeholder="Choose">
                   {(v: unknown) =>
-                    departments.find((d) => d.id === v)?.name ?? "Choose"}
+                    businessUnits.find((d) => d.id === v)?.name ?? "Choose"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {departments.map((d) => (
+                {liveUnits.map((d) => (
                   <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -1011,7 +1030,7 @@ function RaiseHireDialog({
             <Label>Role</Label>
             <Select value={jobRoleId} onValueChange={(v) => setJobRoleId(v ?? "")}>
               <SelectTrigger className="w-full" aria-label="Role">
-                <SelectValue placeholder={departmentId ? "Choose" : "Pick a department first"}>
+                <SelectValue placeholder={businessUnitId ? "Choose" : "Pick a business unit first"}>
                   {(v: unknown) => jobRoles.find((j) => j.id === v)?.title ?? "Choose"}
                 </SelectValue>
               </SelectTrigger>
@@ -1059,7 +1078,7 @@ function RaiseHireDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             onClick={() => void submit()}
-            disabled={!departmentId || !reason.trim() || saving}
+            disabled={!businessUnitId || !reason.trim() || saving}
           >
             Submit
           </Button>
@@ -1070,10 +1089,10 @@ function RaiseHireDialog({
 }
 
 function DecideHireDialog({
-  request, department, approver, onClose, onDone,
+  request, unit, approver, onClose, onDone,
 }: {
   request: HiringRequest | null;
-  department: Department | null;
+  unit: BusinessUnit | null;
   approver: DepartmentApprover | null;
   onClose: () => void;
   onDone: () => Promise<void>;
@@ -1105,11 +1124,11 @@ function DecideHireDialog({
         <DialogHeader>
           <DialogTitle>{request?.reference}</DialogTitle>
           <DialogDescription>
-            {department?.name}
+            {unit?.name}
             {approver
               ? ` — approved by ${approver.approverEmail}${
                   approver.deputyEmail ? ` or ${approver.deputyEmail}` : ""}`
-              : " — no approver set for this department"}
+              : " — no approver set for this unit"}
           </DialogDescription>
         </DialogHeader>
         {request && (

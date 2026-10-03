@@ -987,20 +987,47 @@ import type {
   OrgRole,
 } from "@/engine/purchasing";
 
-export interface CostCentre {
+/**
+ * A part of the venue: the thing that used to be a department on the HR
+ * screens and a cost centre on the purchasing ones. Migration 0058 merged
+ * them, and this is the one list both now read.
+ */
+export interface BusinessUnit {
   id: string;
   code: string;
   name: string;
+  parentId: string | null;
+  managerEmployeeId: string | null;
+  /** Decimal string. Null means the organisation's approval policy alone. */
+  approvalThreshold: string | null;
+  active: boolean;
 }
 
-export async function fetchCostCentres(): Promise<CostCentre[]> {
+/**
+ * Every unit, active or not.
+ *
+ * Inactive ones are included because a closed unit still has to be nameable
+ * on last year's orders and on the record of somebody who worked in it. A
+ * picker that is choosing where new spend or a new shift goes filters them
+ * out itself.
+ */
+export async function fetchBusinessUnits(): Promise<BusinessUnit[]> {
   const { data, error } = await requireSupabase()
-    .from("cost_centres")
+    .from("business_units")
     .select("*")
-    .eq("active", true)
     .order("name");
-  if (error) fail("fetchCostCentres", error);
-  return (data ?? []).map((r: any) => ({ id: r.id, code: r.code, name: r.name }));
+  if (error) fail("fetchBusinessUnits", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    parentId: r.parent_id ?? null,
+    managerEmployeeId: r.manager_employee_id ?? null,
+    approvalThreshold: r.approval_threshold === null || r.approval_threshold === undefined
+      ? null
+      : String(r.approval_threshold),
+    active: Boolean(r.active),
+  }));
 }
 
 export async function fetchApprovalPolicies(): Promise<ApprovalPolicy[]> {
@@ -1031,7 +1058,7 @@ export interface RequisitionLineRow {
 export interface Requisition {
   id: string;
   reference: string;
-  costCentreId: string | null;
+  businessUnitId: string | null;
   neededBy: string | null;
   justification: string | null;
   status: PurchaseStatus;
@@ -1047,7 +1074,7 @@ function requisitionFromRow(r: any): Requisition {
   return {
     id: r.id,
     reference: r.reference,
-    costCentreId: r.cost_centre_id ?? null,
+    businessUnitId: r.business_unit_id ?? null,
     neededBy: r.needed_by ?? null,
     justification: r.justification ?? null,
     status: r.status,
@@ -1086,10 +1113,10 @@ export async function fetchRequisitions(): Promise<Requisition[]> {
 }
 
 export async function createRequisition(input: {
-  /** Optional. Left out, the database allocates a stem from the cost centre. */
+  /** Optional. Left out, the database allocates a stem from the business unit. */
   reference?: string;
   referenceStem?: string;
-  costCentreId: string | null;
+  businessUnitId: string | null;
   /** The unit code for the reference, where the caller knows it. */
   unitCode?: string;
   neededBy: string | null;
@@ -1113,7 +1140,7 @@ export async function createRequisition(input: {
     .insert({
       reference,
       reference_stem: stem,
-      cost_centre_id: input.costCentreId,
+      business_unit_id: input.businessUnitId,
       needed_by: input.neededBy,
       justification: input.justification,
       status: "DRAFT",
@@ -1248,7 +1275,7 @@ export interface PurchaseOrder {
   supplierId: string;
   supplierName: string | null;
   requisitionId: string | null;
-  costCentreId: string | null;
+  businessUnitId: string | null;
   status: PurchaseStatus;
   orderedOn: string | null;
   expectedOn: string | null;
@@ -1268,7 +1295,7 @@ function purchaseOrderFromRow(r: any): PurchaseOrder {
     supplierId: r.supplier_id,
     supplierName: r.suppliers?.name ?? null,
     requisitionId: r.requisition_id ?? null,
-    costCentreId: r.cost_centre_id ?? null,
+    businessUnitId: r.business_unit_id ?? null,
     status: r.status,
     orderedOn: r.ordered_on ?? null,
     expectedOn: r.expected_on ?? null,
@@ -1312,7 +1339,7 @@ export async function createPurchaseOrder(input: {
   reference: string;
   supplierId: string;
   requisitionId: string | null;
-  costCentreId: string | null;
+  businessUnitId: string | null;
   expectedOn: string | null;
   taxPercent: number;
   lines: {
@@ -1331,7 +1358,7 @@ export async function createPurchaseOrder(input: {
       reference: input.reference,
       supplier_id: input.supplierId,
       requisition_id: input.requisitionId,
-      cost_centre_id: input.costCentreId,
+      business_unit_id: input.businessUnitId,
       expected_on: input.expectedOn,
       status: "DRAFT",
       created_by: auth.user?.id ?? null,
@@ -1787,7 +1814,7 @@ export async function fetchBudgetPositions(): Promise<BudgetPosition[]> {
   if (error) fail("fetchBudgetPositions", error);
   return (data ?? []).map((r: any) => ({
     budgetId: r.budget_id,
-    costCentreId: r.cost_centre_id,
+    businessUnitId: r.business_unit_id,
     name: r.name,
     amount: String(r.amount ?? 0),
     committed: String(r.committed ?? 0),
@@ -1802,17 +1829,9 @@ import type {
   Employee, Certification, LeaveRequest, LeaveType,
 } from "@/engine/people";
 
-export interface Department { id: string; code: string; name: string }
 export interface JobRole {
-  id: string; title: string; departmentId: string | null;
+  id: string; title: string; businessUnitId: string | null;
   level: number; requiredCertifications: string[];
-}
-
-export async function fetchDepartments(): Promise<Department[]> {
-  const { data, error } = await requireSupabase()
-    .from("departments").select("*").order("name");
-  if (error) fail("fetchDepartments", error);
-  return (data ?? []).map((r: any) => ({ id: r.id, code: r.code, name: r.name }));
 }
 
 export async function fetchJobRoles(): Promise<JobRole[]> {
@@ -1820,7 +1839,7 @@ export async function fetchJobRoles(): Promise<JobRole[]> {
     .from("job_roles").select("*").order("title");
   if (error) fail("fetchJobRoles", error);
   return (data ?? []).map((r: any) => ({
-    id: r.id, title: r.title, departmentId: r.department_id ?? null,
+    id: r.id, title: r.title, businessUnitId: r.business_unit_id ?? null,
     level: r.level ?? 1, requiredCertifications: r.required_certifications ?? [],
   }));
 }
@@ -1836,7 +1855,7 @@ export async function fetchEmployees(): Promise<Employee[]> {
     employeeNumber: r.employee_number,
     firstName: r.first_name,
     lastName: r.last_name,
-    departmentId: r.department_id ?? null,
+    businessUnitId: r.business_unit_id ?? null,
     jobRoleId: r.job_role_id ?? null,
     managerId: r.manager_id ?? null,
     employmentStatus: r.employment_status,
@@ -1855,7 +1874,7 @@ export async function upsertEmployee(input: {
   firstName: string;
   lastName: string;
   workEmail: string | null;
-  departmentId: string | null;
+  businessUnitId: string | null;
   jobRoleId: string | null;
   managerId: string | null;
   employmentStatus: string;
@@ -1868,7 +1887,7 @@ export async function upsertEmployee(input: {
     first_name: input.firstName,
     last_name: input.lastName,
     work_email: input.workEmail,
-    department_id: input.departmentId,
+    business_unit_id: input.businessUnitId,
     job_role_id: input.jobRoleId,
     manager_id: input.managerId,
     employment_status: input.employmentStatus,
@@ -2009,7 +2028,7 @@ export async function fetchShifts(fromIso: string, toIso: string): Promise<Shift
   if (error) fail("fetchShifts", error);
   return (data ?? []).map((r: any) => ({
     id: r.id, employeeId: r.employee_id ?? null,
-    departmentId: r.department_id ?? null, jobRoleId: r.job_role_id ?? null,
+    businessUnitId: r.business_unit_id ?? null, jobRoleId: r.job_role_id ?? null,
     startsAt: r.starts_at, endsAt: r.ends_at,
     breakMinutes: r.break_minutes ?? 0, status: r.status,
   }));
@@ -2018,7 +2037,7 @@ export async function fetchShifts(fromIso: string, toIso: string): Promise<Shift
 export async function saveShift(input: {
   id?: string;
   employeeId: string | null;
-  departmentId: string | null;
+  businessUnitId: string | null;
   jobRoleId: string | null;
   startsAt: string;
   endsAt: string;
@@ -2029,7 +2048,7 @@ export async function saveShift(input: {
   const db = requireSupabase();
   const { data: auth } = await db.auth.getUser();
   const row = {
-    employee_id: input.employeeId, department_id: input.departmentId,
+    employee_id: input.employeeId, business_unit_id: input.businessUnitId,
     job_role_id: input.jobRoleId, starts_at: input.startsAt, ends_at: input.endsAt,
     break_minutes: input.breakMinutes, status: input.status,
     notes: input.notes ?? null, updated_at: new Date().toISOString(),
@@ -3098,7 +3117,7 @@ export async function fetchParameterChanges(): Promise<ParameterChange[]> {
 
 export interface DepartmentApprover {
   id: string;
-  departmentId: string;
+  businessUnitId: string;
   approverEmail: string;
   deputyEmail: string | null;
 }
@@ -3108,23 +3127,23 @@ export async function fetchDepartmentApprovers(): Promise<DepartmentApprover[]> 
     .from("department_approvers").select("*");
   if (error) fail("fetchDepartmentApprovers", error);
   return (data ?? []).map((r: any) => ({
-    id: r.id, departmentId: r.department_id,
+    id: r.id, businessUnitId: r.business_unit_id,
     approverEmail: r.approver_email, deputyEmail: r.deputy_email ?? null,
   }));
 }
 
 export async function saveDepartmentApprover(input: {
-  departmentId: string;
+  businessUnitId: string;
   approverEmail: string;
   deputyEmail: string | null;
 }): Promise<void> {
   const { error } = await requireSupabase().from("department_approvers").upsert(
     {
-      department_id: input.departmentId,
+      business_unit_id: input.businessUnitId,
       approver_email: input.approverEmail.trim().toLowerCase(),
       deputy_email: input.deputyEmail?.trim().toLowerCase() || null,
     },
-    { onConflict: "department_id" },
+    { onConflict: "business_unit_id" },
   );
   if (error) fail("saveDepartmentApprover", error);
 }
@@ -3135,7 +3154,7 @@ export type HiringStatus =
 export interface HiringRequest {
   id: string;
   reference: string;
-  departmentId: string;
+  businessUnitId: string;
   jobRoleId: string | null;
   headcount: number;
   employmentType: string;
@@ -3152,7 +3171,7 @@ export interface HiringRequest {
 
 function hiringFromRow(r: any): HiringRequest {
   return {
-    id: r.id, reference: r.reference, departmentId: r.department_id,
+    id: r.id, reference: r.reference, businessUnitId: r.business_unit_id,
     jobRoleId: r.job_role_id ?? null, headcount: r.headcount,
     employmentType: r.employment_type, reason: r.reason,
     neededBy: r.needed_by ?? null,
@@ -3171,7 +3190,7 @@ export async function fetchHiringRequests(): Promise<HiringRequest[]> {
 }
 
 export async function createHiringRequest(input: {
-  departmentId: string;
+  businessUnitId: string;
   jobRoleId: string | null;
   headcount: number;
   employmentType: string;
@@ -3185,7 +3204,7 @@ export async function createHiringRequest(input: {
   const reference = `HR-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
   const { error } = await db.from("hiring_requests").insert({
     reference,
-    department_id: input.departmentId,
+    business_unit_id: input.businessUnitId,
     job_role_id: input.jobRoleId,
     headcount: input.headcount,
     employment_type: input.employmentType,
@@ -4029,7 +4048,7 @@ export async function withdrawBoardPost(id: string): Promise<void> {
 
 export interface LocationRow {
   id: string; parentId: string | null; code: string; name: string;
-  kind: string; costCentreId: string | null; active: boolean;
+  kind: string; businessUnitId: string | null; active: boolean;
 }
 
 export async function fetchLocations(): Promise<LocationRow[]> {
@@ -4038,17 +4057,17 @@ export async function fetchLocations(): Promise<LocationRow[]> {
   if (error) fail("fetchLocations", error);
   return (data ?? []).map((r: any) => ({
     id: r.id, parentId: r.parent_id ?? null, code: r.code, name: r.name,
-    kind: r.kind, costCentreId: r.cost_centre_id ?? null, active: Boolean(r.active),
+    kind: r.kind, businessUnitId: r.business_unit_id ?? null, active: Boolean(r.active),
   }));
 }
 
 export async function createLocation(input: {
   code: string; name: string; kind: string;
-  parentId: string | null; costCentreId: string | null;
+  parentId: string | null; businessUnitId: string | null;
 }): Promise<void> {
   const { error } = await requireSupabase().from("locations").insert({
     code: input.code, name: input.name, kind: input.kind,
-    parent_id: input.parentId, cost_centre_id: input.costCentreId,
+    parent_id: input.parentId, business_unit_id: input.businessUnitId,
   });
   if (error) fail("createLocation", error);
 }
@@ -4149,7 +4168,7 @@ export async function createMaintenancePlan(input: {
 
 export interface WorkOrderRow {
   id: string; reference: string | null; title: string; detail: string | null;
-  assetId: string | null; locationId: string | null; costCentreId: string | null;
+  assetId: string | null; locationId: string | null; businessUnitId: string | null;
   source: string; planId: string | null;
   priority: string; status: string;
   raisedByEmail: string | null; raisedAt: string; dueBy: string | null;
@@ -4164,7 +4183,7 @@ function toWorkOrder(r: any): WorkOrderRow {
   return {
     id: r.id, reference: r.reference ?? null, title: r.title, detail: r.detail ?? null,
     assetId: r.asset_id ?? null, locationId: r.location_id ?? null,
-    costCentreId: r.cost_centre_id ?? null,
+    businessUnitId: r.business_unit_id ?? null,
     source: r.source, planId: r.plan_id ?? null,
     priority: r.priority, status: r.status,
     raisedByEmail: r.raised_by_email ?? null, raisedAt: r.raised_at,
@@ -4187,7 +4206,7 @@ export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
 
 export async function createWorkOrder(input: {
   title: string; detail: string | null;
-  assetId: string | null; locationId: string | null; costCentreId: string | null;
+  assetId: string | null; locationId: string | null; businessUnitId: string | null;
   priority: string; source?: string; planId?: string | null; dueBy: string | null;
 }): Promise<WorkOrderRow> {
   const db = requireSupabase();
@@ -4197,7 +4216,7 @@ export async function createWorkOrder(input: {
   const { data, error } = await db.from("work_orders").insert({
     title: input.title, detail: input.detail,
     asset_id: input.assetId, location_id: input.locationId,
-    cost_centre_id: input.costCentreId,
+    business_unit_id: input.businessUnitId,
     priority: input.priority, source: input.source ?? "REACTIVE",
     plan_id: input.planId ?? null, due_by: input.dueBy,
     raised_by_email: auth.user?.email ?? null,
@@ -4336,12 +4355,12 @@ export async function recordMeterReading(input: {
  * knowing what it owns.
  */
 export async function raiseWorkOrderParts(input: {
-  workOrderId: string; costCentreId: string | null; unitCode?: string;
+  workOrderId: string; businessUnitId: string | null; unitCode?: string;
   neededBy: string | null; justification: string;
   lines: Omit<RequisitionLineRow, "id" | "lineTotal">[];
 }): Promise<void> {
   const req = await createRequisition({
-    costCentreId: input.costCentreId,
+    businessUnitId: input.businessUnitId,
     unitCode: input.unitCode,
     neededBy: input.neededBy,
     justification: input.justification,

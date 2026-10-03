@@ -49,9 +49,9 @@ import {
   type Employee, type Certification, type LeaveRequest, type LeaveType,
 } from "@/engine/people";
 import {
-  fetchEmployees, fetchDepartments, fetchJobRoles, fetchCertifications,
+  fetchEmployees, fetchBusinessUnits, fetchJobRoles, fetchCertifications,
   fetchLeaveTypes, fetchLeaveRequests, upsertEmployee, requestLeave, decideLeave,
-  type Department, type JobRole,
+  type BusinessUnit, type JobRole,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { RotaTab, AttendanceTab, LifecycleTab } from "@/components/people/rota-tabs";
@@ -90,7 +90,7 @@ const LEAVE_TONE: Record<string, StatusTone> = {
 
 export function PeoplePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [roles, setRoles] = useState<JobRole[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
@@ -124,7 +124,7 @@ export function PeoplePage() {
     setLoading(true);
     try {
       const [e, d, r, c, lt, lr] = await Promise.all([
-        fetchEmployees(), fetchDepartments(), fetchJobRoles(),
+        fetchEmployees(), fetchBusinessUnits(), fetchJobRoles(),
         fetchCertifications(), fetchLeaveTypes(), fetchLeaveRequests(),
       ]);
       setTasks(await fetchTaskBoard());
@@ -134,7 +134,7 @@ export function PeoplePage() {
       ]);
       setCourses(tc); setTrainingAssignments(ta); setCompetencies(cp);
       setAssessments(ca); setReviews(rv); setCases(hc);
-      setEmployees(e); setDepartments(d); setRoles(r);
+      setEmployees(e); setBusinessUnits(d); setRoles(r);
       setCertifications(c); setLeaveTypes(lt); setLeave(lr);
     } catch (err) {
       toast.error("Could not load people", {
@@ -178,7 +178,7 @@ export function PeoplePage() {
   );
   const pending = leave.filter((l) => l.status === "REQUESTED");
   const deptName = useMemo(
-    () => new Map(departments.map((d) => [d.id, d.name])), [departments],
+    () => new Map(businessUnits.map((d) => [d.id, d.name])), [businessUnits],
   );
   const roleById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
   const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
@@ -282,7 +282,7 @@ export function PeoplePage() {
 
         <TabsContent value="rota" className="mt-4">
           <RotaTab weekOf={weekOf} onWeek={setWeekOf} shifts={shifts}
-            employees={employees} roles={roles} departments={departments}
+            employees={employees} roles={roles} businessUnits={businessUnits}
             openEntries={openEntries} onDone={() => loadWeek(weekOf)} />
         </TabsContent>
 
@@ -315,7 +315,7 @@ export function PeoplePage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Number</TableHead>
-                    <TableHead>Department</TableHead>
+                    <TableHead>Business unit</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
@@ -335,7 +335,7 @@ export function PeoplePage() {
                         </TableCell>
                         <TableCell className="font-mono text-xs">{e.employeeNumber}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {e.departmentId ? deptName.get(e.departmentId) ?? "—" : "—"}
+                          {e.businessUnitId ? deptName.get(e.businessUnitId) ?? "—" : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {role?.title ?? "—"}
@@ -552,7 +552,7 @@ export function PeoplePage() {
         <TabsContent value="comms" className="mt-4">
           <StaffCommsTab
             employees={employees}
-            departments={departments}
+            businessUnits={businessUnits}
             courses={courses}
             onDone={load}
           />
@@ -560,7 +560,7 @@ export function PeoplePage() {
       </Tabs>
 
       {adding && (
-        <AddEmployeeDialog departments={departments} roles={roles} employees={employees}
+        <AddEmployeeDialog businessUnits={businessUnits} roles={roles} employees={employees}
           onClose={() => setAdding(false)}
           onDone={async () => { setAdding(false); await load(); }} />
       )}
@@ -591,14 +591,17 @@ function Stat({ title, value, hint, danger }: {
   );
 }
 
-function AddEmployeeDialog({ departments, roles, employees, onClose, onDone }: {
-  departments: Department[]; roles: JobRole[]; employees: Employee[];
+function AddEmployeeDialog({ businessUnits, roles, employees, onClose, onDone }: {
+  businessUnits: BusinessUnit[]; roles: JobRole[]; employees: Employee[];
   onClose: () => void; onDone: () => void | Promise<void>;
 }) {
+  // Nobody joins a closed unit, though one still has to be nameable on the
+  // record of somebody who worked in it.
+  const liveUnits = businessUnits.filter((u) => u.active);
   const [form, setForm] = useState({
     employeeNumber: `E-${String(employees.length + 1).padStart(3, "0")}`,
     firstName: "", lastName: "", workEmail: "",
-    departmentId: departments[0]?.id ?? "", jobRoleId: "", managerId: "",
+    businessUnitId: liveUnits[0]?.id ?? "", jobRoleId: "", managerId: "",
     employmentStatus: "PROBATION", employmentType: "FULL_TIME",
     startedOn: new Date().toISOString().slice(0, 10), hours: "40",
   });
@@ -632,12 +635,12 @@ function AddEmployeeDialog({ departments, roles, employees, onClose, onDone }: {
             <Input id="emp-email" type="email" value={form.workEmail}
               onChange={(e) => setForm({ ...form, workEmail: e.target.value })} />
           </Field>
-          <Field label="Department" id="emp-dept">
+          <Field label="Business unit" id="emp-dept">
             <select id="emp-dept" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
-              value={form.departmentId}
-              onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+              value={form.businessUnitId}
+              onChange={(e) => setForm({ ...form, businessUnitId: e.target.value })}>
               <option value="">—</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {liveUnits.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </Field>
           <Field label="Role" id="emp-role">
@@ -684,7 +687,7 @@ function AddEmployeeDialog({ departments, roles, employees, onClose, onDone }: {
                 firstName: form.firstName.trim(),
                 lastName: form.lastName.trim(),
                 workEmail: form.workEmail.trim() || null,
-                departmentId: form.departmentId || null,
+                businessUnitId: form.businessUnitId || null,
                 jobRoleId: form.jobRoleId || null,
                 managerId: form.managerId || null,
                 employmentStatus: form.employmentStatus,
@@ -746,7 +749,7 @@ function RequestLeaveDialog({
     ? leaveBalance(employee, type, leave, yearStart, yearEnd) : null;
 
   const conflicts = employee && startsOn && endsOn
-    ? overlappingLeave({ employeeId, startsOn, endsOn }, leave, employees, employee.departmentId)
+    ? overlappingLeave({ employeeId, startsOn, endsOn }, leave, employees, employee.businessUnitId)
     : [];
 
   const wouldExceed =
@@ -805,7 +808,7 @@ function RequestLeaveDialog({
 
           {conflicts.length > 0 && (
             <div className="rounded-lg border border-status-info bg-status-info-soft p-3 text-sm">
-              Already off in the same department:
+              Already off in the same business unit:
               <ul className="mt-1">
                 {conflicts.map((c, i) => (
                   <li key={i}>{c.employeeName}, {c.startsOn} to {c.endsOn}</li>

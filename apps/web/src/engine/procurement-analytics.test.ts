@@ -6,7 +6,7 @@ import {
 
 const order = (over: Partial<OrderSummary> = {}): OrderSummary => ({
   id: "o1", reference: "PO-1", supplierId: "s1", supplierName: "Acme",
-  costCentreId: "cc1", status: "ORDERED", orderedOn: "2026-01-05",
+  businessUnitId: "cc1", status: "ORDERED", orderedOn: "2026-01-05",
   expectedOn: "2026-01-10", totalAmount: "1000000", ...over,
 });
 

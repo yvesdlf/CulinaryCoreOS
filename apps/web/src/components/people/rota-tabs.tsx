@@ -29,7 +29,8 @@ import {
   type Shift, type AttendanceRecord,
 } from "@/engine/scheduling";
 import { fullName, isWorking, type Employee } from "@/engine/people";
-import { saveShift, deleteShift, clockIn, clockOut, type JobRole, type Department } from "@/data/repository";
+import { saveShift, deleteShift, clockIn, clockOut, type JobRole, type BusinessUnit } from "@/data/repository";
+import { unitOptions } from "@/engine/units";
 
 const DAY_MS = 86_400_000;
 
@@ -43,14 +44,14 @@ function weekStart(d: Date): Date {
 const hhmm = (iso: string) => new Date(iso).toISOString().slice(11, 16);
 
 export function RotaTab({
-  weekOf, onWeek, shifts, employees, roles, departments, openEntries, onDone,
+  weekOf, onWeek, shifts, employees, roles, businessUnits, openEntries, onDone,
 }: {
   weekOf: Date;
   onWeek: (d: Date) => void;
   shifts: Shift[];
   employees: Employee[];
   roles: JobRole[];
-  departments: Department[];
+  businessUnits: BusinessUnit[];
   openEntries: { id: string; employeeId: string; clockInAt: string; shiftId: string | null }[];
   onDone: () => void | Promise<void>;
 }) {
@@ -196,7 +197,7 @@ export function RotaTab({
           defaultDate={start}
           employees={employees}
           roles={roles}
-          departments={departments}
+          businessUnits={businessUnits}
           onClose={() => setEditing(null)}
           onDone={async () => { setEditing(null); await onDone(); }}
         />
@@ -206,20 +207,27 @@ export function RotaTab({
 }
 
 function ShiftDialog({
-  shift, defaultDate, employees, roles, departments, onClose, onDone,
+  shift, defaultDate, employees, roles, businessUnits, onClose, onDone,
 }: {
   shift: Shift | null;
   defaultDate: Date;
   employees: Employee[];
   roles: JobRole[];
-  departments: Department[];
+  businessUnits: BusinessUnit[];
   onClose: () => void;
   onDone: () => void | Promise<void>;
 }) {
   const working = employees.filter(isWorking);
+  /*
+   * The live units, plus the one this shift is already on if somebody has
+   * since closed it. Filtering to the live ones alone would render this
+   * select blank on exactly that shift while the row still held the closed
+   * unit — see `unitOptions`, which is where that reasoning lives.
+   */
+  const unitChoices = unitOptions(businessUnits, shift?.businessUnitId ?? null);
   const [employeeId, setEmployeeId] = useState(shift?.employeeId ?? "");
   const [jobRoleId, setJobRoleId] = useState(shift?.jobRoleId ?? "");
-  const [departmentId, setDepartmentId] = useState(shift?.departmentId ?? "");
+  const [businessUnitId, setBusinessUnitId] = useState(shift?.businessUnitId ?? "");
   const [date, setDate] = useState(
     (shift?.startsAt ?? defaultDate.toISOString()).slice(0, 10),
   );
@@ -236,7 +244,7 @@ function ShiftDialog({
       await saveShift({
         id: shift?.id,
         employeeId: employeeId || null,
-        departmentId: departmentId || null,
+        businessUnitId: businessUnitId || null,
         jobRoleId: jobRoleId || null,
         startsAt: `${date}T${from}:00Z`,
         endsAt: `${date}T${to}:00Z`,
@@ -278,7 +286,7 @@ function ShiftDialog({
               value={jobRoleId} onChange={(e) => {
                 setJobRoleId(e.target.value);
                 const r = roles.find((x) => x.id === e.target.value);
-                if (r?.departmentId) setDepartmentId(r.departmentId);
+                if (r?.businessUnitId) setBusinessUnitId(r.businessUnitId);
               }}>
               <option value="">—</option>
               {roles.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
@@ -289,11 +297,11 @@ function ShiftDialog({
             <Input id="sh-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="sh-dept">Department</Label>
+            <Label htmlFor="sh-dept">Business unit</Label>
             <select id="sh-dept" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
-              value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+              value={businessUnitId} onChange={(e) => setBusinessUnitId(e.target.value)}>
               <option value="">—</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {unitChoices.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select>
           </div>
           <div className="space-y-2">

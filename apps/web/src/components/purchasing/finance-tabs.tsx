@@ -729,7 +729,7 @@ export function BudgetsTab({ positions }: { positions: BudgetPosition[] }) {
   if (positions.length === 0) {
     return (
       <EmptyState icon={Wallet} title="No budgets set">
-        A budget is per cost centre and period, and counts committed spend as well
+        A budget is per business unit and period, and counts committed spend as well
         as invoiced — an approved order has already been promised, whether or not
         the invoice has arrived.
       </EmptyState>
@@ -819,7 +819,7 @@ export function AnalyticsTab({
     () =>
       orders.map((o) => ({
         id: o.id, reference: o.reference, supplierId: o.supplierId,
-        supplierName: o.supplierName, costCentreId: o.costCentreId,
+        supplierName: o.supplierName, businessUnitId: o.businessUnitId,
         status: o.status, orderedOn: o.orderedOn, expectedOn: o.expectedOn,
         totalAmount: o.totalAmount,
         // Fully received orders are treated as delivered on their last update.

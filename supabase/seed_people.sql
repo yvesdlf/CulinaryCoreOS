@@ -27,22 +27,28 @@ begin
     return;
   end if;
 
-  -- ── Departments ───────────────────────────────────────────────────────────
-  -- The codes migration 0040 already defines, so this seed extends the
-  -- venue's departments rather than creating a second Kitchen beside them.
-  insert into public.departments (org_id, code, name) values
+  -- ── Business units ────────────────────────────────────────────────────────
+  -- One tree since 0058; `departments` is a view over it and a view takes no
+  -- ON CONFLICT, so this writes the unit directly. The codes 0058 seeds are
+  -- reused rather than duplicated, so the venue does not end up with two
+  -- Kitchens.
+  --
+  -- FOH is the unit a new venue starts with and "Front of House" is what this
+  -- demo calls the same room, so the name is set on FOH rather than a second
+  -- SERVICE unit being created beside it.
+  insert into public.business_units (org_id, code, name) values
     (org, 'KITCHEN', 'Kitchen'),
-    (org, 'SERVICE', 'Front of House'),
+    (org, 'FOH',     'Front of House'),
     (org, 'BAR',     'Bar'),
     (org, 'HSK',     'Housekeeping')
-  -- Matching idx_departments_code from 0023, which is on lower(code): an
-  -- ON CONFLICT target has to name the index's expression, not the column.
+  -- Matching idx_business_units_code, which is on lower(code): an ON CONFLICT
+  -- target has to name the index's expression, not the column.
   on conflict (org_id, lower(code)) do update set name = excluded.name;
 
-  select id into d_kitchen from public.departments where org_id=org and code='KITCHEN';
-  select id into d_foh     from public.departments where org_id=org and code='SERVICE';
-  select id into d_bar     from public.departments where org_id=org and code='BAR';
-  select id into d_house   from public.departments where org_id=org and code='HSK';
+  select id into d_kitchen from public.business_units where org_id=org and code='KITCHEN';
+  select id into d_foh     from public.business_units where org_id=org and code='FOH';
+  select id into d_bar     from public.business_units where org_id=org and code='BAR';
+  select id into d_house   from public.business_units where org_id=org and code='HSK';
 
   -- ── Roles ─────────────────────────────────────────────────────────────────
   -- Anyone handling open food needs current food-safety and allergen training
@@ -89,15 +95,15 @@ begin
 
   -- Reporting lines: each department head manages their own department.
   for r in select code, head from (values
-      ('KITCHEN','E-001'), ('SERVICE','E-006'), ('BAR','E-009'), ('HSK','E-011')
+      ('KITCHEN','E-001'), ('FOH','E-006'), ('BAR','E-009'), ('HSK','E-011')
     ) as t(code, head)
   loop
     update public.employees e
        set manager_id = (select m.id from public.employees m
                           where m.org_id=org and m.employee_number=r.head)
      where e.org_id = org
-       and e.department_id = (select d.id from public.departments d
-                               where d.org_id=org and d.code=r.code)
+       and e.business_unit_id = (select b.id from public.business_units b
+                                  where b.org_id=org and b.code=r.code)
        and e.employee_number <> r.head
        and e.manager_id is null;
   end loop;
@@ -131,8 +137,8 @@ begin
     set approver_email = excluded.approver_email,
         deputy_email   = excluded.deputy_email;
 
-  raise notice 'seeded % departments, % roles, % employees, % approvers',
-    (select count(*) from public.departments where org_id=org),
+  raise notice 'seeded % business units, % roles, % employees, % approvers',
+    (select count(*) from public.business_units where org_id=org),
     (select count(*) from public.job_roles where org_id=org),
     (select count(*) from public.employees where org_id=org),
     (select count(*) from public.department_approvers where org_id=org);

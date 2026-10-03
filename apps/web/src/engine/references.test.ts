@@ -24,7 +24,7 @@ describe("unitCode", () => {
 
   it("leaves a short unit short rather than padding it", () => {
     // "IT" padded to three letters is "ITX" or "IT_", and nobody would
-    // recognise either as the IT department.
+    // recognise either as the IT unit.
     expect(unitCode("IT")).toBe("IT");
   });
 
