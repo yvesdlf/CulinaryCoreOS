@@ -31,9 +31,9 @@ supabase/seed*.sql     demo data. Never required for correctness.
 
 ```bash
 pnpm -C apps/web exec tsc --noEmit      # typecheck
-pnpm -C apps/web exec vitest run        # 537 unit tests
+pnpm -C apps/web exec vitest run        # 569 unit tests
 pnpm --filter web lint                  # eslint
-./supabase/tests/run.sh                 # 98 database controls
+./supabase/tests/run.sh                 # 372 database controls
 pnpm -C apps/web dev                    # dev server on 5173 (pinned)
 ```
 
@@ -52,7 +52,7 @@ check**, because it sits in the script list and everybody assumes somebody runs
 it.
 
 The rule set is deliberately narrow, and `apps/web/eslint.config.js` says why
-at each rule. There is already a type checker in CI, 537 unit tests and 98
+at each rule. There is already a type checker in CI, 569 unit tests and 98
 database checks, so lint is not asked to find type errors or logic bugs. It is
 there for the category none of those catch: code that is dead, unreachable, or
 wrong in a way that still compiles.
@@ -107,13 +107,33 @@ Write the SQL that attempts the thing that must not happen, and read what the
 database says. A test that only exercises the happy path proves nothing about
 a control.
 
-**The proofs live in `supabase/tests/`, and CI runs them on every push.** 98
+**The proofs live in `supabase/tests/`, and CI runs them on every push.** 372
 checks across the section grid, maintenance, housekeeping, purchasing's
-segregation of duties and the rota, run by `supabase/tests/run.sh` against a
-schema rebuilt from empty. Before that suite existed, every "proved in SQL"
-claim in `docs/PROGRESS.md` had been proved once, by hand, in a scratch file
-nobody kept — which a month later is indistinguishable from never having proved
-it at all.
+segregation of duties, the rota, the business-unit tree, unit-scoped access,
+media, production, starting data, use-by dates, the department contract, pay
+and revenue — run by `supabase/tests/run.sh` against a schema rebuilt from
+empty. Before that suite existed, every "proved in SQL" claim in
+`docs/PROGRESS.md` had been proved once, by hand, in a scratch file nobody kept
+— which a month later is indistinguishable from never having proved it at all.
+
+**Write the test so you can watch it fail.** A green check proves nothing until
+you have seen it go red for the reason you think it is guarding. Every rule
+added in stages 1 and 2 was falsified by hand before it was merged, and twice
+that was the only reason a defect was found: renaming one trigger so it sorted
+after another numbered a kitchen job `WO-ENG-`, and a test that asserted a
+generated column rather than the report built on it stayed green while the
+report was rewritten to say something false. The second is the shape to watch
+for — proving the thing underneath the thing somebody reads.
+
+**Do not rewrite a function in full to add a line to it.** Five migrations each
+rewrote `seed_organization_defaults` that way, and the fifth dropped the
+fourth's line: a new venue got no media retention policy, so every photograph
+it took was kept forever and nobody was told. The list is rows in
+`organization_seeders` now, and a migration that wants to add a seeder inserts
+one. Where a registry is not possible — a trigger body — the suite is what
+catches it, and it did: the first draft of 0061 rebuilt a trigger from 0020's
+text and lost the direction check 0060 had added, and two checks in another
+file went red within the minute.
 
 **A new trigger or policy is not finished until it has a test there.** That is
 the rule this section now exists to state. Forty-odd triggers are what this

@@ -88,13 +88,13 @@ and where it should not be diluted.
 | # | What is missing | Why it matters | How it gets fixed |
 |---|---|---|---|
 | 35 | **E-invoicing to the tax authority** | Not a feature — a legal requirement, and the one genuinely new obligation this review turned up. Malaysia's IRBM mandate is live, Singapore runs InvoiceNow on Peppol, Indonesia has e-Faktur. A platform that issues and receives invoices in this region has to file them. | Build against Peppol first, since Singapore and Malaysia both reach it, then country adapters. Stage 4, beside Finance. |
-| 36 | **Revenue arrives from more than a till** | Their reporting consolidates POS *and* GrabFood, FoodPanda and Easi. In Indonesia a venue's takings are split across delivery platforms, and a revenue figure that only reads the till is wrong by whatever the aggregators took. | Gap 10 is widened: revenue by unit, by day, **by channel**. Changes the shape of the table, not the size of the job. |
+| 36 | **Revenue arrives from more than a till** | Their reporting consolidates POS *and* GrabFood, FoodPanda and Easi. In Indonesia a venue's takings are split across delivery platforms, and a revenue figure that only reads the till is wrong by whatever the aggregators took. | **Done, 0065.** Revenue by unit, by day, by channel, with the gross and what the platform withheld as separate columns and `net` generated from the two. |
 | 37 | **The daily revenue report** | Revenue by outlet and meal period is the report a hospitality manager actually opens each morning. We have no equivalent. | Falls out of gap 36 once revenue carries a unit and a meal period. |
 | 38 | **Fixed assets have no depreciation** | They keep a full fixed-asset register — depreciation, disposal, transfer, write-off. We have an asset register already, built for maintenance, carrying a purchase cost and doing nothing financial with it. | One asset, two readers: maintenance sees faults and downtime, finance sees book value. Cheap, because the register exists. Stage 4. |
 | 39 | **No barcode scanning on a stock count** | They have it; we deferred it deliberately. A count sheet typed by hand is slower and wrong more often. | Comes with the phone app, gap 29. |
 | 40 | **Single currency** | Fine for one venue, wrong for a group buying in two currencies. | With Finance, Stage 4. |
 | 41 | **No standard chart of accounts** | Hotel finance runs on USALI, the uniform system for the lodging industry. Inventing our own account codes would make every export a translation exercise. | Align to USALI when Finance is built, rather than afterwards. |
-| 42 | **Real-time stock across outlets** | They sell it as a headline. We cannot do it because of gap 5 and gap 6. | Already Stage 1. This confirms its priority rather than adding work. |
+| 42 | **Real-time stock across outlets** | They sell it as a headline. We cannot do it because of gap 5 and gap 6. | **Unblocked.** Gaps 5 and 6 are both done — one unit tree (0058), permissions that can name a unit (0062). What is left is the reporting, not the structure. |
 
 **What the review confirms rather than changes.** Their accounting product is
 a full ledger — payables, receivables, general ledger, bank reconciliation,
@@ -119,7 +119,7 @@ than a feature.
 | 33 | No overview screen per role | An owner, a finance manager and a head chef all get the same food-cost page. | One screen that shows what *you* are responsible for — Stage 4. |
 | 34 | Visual polish has drifted | Identical white cards, no hierarchy. The colours and shadows it needs are already defined and unused. | One deliberate pass, one commit. |
 | 35b | **Service periods are not configured anywhere** | The top bar should say which service is running. It can only be guessed from the clock, and no venue has told the platform when its services run — printing "Dinner" at six because six is usually dinner is the guess this codebase refuses elsewhere. | A unit carries its service periods. Falls out of Stage 1. |
-| 36b | **Covers are one browser's working figure** | The production page keeps expected covers in local storage, so they are personal rather than the venue's. Showing them in a shared header would present a private number as an agreed fact. | Covers become a shared record per unit per day, alongside revenue in Stage 2. |
+| 36b | **Covers are one browser's working figure** | The production page keeps expected covers in local storage, so they are personal rather than the venue's. Showing them in a shared header would present a private number as an agreed fact. | **Done, 0065.** Covers sit on the takings row, per unit per day per channel, so spend per head is answerable and a day nobody counted says so rather than inventing one. |
 
 ---
 

@@ -143,7 +143,7 @@ integration and PCI DSS rather than with any function of their own software.
 | Traceability, lots, recall | not mentioned | one step back, Article 18 |
 | HR, rota, certificates, training | not mentioned | built |
 | Maintenance and housekeeping | not mentioned | built |
-| Controls proved in the database | not claimed | the whole basis of the design — and since 2026-09-20, 98 of those proofs run in CI on every push rather than having been run once by hand |
+| Controls proved in the database | not claimed | the whole basis of the design — and since 2026-09-20, 372 of those proofs run in CI on every push rather than having been run once by hand |
 | Shipping to paying customers | yes — a commercial product sold across six countries | **no — it runs on one laptop** |
 
 **They are a back office. We are an operation.** The overlap is one module out
@@ -168,14 +168,33 @@ of eight, and on that module they are broader while we are deeper.
    appears anywhere in their material, and all of it is the part a venue
    cannot buy its way out of. That is where the effort should stay.
 
-### Progress since — reviewed 2026-10-03
+### Progress since — reviewed 2026-10-03 (second review, same day)
 
-Thirteen days, and **none of the eight gaps this review identified has moved.**
-Gaps 35 to 42 in `PLAN.md` — e-invoicing, revenue by channel, the daily revenue
-report, depreciation, barcode counting, multi-currency, a USALI chart of
-accounts and real-time stock across outlets — are all still open, and all of
-them sit behind Stage 1 or Stage 4 of that plan. Nothing here has been started,
-and this note exists so that nobody reads the table above as having improved.
+**Two of the eight gaps have now closed, and one of them is the one this
+document argued hardest for.**
+
+- **Gap 36 — revenue by channel: closed.** Point 3 above said any revenue model
+  "has to carry a channel from the start, or it will be wrong by whatever
+  GrabFood took". Migration 0065 does exactly that: takings are recorded per
+  unit per day *per channel*, a row carries the gross and what the platform
+  withheld, and `net` is generated from the two. Neither figure is called "the
+  revenue", because the customer paid one and the venue banked the other and a
+  report that picks one is wrong for whoever wanted the other. Covers sit on
+  the same row, so spend per head is answerable.
+- **Gap 42 — real-time stock across outlets: unblocked rather than closed.**
+  The note said it was blocked by gaps 5 and 6. Both are now done: one business
+  unit tree (0058) and permissions that can name a unit (0062). The remaining
+  work is the reporting, not the structure.
+- **Gaps 35, 37, 38, 39, 40 and 41 have not moved** — e-invoicing,
+  depreciation, barcode counting, multi-currency and a USALI chart of accounts
+  are all still open. This paragraph exists so nobody reads two closed gaps as
+  the table above having improved generally.
+
+What else moved, in their terms rather than ours: the platform now knows what
+an hour of work costs (0064) and what a day earned (0065), which between them
+turn every cost figure it has ever produced into one half of an arithmetic
+rather than the whole of a report. That is the ground the comparison is fought
+on — they consolidate revenue and we could not read it at all.
 
 What did move is the part of the comparison that was a claim about the design
 rather than a feature:
@@ -184,9 +203,14 @@ rather than a feature:
   table above said the controls were "the whole basis of the design", which was
   true of the design and overstated the evidence: every one of them had been
   proved once, by hand, in a scratch file nobody kept. `supabase/tests/` now
-  holds 98 checks across access, maintenance, housekeeping, purchasing and the
-  rota, run against a schema rebuilt from empty on every push, and proved able
-  to fail. That is the one line in this comparison that was closest to marketing
+  holds 372 checks — up from 98 a fortnight ago — across access, maintenance,
+  housekeeping, purchasing, the rota, the business-unit tree, unit-scoped
+  permissions, media, production, starting data, use-by dates, the
+  add-a-department contract, pay and revenue, run against a schema rebuilt from
+  empty on every push, and proved able to fail. Four real defects were found by
+  falsifying those checks during stages 1 and 2, including a food-safety
+  control that this project's own documentation had claimed existed since
+  August and did not. That is the one line in this comparison that was closest to marketing
   and is now the best-evidenced thing in it.
 - **A lint gate exists**, which found one real defect and 29 pieces of dead
   code. Minor competitively; it belongs here only because the row above about

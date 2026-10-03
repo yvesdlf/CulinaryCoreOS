@@ -60,7 +60,7 @@ culinarycoreos/
 │                  helper. The cost engine itself lives in apps/web/src/engine.
 ├── supabase/
 │   ├── migrations/   57 numbered, forward-only SQL files. No ORM, no runner.
-│   ├── tests/        98 database controls, run by run.sh and by CI.
+│   ├── tests/        372 database controls, run by run.sh and by CI.
 │   └── seed*.sql     Demo data. Never required for correctness.
 ├── scripts/       The WhatsApp and email adapters, and the workbook-to-CSV
 │                  converter. Run outside the database on purpose: a trigger
@@ -84,7 +84,7 @@ pnpm install
 
 # 2. Start local Supabase and build the schema from empty (needs Docker)
 supabase start
-supabase db reset          # applies all 57 migrations, then seed.sql
+supabase db reset          # applies all 65 migrations, then seed.sql
 
 # 3. Point the app at it — the local keys are development defaults, not secrets
 cp apps/web/.env.example apps/web/.env.local   # then fill in the anon key
@@ -102,9 +102,9 @@ environment variable.
 
 ```bash
 pnpm --filter web typecheck   # tsc --noEmit
-pnpm --filter web test:unit   # 537 unit tests, no database needed
+pnpm --filter web test:unit   # 569 unit tests, no database needed
 pnpm --filter web lint        # eslint
-./supabase/tests/run.sh       # 98 database controls, against a fresh reset
+./supabase/tests/run.sh       # 372 database controls, against a fresh reset
 cd apps/web && npx playwright test --project=desktop
 ```
 
@@ -130,21 +130,21 @@ rebuilt from empty:
 | | |
 |---|---|
 | Migrations | 57, forward-only |
-| Schema | 98 tables, 373 policies, 120 functions, 234 triggers |
-| Unit tests | 537, across 30 files, all passing |
-| Database controls | 98, all passing — `supabase/tests/run.sh` |
+| Schema | 107 tables, 391 policies, 154 functions, 262 triggers, 36 views |
+| Unit tests | 569, across 32 files, all passing |
+| Database controls | 372, all passing — `supabase/tests/run.sh` |
 | Browser tests | 39 passing on the desktop project, of which CI runs 35 — the axe, keyboard and screen-reader files. A further 15 visual snapshots fail; see below |
 | Lint | 0 errors, 129 warnings (`any` at the database boundary, warned on purpose) |
 | Source | 49.822 lines of TypeScript, 13.123 of SQL in migrations |
 | Web app | 29 page components behind 33 routes, 20 of them destinations in a sidebar of six groups |
 
 Still not deployed anywhere, and `DEPLOY.md` has never been run. CI runs
-typecheck, the unit tests, lint, a production build, the 98 database controls
+typecheck, the unit tests, lint, a production build, the 372 database controls
 and the accessibility suites on every pull request and on every push to `main`.
 
 Two caveats worth reading before trusting the numbers above: the visual
 regression baselines are eight weeks stale and are excluded from CI, so all 15
-screenshot comparisons fail locally; and the 98 database controls cover five
+screenshot comparisons fail locally; and the 372 database controls cover five
 areas rather than every control in the schema. Both are recorded in
 `docs/PROGRESS.md`, which is the honest version of what is built, what is not,
 and how each claim was checked.

@@ -6,19 +6,43 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `f504b51` · 57 migrations · 537 unit tests · 98 database controls ·
-5 browser spec files · 98 tables / 373 policies / 120 functions / 234 triggers,
-rebuilt from empty on 2026-10-03. Typecheck, lint, 537 unit tests, 98 database
-controls and 39 browser tests all green the same day. 49.822 lines of
-TypeScript under `apps/web/src`, 13.123 of SQL in migrations.
+**Head:** `f2be0bd` · 65 migrations · 569 unit tests · 372 database controls ·
+5 browser spec files · 107 tables / 391 policies / 154 functions / 262 triggers
+/ 36 views / 17 sections, rebuilt from empty on 2026-10-03. Typecheck, lint,
+569 unit tests, 372 database controls and 54 desktop browser tests all green
+the same day. 54.433 lines of TypeScript under `apps/web/src`, 17.514 of SQL in
+migrations.
+
+> **Stages 1 and 2 of `PLAN.md` are complete.** Stage 1 merged the two
+> department lists into one tree (0058), gave permissions a unit axis (0062),
+> turned Part C's add-a-department claim into a test and a form (0063 plus
+> `12_department_contract.sql`), and split the 5.260-line `repository.ts` into
+> six modules behind a barrel. Stage 2 added production records (0060), media
+> (0059), pay rates (0064) and daily takings (0065). The control suite went
+> from 98 checks to 372 over the same work.
+>
+> Every migration in that run was verified on a rebuild from empty, with its
+> new rules falsified by hand, before it was merged. That found four things
+> nothing else would have: 0060 silently dropped `seed_media_defaults` when it
+> rewrote the organisation seeder — a new venue got no retention policy, so
+> every photograph it took was kept forever; the production screen never named
+> a lot, so the forward step of Article 18 came back empty for every lot in the
+> venue; the database did not refuse food past its use-by date although
+> PROGRESS.md and the traceability screen both said it did; and 0065 turned
+> Administration scopable by business unit, which would have let somebody
+> holding it for one department grant themselves anything in any other.
 
 > The function count was recorded here as 118 for a fortnight and measured 120
 > on a rebuild. No migration changed in between, so the figure was simply
 > wrong when it was written. `DEPLOY.md` had the same shape of error in it,
-> claiming 36 tables and 126 policies against an actual 98 and 373.
+> claiming 36 tables and 126 policies against an actual 98 and 373. Every
+> figure in the paragraph above was measured on the day it was written, by
+> rebuilding from empty and counting.
 
 > **The database controls are tested, and now in CI.** `supabase/tests/` holds
-> 98 checks across access, maintenance, housekeeping, purchasing and people,
+> 372 checks across access, maintenance, housekeeping, purchasing, people,
+> business units, media, production, starting data, use-by dates, unit-scoped
+> access, the department contract, pay and revenue,
 > run against a schema rebuilt from empty. Proved to go red: dropping the
 > work-order assignment trigger fails four of them. The CI step that calls them
 > landed separately from the suite itself, because the token in use had no
@@ -28,15 +52,20 @@ TypeScript under `apps/web/src`, 13.123 of SQL in migrations.
 > every "proved in SQL" claim in this file had been proved once, by hand, in a
 > scratch file nobody kept.
 
-> **The visual baselines are stale, and nothing in CI notices.** Running the
-> whole desktop project gives 39 passes and 15 failures, every failure a
-> screenshot comparison in `visual.spec.ts`. The baselines were last updated on
-> 2026-08-02; the sidebar regrouping, the empty states and the two tab rails
-> all landed in September and all changed what those pages render. The suite is
-> excluded from CI on the grounds that macOS-rendered snapshots will not match
-> Linux, which is true and also means the only check on them is a person
-> remembering to run it. The 39 are the honest figure for what is guarded; CI
-> itself runs 35 of them, the axe, keyboard and screen-reader files.
+> **The desktop baselines are current; the iPad ones are not.** The desktop
+> project is 54 passes with no failures. The iPad project is 36 passes and 16
+> failures, every one a screenshot comparison in `visual.spec.ts` — those
+> baselines were last updated on 2026-08-02 and WebKit renders them anyway. The
+> visual suite is excluded from CI on the grounds that macOS-rendered snapshots
+> will not match Linux, which is true and also means the only check on them is
+> a person remembering to run it. CI runs the axe, keyboard and screen-reader
+> files on Chromium.
+>
+> The suite also used to leave its own fixtures in the seeded venue, so running
+> the database controls before the browser tests turned seven desktop
+> screenshots red — the screenshots were right and the database was dirty, and
+> the suite that dirtied it reported 254 checks all passing on its way out.
+> `_teardown.sql` now runs at both ends of a run, including after a failure.
 
 > **CI is green, and now readable.** `gh` is authenticated and this working
 > copy had simply lost its `origin`; it was re-pointed at
@@ -324,6 +353,16 @@ nothing to anybody.
       best-before it says the food is still legal to use. A date with no kind
       stated is reported as unjudgeable rather than guessed — guessing one way
       throws away good food, the other way serves unsafe food.
+      *This line was ticked from 0020 and was not true until 0061.* 0020
+      refused a lot by its **status** — blocked, recalled, withdrawn — and said
+      nothing about dates. The front end's own refusal was the whole control,
+      which is one import route or one script away from no control at all, and
+      the traceability screen told the reader "the database refuses to let it
+      be used at all". Found by recording a batch in the browser and then
+      asking what the database would actually accept. Nine checks in
+      `10_use_by.sql` now hold it, including that writing the stock off as
+      waste stays possible — a rule that refuses the write-off leaves a venue
+      holding stock it cannot record getting rid of.
 - [x] One step back (Article 18): supplier, lot, delivery note, date and
       arrival temperature for any lot, with anything missing named as missing
       rather than left blank. A gap in a traceability record is the finding.
@@ -354,8 +393,8 @@ operator's job, not automated.
       macros entered by hand.
 - [x] CI: three jobs, green. It failed on all seven of its first runs while
       reporting nothing, because it died at pnpm setup before a test ran. The
-      static job now runs typecheck, 537 unit tests, lint and the production
-      build; the browser job runs the 98 database controls against a schema
+      static job now runs typecheck, 569 unit tests, lint and the production
+      build; the browser job runs the 372 database controls against a schema
       rebuilt from empty before it starts a browser at all, because that step
       needs nothing but the schema and is the cheapest way to find a missing
       trigger.
