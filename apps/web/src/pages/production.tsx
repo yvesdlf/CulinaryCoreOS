@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Production planning — SRS 4.11, PRO-FUNC-001
+// Production planning — SRS 4.11, PRO-FUNC-001, PRO-FUNC-002 AC6, INV-FUNC-005
 // ---------------------------------------------------------------------------
 // A chef types expected covers per dish; the page answers with what to make
 // and what to pull. Those are two sheets for two people — the prep cook works
@@ -8,20 +8,42 @@
 // The plan is recomputed as you type rather than behind a "Calculate" button.
 // Covers are a guess being adjusted, and seeing the shortfall move while you
 // adjust it is the whole point.
+//
+// Two more tabs, and they are the reason the page now writes as well as reads:
+// what was actually made, and what that used against what the recipes expect.
+// A prep list that nobody records against produces no variance figure, and the
+// variance figure is the single most valuable number inventory can give a
+// kitchen — it is where over-portioning, waste and theft become visible.
+//
+// Recording is a write to two tables at once, so it goes through one database
+// function rather than two calls from here. A batch that exists without its
+// consumption reads as a kitchen producing food from nothing.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Factory, Printer, Search, TriangleAlert, X,
-  ChefHat, PackageOpen,
+  ChefHat, PackageOpen, ClipboardCheck, Scale, PencilLine,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -34,8 +56,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductStore } from "@/stores/product-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
-import { planProduction } from "@/engine/production";
-import { fetchStockLevels } from "@/data/repository";
+import { planProduction, type PrepTask } from "@/engine/production";
+import { toDecimal } from "@/engine/cost-engine";
+import {
+  proposeCompletion,
+  completionCost,
+  recordableTasks,
+  varianceVerdict,
+  compareVarianceRows,
+  summariseVariance,
+  type ConsumptionLine,
+  type VarianceRow,
+  type VarianceVerdict,
+} from "@/engine/production-records";
+import {
+  fetchStockLevels,
+  fetchProductionRecords,
+  fetchProductionVariance,
+  fetchVarianceTolerance,
+  ensureProductionPlan,
+  recordProduction,
+  type ProductionRecordRow,
+} from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 /** Covers survive a reload — a service plan is not worth retyping. */
@@ -50,6 +92,17 @@ function loadCovers(): Record<string, number> {
   }
 }
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+const VERDICT: Record<VarianceVerdict, { label: string; tone: StatusTone }> = {
+  over: { label: "Over", tone: "danger" },
+  under: { label: "Under", tone: "warning" },
+  within: { label: "On target", tone: "success" },
+  incomparable: { label: "Cannot compare", tone: "neutral" },
+};
+
 export function ProductionPage() {
   const products = useProductStore((s) => s.products);
   const recipes = useRecipeStore((s) => s.recipes);
@@ -58,6 +111,16 @@ export function ProductionPage() {
   const [covers, setCovers] = useState<Record<string, number>>(loadCovers);
   const [query, setQuery] = useState("");
   const [levels, setLevels] = useState<Map<string, { onHand: number }>>(new Map());
+
+  const [records, setRecords] = useState<ProductionRecordRow[]>([]);
+  const [recording, setRecording] = useState<PrepTask | null>(null);
+  const [correcting, setCorrecting] = useState<ProductionRecordRow | null>(null);
+
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
+  const [variance, setVariance] = useState<VarianceRow[]>([]);
+  const [tolerance, setTolerance] = useState(5);
+  const [loadingVariance, setLoadingVariance] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -71,7 +134,42 @@ export function ProductionPage() {
               : String(err),
         }),
       );
+    fetchVarianceTolerance().then(setTolerance).catch(() => {
+      // Falls back to the seeded 5%. Not worth interrupting the plan for.
+    });
   }, []);
+
+  const loadRecords = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      setRecords(await fetchProductionRecords(`${today()}T00:00:00Z`));
+    } catch (err) {
+      toast.error("Could not read what has been made", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }, []);
+
+  const loadVariance = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    setLoadingVariance(true);
+    try {
+      setVariance(await fetchProductionVariance(from, to));
+    } catch (err) {
+      toast.error("Could not work out the variance", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setLoadingVariance(false);
+    }
+  }, [from, to]);
+
+  useEffect(() => {
+    void loadRecords();
+  }, [loadRecords]);
+  useEffect(() => {
+    void loadVariance();
+  }, [loadVariance]);
 
   useEffect(() => {
     try {
@@ -102,6 +200,20 @@ export function ProductionPage() {
     [planned, recipes],
   );
 
+  /** Batches already recorded today, per preparation, so the sheet says so. */
+  const recordedBatches = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of records) {
+      map.set(r.subRecipeId, (map.get(r.subRecipeId) ?? 0) + r.batches);
+    }
+    return map;
+  }, [records]);
+
+  const tasks = useMemo(
+    () => recordableTasks(plan.prep, recordedBatches),
+    [plan.prep, recordedBatches],
+  );
+
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -124,11 +236,66 @@ export function ProductionPage() {
     });
   }
 
+  /**
+   * Write the batch, and the sheet it was made against.
+   *
+   * The plan is saved here rather than behind a Save button, because covers
+   * live in one browser's local storage and a record pointing at nothing is a
+   * record nobody can argue about later. Saving it only when something is
+   * actually recorded keeps the venue from collecting forty empty sheets a day.
+   */
+  async function write(input: {
+    subRecipeId: string;
+    batches: number;
+    unit: string;
+    consumption: ConsumptionLine[];
+    note: string | null;
+    correctsId?: string | null;
+    correctionReason?: string | null;
+  }) {
+    let planId: string | null = null;
+    if (planned.length > 0 && !input.correctsId) {
+      try {
+        planId = await ensureProductionPlan({
+          plannedFor: today(),
+          service: null,
+          covers: planned.map((p) => ({ recipeId: p.recipeId, covers: p.covers })),
+        });
+      } catch (err) {
+        // The batch is still worth recording without the sheet. Losing the
+        // link is a smaller loss than losing the completion.
+        toast.warning("The prep list could not be saved", {
+          description:
+            err instanceof Error
+              ? `${err.message}. The batch will be recorded without it.`
+              : String(err),
+        });
+      }
+    }
+    await recordProduction({
+      subRecipeId: input.subRecipeId,
+      batches: input.batches,
+      unit: input.unit,
+      planId,
+      note: input.note,
+      correctsId: input.correctsId ?? null,
+      correctionReason: input.correctionReason ?? null,
+      consumption: input.consumption.map((c) => ({
+        productId: c.productId,
+        quantity: c.quantity,
+        unit: c.unit,
+        unitCost: c.unitCost,
+      })),
+    });
+    await Promise.all([loadRecords(), loadVariance()]);
+    setLevels(await fetchStockLevels());
+  }
+
   return (
     <div>
       <PageHeader
         title="Production"
-        description="Expected covers in, prep list and pull list out. Preparations are made in whole batches, so the pull list covers the batches, not the exact need."
+        description="Expected covers in, prep list and pull list out. Record what was actually made and the variance against the recipes follows."
       >
         <Button
           variant="outline"
@@ -230,37 +397,99 @@ export function ProductionPage() {
             </div>
           )}
 
-          {totalCovers === 0 ? (
-            <EmptyState icon={Factory} title="Nothing planned yet">
-              Enter how many covers you expect of each dish and this becomes the prep list
-              — every preparation exploded out, in the order it has to be made.
-            </EmptyState>
-          ) : (
-            <Tabs defaultValue="prep">
-              <TabsList className="print:hidden">
-                <TabsTrigger value="prep">
-                  <Factory className="size-4" />
-                  Prep list ({plan.prep.length})
-                </TabsTrigger>
-                <TabsTrigger value="pull">Pull list ({plan.pull.length})</TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue={totalCovers === 0 ? "variance" : "prep"}>
+            <TabsList className="print:hidden">
+              <TabsTrigger value="prep">
+                <Factory className="size-4" />
+                Prep list ({plan.prep.length})
+              </TabsTrigger>
+              <TabsTrigger value="pull">Pull list ({plan.pull.length})</TabsTrigger>
+              <TabsTrigger value="made">
+                <ClipboardCheck className="size-4" />
+                Made today ({records.length})
+              </TabsTrigger>
+              <TabsTrigger value="variance">
+                <Scale className="size-4" />
+                Variance
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="prep" className="mt-4">
-                <PrepList plan={plan} />
-              </TabsContent>
+            <TabsContent value="prep" className="mt-4">
+              {totalCovers === 0 ? (
+                <EmptyState icon={Factory} title="Nothing planned yet">
+                  Enter how many covers you expect of each dish and this becomes the prep
+                  list — every preparation exploded out, in the order it has to be made,
+                  with a button on each row to record what was actually produced.
+                </EmptyState>
+              ) : (
+                <PrepList
+                  plan={plan}
+                  tasks={tasks}
+                  onRecord={(task) => setRecording(task)}
+                />
+              )}
+            </TabsContent>
 
-              <TabsContent value="pull" className="mt-4">
+            <TabsContent value="pull" className="mt-4">
+              {totalCovers === 0 ? (
+                <EmptyState icon={PackageOpen} title="Nothing planned yet">
+                  The pull list is what has to come out of the store for the batches on
+                  the prep list, with whatever is already on the shelf subtracted.
+                </EmptyState>
+              ) : (
                 <PullList plan={plan} />
-              </TabsContent>
-            </Tabs>
-          )}
+              )}
+            </TabsContent>
+
+            <TabsContent value="made" className="mt-4">
+              <MadeToday records={records} onCorrect={(r) => setCorrecting(r)} />
+            </TabsContent>
+
+            <TabsContent value="variance" className="mt-4">
+              <VarianceReport
+                rows={variance}
+                tolerance={tolerance}
+                from={from}
+                to={to}
+                loading={loadingVariance}
+                onFrom={setFrom}
+                onTo={setTo}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
+
+      {recording && (
+        <RecordDialog
+          subRecipeId={recording.subRecipe.id}
+          suggestedBatches={recording.batches}
+          onClose={() => setRecording(null)}
+          onWrite={write}
+        />
+      )}
+      {correcting && (
+        <RecordDialog
+          subRecipeId={correcting.subRecipeId}
+          suggestedBatches={correcting.batches}
+          correcting={correcting}
+          onClose={() => setCorrecting(null)}
+          onWrite={write}
+        />
+      )}
     </div>
   );
 }
 
-function PrepList({ plan }: { plan: ReturnType<typeof planProduction> }) {
+function PrepList({
+  plan,
+  tasks,
+  onRecord,
+}: {
+  plan: ReturnType<typeof planProduction>;
+  tasks: ReturnType<typeof recordableTasks>;
+  onRecord: (task: PrepTask) => void;
+}) {
   if (plan.prep.length === 0) {
     return (
       <EmptyState icon={ChefHat} title="Nothing to prepare">
@@ -272,7 +501,8 @@ function PrepList({ plan }: { plan: ReturnType<typeof planProduction> }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground print:hidden">
-        In order: anything a later preparation is built on comes first.
+        In order: anything a later preparation is built on comes first. Record a batch
+        as it comes off the stove — the variance report is built from these.
       </p>
       <div className="overflow-x-auto rounded-lg border">
         <Table>
@@ -284,11 +514,11 @@ function PrepList({ plan }: { plan: ReturnType<typeof planProduction> }) {
               <TableHead className="text-right">Batches</TableHead>
               <TableHead className="text-right">Making</TableHead>
               <TableHead>For</TableHead>
-              <TableHead className="w-16 text-center print:table-cell">Done</TableHead>
+              <TableHead className="w-40 text-center">Made</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {plan.prep.map((task, i) => (
+            {tasks.map(({ task, recordable, reason, batchesRecorded }, i) => (
               <TableRow key={task.subRecipe.id}>
                 <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                 <TableCell>
@@ -309,9 +539,26 @@ function PrepList({ plan }: { plan: ReturnType<typeof planProduction> }) {
                 <TableCell className="text-xs text-muted-foreground">
                   {task.drivenBy.join(", ")}
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="text-center text-sm">
                   {/* A box to tick on the printed sheet — PRO-FUNC-001 AC6. */}
-                  <span className="inline-block size-4 rounded border" />
+                  <span className="hidden print:inline-block size-4 rounded border" />
+                  <span className="print:hidden">
+                    {!recordable ? (
+                      <span className="text-xs text-status-warning">{reason}</span>
+                    ) : (
+                      <PermissionGate>
+                        <Button
+                          size="sm"
+                          variant={batchesRecorded > 0 ? "ghost" : "outline"}
+                          onClick={() => onRecord(task)}
+                        >
+                          {batchesRecorded > 0
+                            ? `${batchesRecorded} recorded — add`
+                            : "Record"}
+                        </Button>
+                      </PermissionGate>
+                    )}
+                  </span>
                 </TableCell>
               </TableRow>
             ))}
@@ -396,5 +643,540 @@ function PullList({ plan }: { plan: ReturnType<typeof planProduction> }) {
         </Table>
       </div>
     </div>
+  );
+}
+
+/**
+ * What has been recorded today.
+ *
+ * Corrections are offered rather than edits, because the record is append-only
+ * and the database has no update grant at all. Both rows stay readable; this
+ * list shows the one that counts.
+ */
+function MadeToday({
+  records,
+  onCorrect,
+}: {
+  records: ProductionRecordRow[];
+  onCorrect: (record: ProductionRecordRow) => void;
+}) {
+  if (records.length === 0) {
+    return (
+      <EmptyState icon={ClipboardCheck} title="Nothing recorded today">
+        Record a batch from the prep list as it comes off the stove. Until something is
+        recorded there is no "should have used" figure, so the variance report has
+        nothing to compare the stock ledger against.
+      </EmptyState>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        A completion cannot be edited. A correction is a new record naming this one, and
+        both stay visible — the same rule as the stock ledger.
+      </p>
+      <div className="overflow-x-auto rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Preparation</TableHead>
+              <TableHead className="text-right">Batches</TableHead>
+              <TableHead className="text-right">Made</TableHead>
+              <TableHead>By</TableHead>
+              <TableHead>At</TableHead>
+              <TableHead>Note</TableHead>
+              <TableHead className="w-24" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell>
+                  <div className="font-medium">{r.preparationName}</div>
+                  {r.recipeChangedSince && (
+                    <div className="text-xs text-status-warning">
+                      The preparation has been edited since this batch was made, so what
+                      it should have used is derived from a different recipe.
+                    </div>
+                  )}
+                  {r.correctionReason && (
+                    <div className="text-xs text-muted-foreground">
+                      Correction: {r.correctionReason}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{r.batches}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {r.quantityMade} {r.unit}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {r.producedByEmail ?? "Not recorded"}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {r.occurredAt ? new Date(r.occurredAt).toLocaleTimeString() : "—"}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {r.note ?? "—"}
+                </TableCell>
+                <TableCell>
+                  <PermissionGate>
+                    <Button size="sm" variant="ghost" onClick={() => onCorrect(r)}>
+                      <PencilLine className="size-4" />
+                      Correct
+                    </Button>
+                  </PermissionGate>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Record a batch, or correct one.
+ *
+ * The consumption is pre-filled from the recipe and then edited by hand, which
+ * is the point: the pre-filled figure is the theoretical one, and typing over
+ * it is how the actual one gets into the system. A line the recipe and the
+ * shelf measure differently is left out and named rather than converted —
+ * guessing a factor from two unit names is how grams become kilograms.
+ */
+function RecordDialog({
+  subRecipeId,
+  suggestedBatches,
+  correcting,
+  onClose,
+  onWrite,
+}: {
+  subRecipeId: string;
+  suggestedBatches: number;
+  correcting?: ProductionRecordRow;
+  onClose: () => void;
+  onWrite: (input: {
+    subRecipeId: string;
+    batches: number;
+    unit: string;
+    consumption: ConsumptionLine[];
+    note: string | null;
+    correctsId?: string | null;
+    correctionReason?: string | null;
+  }) => Promise<void>;
+}) {
+  const products = useProductStore((s) => s.products);
+  const subRecipes = useSubRecipeStore((s) => s.subRecipes);
+  const sub = subRecipes.find((s) => s.id === subRecipeId);
+
+  const [batches, setBatches] = useState(String(suggestedBatches || 1));
+  const [note, setNote] = useState("");
+  const [reason, setReason] = useState("");
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  const count = Number(batches);
+  const batchesValid = batches.trim() !== "" && Number.isFinite(count) && count > 0;
+
+  const proposal = useMemo(
+    () => (sub && batchesValid ? proposeCompletion(sub, count, products) : null),
+    [sub, batchesValid, count, products],
+  );
+
+  /**
+   * What will actually be written: the proposal with anything typed over it.
+   *
+   * The line cost is recomputed rather than carried over. It was not, at
+   * first, and the figure under the table went on reporting what the recipe
+   * would have cost while the quantities above it said something else — the
+   * one number on this dialog whose job is to reflect what was typed.
+   */
+  const consumption = useMemo<ConsumptionLine[]>(() => {
+    if (!proposal) return [];
+    return proposal.consumption.map((line) => {
+      const typed = overrides[line.productId];
+      if (typed === undefined || typed.trim() === "") return line;
+      const qty = Number(typed);
+      if (!Number.isFinite(qty) || qty < 0) return line;
+      return {
+        ...line,
+        quantity: qty,
+        lineCost: toDecimal(line.unitCost).times(qty).toFixed(2),
+      };
+    });
+  }, [proposal, overrides]);
+
+  const quantitiesValid = Object.values(overrides).every(
+    (v) => v.trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0),
+  );
+  const valid =
+    Boolean(sub) &&
+    batchesValid &&
+    quantitiesValid &&
+    (!correcting || reason.trim() !== "");
+
+  async function submit() {
+    if (!valid || !sub) return;
+    setBusy(true);
+    try {
+      await onWrite({
+        subRecipeId,
+        batches: count,
+        unit: sub.batchYield.unit,
+        consumption,
+        note: note.trim() || null,
+        correctsId: correcting?.id ?? null,
+        correctionReason: correcting ? reason.trim() : null,
+      });
+      toast.success(
+        correcting
+          ? `Corrected to ${count} batch${count === 1 ? "" : "es"} of ${sub.name}`
+          : `Recorded ${count} batch${count === 1 ? "" : "es"} of ${sub.name}`,
+      );
+      onClose();
+    } catch (err) {
+      // The database refuses a wrong unit, a preparation with no yield and a
+      // correction with no reason. Its message is the useful one, so it is
+      // shown rather than replaced with something reassuring.
+      toast.error(correcting ? "Could not record the correction" : "Could not record the batch", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!sub) return null;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {correcting ? "Correct" : "Record"} production — {sub.name}
+          </DialogTitle>
+          <DialogDescription>
+            {correcting
+              ? "The original record stays. This one supersedes it, and the stock it consumed is put back and taken again."
+              : `One batch yields ${sub.batchYield.qty} ${sub.batchYield.unit}. What is pre-filled below is what the recipe says; type over it with what was actually used.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="batches">Batches made</Label>
+              <Input
+                id="batches"
+                type="number"
+                min="0"
+                step="any"
+                autoFocus
+                value={batches}
+                onChange={(e) => setBatches(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {batchesValid
+                  ? `${Math.round(count * sub.batchYield.qty * 1000) / 1000} ${sub.batchYield.unit}`
+                  : "A part batch is allowed — say what was made rather than rounding."}
+              </p>
+            </div>
+            {correcting && (
+              <div className="space-y-2">
+                <Label htmlFor="correction-reason">Why</Label>
+                <Input
+                  id="correction-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="What was wrong with the first record"
+                />
+              </div>
+            )}
+          </div>
+
+          {proposal && proposal.problems.length > 0 && (
+            <div className="rounded-lg border border-status-warning bg-status-warning-soft p-3 text-sm">
+              <ul className="space-y-1">
+                {[...new Set(proposal.problems)].map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/*
+            * A stacked list rather than a table.
+            *
+            * Three columns of quantities overflowed the dialog on anything
+            * narrower than a laptop and the input ended up off the edge, which
+            * is the one control on this screen that has to be reachable. The
+            * expected figure sits under the name instead, where it still reads
+            * as the thing being typed over.
+            */}
+          {consumption.length > 0 && (
+            <ul className="divide-y rounded-lg border">
+              {proposal!.consumption.map((line) => (
+                <li
+                  key={line.productId}
+                  className="flex items-center gap-3 px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">
+                      {line.productName}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      The recipe says {line.quantity} {line.unit}
+                    </div>
+                  </div>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    className="w-28 shrink-0 text-right"
+                    aria-label={`Quantity of ${line.productName} actually used`}
+                    placeholder={String(line.quantity)}
+                    value={overrides[line.productId] ?? ""}
+                    onChange={(e) =>
+                      setOverrides((o) => ({
+                        ...o,
+                        [line.productId]: e.target.value,
+                      }))
+                    }
+                  />
+                  <span className="w-8 shrink-0 text-sm text-muted-foreground">
+                    {line.unit}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {proposal && proposal.consumption.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              <CurrencyDisplay value={completionCost({ ...proposal, consumption })} /> at
+              current prices. Every line below goes on the stock ledger as usage, so the
+              shelf drops by what was really taken.
+            </p>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="record-note">Note (optional)</Label>
+            <Textarea
+              id="record-note"
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Anything about this batch worth remembering"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={() => void submit()} disabled={!valid || busy}>
+            {correcting ? "Record the correction" : "Record"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Theoretical against actual — SRS INV-FUNC-005.
+ *
+ * The rows that cannot be compared are shown with their reason rather than
+ * dropped or zeroed. A report that only listed the ingredients where both
+ * sides happened to be known would read as complete and would be the easiest
+ * place in this system to hide a problem.
+ */
+function VarianceReport({
+  rows,
+  tolerance,
+  from,
+  to,
+  loading,
+  onFrom,
+  onTo,
+}: {
+  rows: VarianceRow[];
+  tolerance: number;
+  from: string;
+  to: string;
+  loading: boolean;
+  onFrom: (v: string) => void;
+  onTo: (v: string) => void;
+}) {
+  const sorted = useMemo(
+    () => [...rows].sort((a, b) => compareVarianceRows(a, b, tolerance)),
+    [rows, tolerance],
+  );
+  const summary = useMemo(() => summariseVariance(rows, tolerance), [rows, tolerance]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-4 print:hidden">
+        <div className="space-y-2">
+          <Label htmlFor="variance-from">From</Label>
+          <Input
+            id="variance-from"
+            type="date"
+            value={from}
+            onChange={(e) => onFrom(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="variance-to">To</Label>
+          <Input
+            id="variance-to"
+            type="date"
+            value={to}
+            onChange={(e) => onTo(e.target.value)}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Flagged above {tolerance}% either way — the venue's own tolerance.
+        </p>
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyState icon={Scale} title={loading ? "Working it out" : "Nothing to compare"}>
+          This sets what the recipes say should have been used against what the stock
+          ledger says was. It needs two things in the period: a batch recorded as made,
+          and usage on the ledger. Record something on the prep list and it fills in.
+        </EmptyState>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryCard
+              label="Used more than expected"
+              value={<CurrencyDisplay value={summary.overCost} />}
+              detail={`${summary.over} ingredient${summary.over === 1 ? "" : "s"} over tolerance`}
+            />
+            <SummaryCard
+              label="Net difference"
+              value={<CurrencyDisplay value={summary.netCost} />}
+              detail="Overruns and shortfalls netted off — read it beside the figure on the left"
+            />
+            <SummaryCard
+              label="On target"
+              value={String(summary.within)}
+              detail={`within ${tolerance}%`}
+            />
+            <SummaryCard
+              label="Cannot be compared"
+              value={String(summary.incomparable)}
+              detail="Each one says why, and each one is a finding"
+            />
+          </div>
+
+          {summary.recipeChanged > 0 && (
+            <div className="rounded-lg border border-status-warning bg-status-warning-soft p-3 text-sm">
+              {summary.recipeChanged} ingredient
+              {summary.recipeChanged === 1 ? "" : "s"} sit on a preparation that has been
+              edited since a batch of it was recorded. The expected figure is derived from
+              the recipe as it is now, not the one the cook worked from.
+            </div>
+          )}
+
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ingredient</TableHead>
+                  <TableHead className="text-right">Should have used</TableHead>
+                  <TableHead className="text-right">Did use</TableHead>
+                  <TableHead className="text-right">Difference</TableHead>
+                  <TableHead className="text-right">In money</TableHead>
+                  <TableHead>Reading</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((row) => {
+                  const verdict = varianceVerdict(row, tolerance);
+                  return (
+                    <TableRow key={row.productId}>
+                      <TableCell>
+                        <div className="font-medium">{row.productName}</div>
+                        {row.note && (
+                          <div className="text-xs text-muted-foreground">{row.note}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.theoreticalQty === null ? (
+                          <span className="text-muted-foreground">Not recorded</span>
+                        ) : (
+                          `${row.theoreticalQty} ${row.unit}`
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.actualQty === null ? (
+                          <span className="text-muted-foreground">Not recorded</span>
+                        ) : (
+                          `${row.actualQty} ${row.unit}`
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">
+                        {row.varianceQty === null || row.variancePercent === null ? (
+                          "—"
+                        ) : (
+                          <span
+                            className={
+                              verdict === "over"
+                                ? "text-status-danger"
+                                : verdict === "under"
+                                  ? "text-status-warning"
+                                  : ""
+                            }
+                          >
+                            {row.varianceQty > 0 ? "+" : ""}
+                            {row.varianceQty} {row.unit} ({row.variancePercent > 0 ? "+" : ""}
+                            {row.variancePercent}%)
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.varianceCost === null ? (
+                          "—"
+                        ) : (
+                          <CurrencyDisplay value={row.varianceCost} />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <StatusChip tone={VERDICT[verdict].tone}>
+                          {VERDICT[verdict].label}
+                        </StatusChip>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: React.ReactNode;
+  detail: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+      </CardContent>
+    </Card>
   );
 }

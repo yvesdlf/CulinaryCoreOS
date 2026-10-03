@@ -62,7 +62,9 @@ import {
   fetchStockLots,
   fetchSupplierCertificates,
   fetchSuppliers,
+  fetchLotForwardTrace,
   setLotStatus,
+  type ForwardTraceRow,
   type Supplier,
   type SupplierCertificate,
 } from "@/data/repository";
@@ -488,14 +490,27 @@ function TraceDialog({
   onClose: () => void;
 }) {
   const steps = traceBack(lot);
+  const [forward, setForward] = useState<ForwardTraceRow[] | null>(null);
+  const [forwardError, setForwardError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setForward([]);
+      return;
+    }
+    fetchLotForwardTrace(lot.id)
+      .then(setForward)
+      .catch((err) => setForwardError(err instanceof Error ? err.message : String(err)));
+  }, [lot.id]);
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{productName}</DialogTitle>
           <DialogDescription>
-            One step back, as Regulation 178/2002 Article 18 requires: who
-            supplied this and against which delivery.
+            Both steps Regulation 178/2002 Article 18 requires: who supplied
+            this and against which delivery, and where it went afterwards.
           </DialogDescription>
         </DialogHeader>
         <dl className="space-y-3">
@@ -520,6 +535,70 @@ function TraceDialog({
             </div>
           ))}
         </dl>
+
+        {/*
+         * One step forward: what this lot went into.
+         *
+         * Built from the usage movements against the lot and the production
+         * records they belong to. A movement with no batch behind it is listed
+         * as untraced rather than left out — a gap in a traceability record is
+         * the finding, and an inspector is looking for exactly this.
+         */}
+        <div className="space-y-2 border-t pt-4">
+          <h3 className="text-sm font-medium">One step forward</h3>
+          {forwardError !== null ? (
+            <p className="text-sm text-status-warning">
+              Could not read where this lot went: {forwardError}
+            </p>
+          ) : forward === null ? (
+            <p className="text-sm text-muted-foreground">Reading the ledger…</p>
+          ) : forward.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing has left this lot yet. Once a batch is recorded against it on the
+              production page, what it was made into appears here.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {forward.map((f) => (
+                <li key={f.movementId} className="text-sm">
+                  <span className="tabular-nums font-medium">
+                    {f.quantity} {f.unit}
+                  </span>{" "}
+                  {f.stepForward === "BATCH" ? (
+                    <>
+                      into {f.preparationName} — {f.batches} batch
+                      {f.batches === 1 ? "" : "es"}
+                      {f.quantityMade !== null && (
+                        <> making {f.quantityMade} {f.madeUnit}</>
+                      )}
+                      , by {f.producedByEmail ?? "somebody not recorded"}
+                      {f.plannedFor && (
+                        <>
+                          , against the {f.service ? `${f.service.toLowerCase()} ` : ""}
+                          sheet for {f.plannedFor}
+                        </>
+                      )}
+                    </>
+                  ) : f.stepForward === "UNRECORDED_USAGE" ? (
+                    <span className="text-status-warning">
+                      used, but no batch was recorded against it — this lot cannot be
+                      traced past the store
+                    </span>
+                  ) : (
+                    <>
+                      {f.kind.toLowerCase()}
+                      {f.reason ? ` — ${f.reason}` : ""}
+                    </>
+                  )}{" "}
+                  <span className="text-muted-foreground">
+                    ({new Date(f.occurredAt).toLocaleDateString()})
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Close
