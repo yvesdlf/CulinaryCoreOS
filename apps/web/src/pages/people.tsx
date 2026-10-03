@@ -19,7 +19,9 @@ import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Send } from "lucide-react";
+import { Send, Wallet } from "lucide-react";
+import { PayTab } from "@/components/people/pay-tab";
+import { useCanReadSection, useCanWriteSection } from "@/stores/access-store";
 import { StaffCommsTab } from "@/components/people/staff-comms-tab";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -91,6 +93,8 @@ const LEAVE_TONE: Record<string, StatusTone> = {
 export function PeoplePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const canSeePay = useCanReadSection("PAY");
+  const canSetPay = useCanWriteSection("PAY");
   const [roles, setRoles] = useState<JobRole[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
@@ -268,6 +272,19 @@ export function PeoplePage() {
             <Lock className="size-4" />Cases ({cases.length})
           </TabsTrigger>
 
+          {/*
+            * Not drawn at all without the grant, rather than drawn and
+            * disabled. A disabled tab tells somebody the figures exist and
+            * that they are not trusted with them, which is a different message
+            * from the one a venue intends when it does not grant Pay. The
+            * database refuses the read either way.
+            */}
+          {canSeePay && (
+            <TabsTrigger value="pay" className="justify-start">
+              <Wallet className="size-4" />Pay
+            </TabsTrigger>
+          )}
+
           <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
             Communication
           </div>
@@ -275,6 +292,12 @@ export function PeoplePage() {
             <Send className="size-4" />Send to staff
           </TabsTrigger>
         </TabsList>
+
+        {canSeePay && (
+          <TabsContent value="pay" className="mt-4">
+            <PayTab employees={employees} canWrite={canSetPay} />
+          </TabsContent>
+        )}
 
         <TabsContent value="lifecycle" className="mt-4">
           <LifecycleTab employees={employees} tasks={tasks} onDone={load} />

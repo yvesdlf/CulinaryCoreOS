@@ -1069,3 +1069,127 @@ export async function withdrawBoardPost(id: string): Promise<void> {
     .update({ status: "WITHDRAWN" }).eq("id", id);
   if (error) fail("withdrawBoardPost", error);
 }
+
+// ── Pay ─────────────────────────────────────────────────────────────────────
+/*
+ * The only data in this directory narrowed on *read* rather than on write.
+ *
+ * Every other table here is readable by anybody in the venue and restricted on
+ * what they may change. A pay rate is the other way round, because the harm is
+ * in the looking: somebody who runs the rota, approves leave and keeps
+ * certificates current has no business knowing what their colleagues earn.
+ * `PAY` is its own grant and nobody holds it by default, not even an
+ * administrator.
+ *
+ * So these functions return nothing rather than failing for a caller without
+ * it — the policy answers, and an empty list is the honest shape of "not for
+ * you" in a list. The screen asks `useCanReadSection("PAY")` and does not draw
+ * the tab at all, which is the kinder version of the same answer.
+ */
+
+export type PayBasis = "HOURLY" | "MONTHLY";
+
+export interface PayRate {
+  id: string;
+  employeeId: string;
+  basis: PayBasis;
+  /** Decimal string. The venue's own currency; there is one per venue. */
+  amount: string;
+  effectiveFrom: string;
+  note: string | null;
+  setByEmail: string | null;
+  createdAt: string;
+}
+
+function payRateFromRow(r: any): PayRate {
+  return {
+    id: r.id,
+    employeeId: r.employee_id,
+    basis: r.basis,
+    amount: String(r.amount),
+    effectiveFrom: r.effective_from,
+    note: r.note ?? null,
+    setByEmail: r.set_by_email ?? null,
+    createdAt: r.created_at,
+  };
+}
+
+export async function fetchPayRates(): Promise<PayRate[]> {
+  const { data, error } = await requireSupabase()
+    .from("pay_rates").select("*").order("effective_from", { ascending: false });
+  if (error) fail("fetchPayRates", error);
+  return (data ?? []).map(payRateFromRow);
+}
+
+/**
+ * Set a rate from a date.
+ *
+ * There is no "change the rate" — a rate is a period, and the way to end one
+ * is to start the next. The database refuses to edit a rate that has already
+ * taken effect, which is what makes "last month stays calculated at last
+ * month's rate" true by construction rather than by everybody being careful.
+ *
+ * Nothing here says who set it. `set_by_email` comes from the caller's JWT by
+ * trigger and anything sent from the browser is discarded — migration 0054
+ * exists because a decision was once filed under somebody else's name, and a
+ * salary is a worse thing to misattribute than a decision.
+ */
+export async function setPayRate(input: {
+  employeeId: string;
+  basis: PayBasis;
+  amount: string;
+  effectiveFrom: string;
+  note?: string | null;
+}): Promise<PayRate> {
+  const { data, error } = await requireSupabase()
+    .from("pay_rates")
+    .insert({
+      employee_id: input.employeeId,
+      basis: input.basis,
+      amount: input.amount,
+      effective_from: input.effectiveFrom,
+      note: input.note ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) fail("setPayRate", error);
+  return payRateFromRow(data);
+}
+
+export interface LabourCostRow {
+  employeeId: string;
+  businessUnitId: string | null;
+  onDate: string;
+  hours: number;
+  basis: PayBasis | null;
+  /** Decimal string, or null where nobody has set a rate. Never zero for that. */
+  rate: string | null;
+  cost: string | null;
+}
+
+/**
+ * What work cost, per person per day, between two dates.
+ *
+ * A null cost means nobody has set a rate for that person — not that they cost
+ * nothing. The screen says so rather than summing the nulls into a total that
+ * is too good by exactly the wages of everybody nobody got round to entering.
+ */
+export async function fetchLabourCost(
+  fromDate: string,
+  toDate: string,
+): Promise<LabourCostRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("labour_cost_daily").select("*")
+    .gte("on_date", fromDate).lte("on_date", toDate)
+    .order("on_date", { ascending: false });
+  if (error) fail("fetchLabourCost", error);
+  return (data ?? []).map((r: any) => ({
+    employeeId: r.employee_id,
+    businessUnitId: r.business_unit_id ?? null,
+    onDate: r.on_date,
+    hours: Number(r.hours ?? 0),
+    basis: r.basis ?? null,
+    rate: r.rate === null || r.rate === undefined ? null : String(r.rate),
+    cost: r.cost === null || r.cost === undefined ? null : String(r.cost),
+  }));
+}
