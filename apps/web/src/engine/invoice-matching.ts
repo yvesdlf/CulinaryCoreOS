@@ -259,7 +259,7 @@ export function exceptionValue(exceptions: MatchException[]): string {
 
 export interface BudgetPosition {
   budgetId: string;
-  costCentreId: string;
+  businessUnitId: string;
   name: string;
   amount: string;
   committed: string;
@@ -302,7 +302,7 @@ export function checkBudget(
       usedPercent: 0,
       state: "ok",
       blocked: false,
-      message: "No budget is set for this cost centre and period.",
+      message: "No budget is set for this business unit and period.",
     };
   }
 

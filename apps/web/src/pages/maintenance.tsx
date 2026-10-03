@@ -573,7 +573,7 @@ function RaiseJobDialog({ plan, free, onClose, onDone }: {
     try {
       await createWorkOrder({
         title: title.trim(), detail: detail.trim() || null,
-        assetId: plan?.assetId ?? null, locationId: null, costCentreId: null,
+        assetId: plan?.assetId ?? null, locationId: null, businessUnitId: null,
         priority, source: plan ? "PLANNED" : "REACTIVE",
         planId: plan?.planId ?? null, dueBy: plan?.dueOn ?? null,
       });

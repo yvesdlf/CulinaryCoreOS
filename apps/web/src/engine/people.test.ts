@@ -19,7 +19,7 @@ const TODAY = new Date("2026-08-03T09:00:00Z");
 
 const employee = (over: Partial<Employee> = {}): Employee => ({
   id: "e1", employeeNumber: "E-001", firstName: "Ayu", lastName: "Pratama",
-  departmentId: "kitchen", jobRoleId: "chef", managerId: null,
+  businessUnitId: "kitchen", jobRoleId: "chef", managerId: null,
   employmentStatus: "ACTIVE", employmentType: "FULL_TIME",
   startedOn: "2020-03-01", contractedHoursPerWeek: 40, ...over,
 });
@@ -85,9 +85,9 @@ describe("leave balance", () => {
 
 describe("who else is off", () => {
   const team = [employee(), employee({ id: "e2", firstName: "Budi" }),
-                employee({ id: "e3", firstName: "Citra", departmentId: "bar" })];
+                employee({ id: "e3", firstName: "Citra", businessUnitId: "bar" })];
 
-  it("finds an overlap in the same department", () => {
+  it("finds an overlap in the same business unit", () => {
     const out = overlappingLeave(
       { employeeId: "e1", startsOn: "2026-03-03", endsOn: "2026-03-07" },
       [request({ employeeId: "e2", startsOn: "2026-03-05", endsOn: "2026-03-10" })],
@@ -96,7 +96,7 @@ describe("who else is off", () => {
     expect(out[0].employeeName).toBe("Budi Pratama");
   });
 
-  it("ignores another department", () => {
+  it("ignores another business unit", () => {
     const out = overlappingLeave(
       { employeeId: "e1", startsOn: "2026-03-03", endsOn: "2026-03-07" },
       [request({ employeeId: "e3", startsOn: "2026-03-05", endsOn: "2026-03-10" })],

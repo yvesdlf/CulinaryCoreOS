@@ -197,7 +197,7 @@ describe("the expensive mistakes", () => {
 describe("budget control", () => {
   const budget = (over: Partial<BudgetPosition> = {}): BudgetPosition => ({
     budgetId: "b1",
-    costCentreId: "cc1",
+    businessUnitId: "cc1",
     name: "FY2026 Kitchen",
     amount: "1000000",
     committed: "200000",
