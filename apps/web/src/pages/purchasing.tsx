@@ -30,6 +30,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
+import { RowAction, RowActions } from "@/components/shared/row-actions";
+import {
+  DensityToggle,
+  useTableDensity,
+} from "@/components/shared/table-density";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,25 +111,30 @@ import {
 } from "@/data/repository";
 import type { BudgetPosition, Tolerances } from "@/engine/invoice-matching";
 
-const STATUS_STYLE: Record<string, string> = {
-  DRAFT: "bg-muted text-muted-foreground",
-  SUBMITTED: "bg-status-warning-soft text-status-warning",
-  APPROVED: "bg-status-success-soft text-status-success",
-  REJECTED: "bg-status-danger-soft text-status-danger",
-  CANCELLED: "bg-muted text-muted-foreground",
-  ORDERED: "bg-status-info-soft text-status-info",
-  PARTIALLY_RECEIVED: "bg-status-info-soft text-status-info",
-  RECEIVED: "bg-status-success-soft text-status-success",
-  CLOSED: "bg-muted text-muted-foreground",
+/*
+ * Nine statuses, five tones. ORDERED and PARTIALLY_RECEIVED share one because
+ * the difference between them is a quantity, which the Lines column already
+ * carries; inventing a sixth colour for it would be colour doing a number's
+ * job. The three dormant ones — DRAFT, CANCELLED, CLOSED — are neutral
+ * because none of them is anybody's outstanding work.
+ */
+const STATUS_TONE: Record<string, StatusTone> = {
+  DRAFT: "neutral",
+  SUBMITTED: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  CANCELLED: "neutral",
+  ORDERED: "info",
+  PARTIALLY_RECEIVED: "info",
+  RECEIVED: "success",
+  CLOSED: "neutral",
 };
 
 function StatusBadge({ status }: { status: PurchaseStatus }) {
   return (
-    <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[status] ?? ""}`}
-    >
+    <StatusChip tone={STATUS_TONE[status]}>
       {status.toLowerCase().replace("_", " ")}
-    </span>
+    </StatusChip>
   );
 }
 
@@ -162,6 +173,9 @@ export function PurchasingPage() {
   const [creating, setCreating] = useState(false);
   const [deciding, setDeciding] = useState<Requisition | null>(null);
   const [ordering, setOrdering] = useState<Requisition | null>(null);
+  // One call for the page: requisitions and orders are the same list of
+  // documents under two names, and they should not disagree about row height.
+  const [density, setDensity] = useTableDensity();
 
   async function load() {
     if (!isSupabaseConfigured) {
@@ -308,8 +322,13 @@ export function PurchasingPage() {
               carrying the same number.
             </EmptyState>
           ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
+            <div className="rounded-lg border">
+              <div className="flex justify-end border-b p-2">
+                <DensityToggle value={density} onChange={setDensity} />
+              </div>
+              {/* Nothing pages this list and an approver works down it, so the
+                  Amount and Needs columns have to stay named while they do. */}
+              <Table stickyHeader density={density}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Reference</TableHead>
@@ -360,47 +379,41 @@ export function PurchasingPage() {
                           <StatusBadge status={r.status} />
                         </TableCell>
                         <TableCell>
-                          <div className="flex justify-end gap-1">
+                          <RowActions>
                             <PermissionGate>
                               {r.status === "DRAFT" && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
+                                <RowAction
+                                  icon={Send}
+                                  label="Submit"
+                                  context={r.reference}
                                   onClick={async () => {
                                     await setRequisitionStatus(r.id, "SUBMITTED");
                                     await recordApproval("REQUISITION", r.id, "SUBMITTED", null);
                                     toast.success(`${r.reference} submitted`);
                                     await load();
                                   }}
-                                >
-                                  <Send className="size-4" />
-                                  <span className="sr-only">Submit {r.reference}</span>
-                                </Button>
+                                />
                               )}
                               {r.status === "SUBMITTED" && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
+                                <RowAction
+                                  icon={Check}
+                                  label="Decide"
+                                  context={`on ${r.reference}`}
                                   disabled={!verdict?.allowed}
                                   title={verdict?.reason ?? undefined}
                                   onClick={() => setDeciding(r)}
-                                >
-                                  <Check className="size-4" />
-                                  <span className="sr-only">
-                                    Decide on {r.reference}
-                                  </span>
-                                </Button>
+                                />
                               )}
                               {r.status === "APPROVED" && (
-                                <Button size="sm" variant="ghost" onClick={() => setOrdering(r)}>
-                                  <FileText className="size-4" />
-                                  <span className="sr-only">
-                                    Raise orders for {r.reference}
-                                  </span>
-                                </Button>
+                                <RowAction
+                                  icon={FileText}
+                                  label="Raise orders"
+                                  context={`for ${r.reference}`}
+                                  onClick={() => setOrdering(r)}
+                                />
                               )}
                             </PermissionGate>
-                          </div>
+                          </RowActions>
                           {r.status === "SUBMITTED" && verdict && !verdict.allowed && (
                             <p className="mt-1 max-w-xs whitespace-normal text-right text-xs text-muted-foreground">
                               {verdict.reason}
@@ -424,8 +437,11 @@ export function PurchasingPage() {
               delivery and one invoice.
             </EmptyState>
           ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
+            <div className="rounded-lg border">
+              <div className="flex justify-end border-b p-2">
+                <DensityToggle value={density} onChange={setDensity} />
+              </div>
+              <Table stickyHeader density={density}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Reference</TableHead>
@@ -461,25 +477,25 @@ export function PurchasingPage() {
                         <StatusBadge status={o.status} />
                       </TableCell>
                       <TableCell>
-                        <PermissionGate>
-                          {o.status === "DRAFT" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={async () => {
-                                await setPurchaseOrderStatus(o.id, "ORDERED");
-                                toast.success(`${o.reference} marked as ordered`, {
-                                  description:
-                                    "Sending it to the supplier is not automated yet.",
-                                });
-                                await load();
-                              }}
-                            >
-                              <Send className="size-4" />
-                              <span className="sr-only">Mark {o.reference} ordered</span>
-                            </Button>
-                          )}
-                        </PermissionGate>
+                        <RowActions>
+                          <PermissionGate>
+                            {o.status === "DRAFT" && (
+                              <RowAction
+                                icon={Send}
+                                label="Mark ordered"
+                                context={o.reference}
+                                onClick={async () => {
+                                  await setPurchaseOrderStatus(o.id, "ORDERED");
+                                  toast.success(`${o.reference} marked as ordered`, {
+                                    description:
+                                      "Sending it to the supplier is not automated yet.",
+                                  });
+                                  await load();
+                                }}
+                              />
+                            )}
+                          </PermissionGate>
+                        </RowActions>
                       </TableCell>
                     </TableRow>
                   ))}

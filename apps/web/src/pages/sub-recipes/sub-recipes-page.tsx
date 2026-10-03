@@ -7,6 +7,10 @@ import {
   usePagination,
 } from "@/components/shared/table-pagination";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import {
+  DensityToggle,
+  useTableDensity,
+} from "@/components/shared/table-density";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -77,6 +81,7 @@ export function SubRecipesPage() {
   }, [subRecipes, searchQuery, categoryFilter, statusFilter]);
 
   const pagination = usePagination(filtered);
+  const [density, setDensity] = useTableDensity();
 
   return (
     <div>
@@ -137,6 +142,8 @@ export function SubRecipesPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <DensityToggle value={density} onChange={setDensity} className="ml-auto" />
       </div>
 
       {/* Sub-recipe table */}
@@ -150,7 +157,7 @@ export function SubRecipesPage() {
         </div>
       ) : (
         <>
-          <Table>
+          <Table stickyHeader density={density}>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>

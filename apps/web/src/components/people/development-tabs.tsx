@@ -22,6 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { PersonCell } from "@/components/shared/person-avatar";
+import { StatusChip } from "@/components/shared/status-chip";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -142,8 +144,10 @@ export function TrainingTab({
                   const late = a.dueOn && a.dueOn < new Date().toISOString().slice(0, 10);
                   return (
                     <TableRow key={a.id}>
-                      <TableCell className="font-medium">
-                        {byId.has(a.employeeId) ? fullName(byId.get(a.employeeId)!) : "Unknown"}
+                      <TableCell>
+                        <PersonCell
+                          name={byId.has(a.employeeId) ? fullName(byId.get(a.employeeId)!) : "Unknown"}
+                        />
                       </TableCell>
                       <TableCell>
                         {courses.find((c) => c.id === a.courseId)?.title ?? "—"}
@@ -374,12 +378,12 @@ export function CompetencyTab({
                     return (
                       <TableCell key={e.id} className="text-center">
                         {a ? (
-                          <span className={`inline-flex size-6 items-center justify-center rounded-full text-xs font-medium ${
-                            a.level >= 3 ? "bg-status-success-soft text-status-success"
-                            : a.level === 2 ? "bg-status-info-soft text-status-info"
-                            : "bg-status-warning-soft text-status-warning"}`}>
+                          <StatusChip
+                            tone={a.level >= 3 ? "success" : a.level === 2 ? "info" : "warning"}
+                            className="size-6 justify-center p-0"
+                          >
                             {a.level}
-                          </span>
+                          </StatusChip>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
@@ -571,8 +575,10 @@ export function ReviewsTab({ reviews, employees, onDone }: {
             <TableBody>
               {reviews.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium">
-                    {byId.has(r.employeeId) ? fullName(byId.get(r.employeeId)!) : "Unknown"}
+                  <TableCell>
+                    <PersonCell
+                      name={byId.has(r.employeeId) ? fullName(byId.get(r.employeeId)!) : "Unknown"}
+                    />
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {r.periodStart} to {r.periodEnd}
@@ -748,8 +754,10 @@ export function CasesTab({ cases, employees, onDone }: {
               {cases.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell className="font-mono text-xs">{c.reference}</TableCell>
-                  <TableCell className="font-medium">
-                    {byId.has(c.employeeId) ? fullName(byId.get(c.employeeId)!) : "—"}
+                  <TableCell>
+                    <PersonCell
+                      name={byId.has(c.employeeId) ? fullName(byId.get(c.employeeId)!) : "—"}
+                    />
                   </TableCell>
                   <TableCell className="text-xs">{c.kind.toLowerCase()}</TableCell>
                   <TableCell className="max-w-md whitespace-normal text-sm">

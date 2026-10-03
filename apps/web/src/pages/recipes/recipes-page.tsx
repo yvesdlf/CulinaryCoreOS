@@ -35,6 +35,10 @@ import {
   TablePagination,
   usePagination,
 } from "@/components/shared/table-pagination";
+import {
+  DensityToggle,
+  useTableDensity,
+} from "@/components/shared/table-density";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { RECIPE_CATEGORIES, RECIPE_STATUSES } from "@/lib/constants";
 
@@ -101,6 +105,7 @@ export function RecipesPage() {
   }, [recipes, searchQuery, categoryFilter, statusFilter, showArchived]);
 
   const pagination = usePagination(filtered);
+  const [density, setDensity] = useTableDensity();
 
   /*
    * Exports what is on screen, filters and all — not the whole catalogue.
@@ -218,6 +223,8 @@ export function RecipesPage() {
           />
           Show archived
         </label>
+
+        <DensityToggle value={density} onChange={setDensity} className="ml-auto" />
       </div>
 
       {/* Recipe table */}
@@ -231,7 +238,10 @@ export function RecipesPage() {
         </div>
       ) : (
         <>
-          <Table>
+          {/* Sticky header: the costing columns on the right are the ones
+              being compared down the list, and a number with no column name
+              above it is just a number. */}
+          <Table stickyHeader density={density}>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>

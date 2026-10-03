@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { StatusChip, type StatusTone } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,25 +68,13 @@ import {
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
-const MARK: Record<DateMarkState, { label: string; className: string }> = {
-  unsafe: {
-    label: "Past use-by",
-    className: "bg-status-danger-soft text-status-danger",
-  },
-  expiring: {
-    label: "Expiring",
-    className: "bg-status-warning-soft text-status-warning",
-  },
-  "past-best": {
-    label: "Past best-before",
-    className: "bg-status-info-soft text-status-info",
-  },
-  "unknown-kind": {
-    label: "Date unmarked",
-    className: "bg-status-warning-soft text-status-warning",
-  },
-  ok: { label: "In date", className: "bg-status-success-soft text-status-success" },
-  none: { label: "No date", className: "bg-muted text-muted-foreground" },
+const MARK: Record<DateMarkState, { label: string; tone: StatusTone }> = {
+  unsafe: { label: "Past use-by", tone: "danger" },
+  expiring: { label: "Expiring", tone: "warning" },
+  "past-best": { label: "Past best-before", tone: "info" },
+  "unknown-kind": { label: "Date unmarked", tone: "warning" },
+  ok: { label: "In date", tone: "success" },
+  none: { label: "No date", tone: "neutral" },
 };
 
 export function TraceabilityPage() {
@@ -249,19 +238,17 @@ export function TraceabilityPage() {
                       </TableCell>
                       <TableCell>
                         {a.lot.status !== "OK" ? (
-                          <span className="inline-flex rounded-full bg-status-danger-soft px-2 py-0.5 text-xs font-medium text-status-danger">
+                          <StatusChip tone="danger">
                             {a.lot.status === "RECALLED"
                               ? "Recalled"
                               : a.lot.status === "WITHDRAWN"
                                 ? "Withdrawn"
                                 : "On hold"}
-                          </span>
+                          </StatusChip>
                         ) : (
-                          <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${MARK[a.dateMark].className}`}
-                          >
+                          <StatusChip tone={MARK[a.dateMark].tone}>
                             {MARK[a.dateMark].label}
-                          </span>
+                          </StatusChip>
                         )}
                       </TableCell>
                       {/* Table cells default to nowrap; this one is a sentence. */}
@@ -359,11 +346,9 @@ export function TraceabilityPage() {
                             {l.receivedOn}
                           </TableCell>
                           <TableCell>
-                            <span
-                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${MARK[a.dateMark].className}`}
-                            >
+                            <StatusChip tone={MARK[a.dateMark].tone}>
                               {MARK[a.dateMark].label}
-                            </span>
+                            </StatusChip>
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-1">
