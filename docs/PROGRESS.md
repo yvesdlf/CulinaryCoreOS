@@ -815,6 +815,47 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       since the near-miss that prompted the rule. Nothing to rewrite — which
       matters, because the repository is public.
 
+## Found by the stage 0.5 interface work
+
+- [ ] **`react-hooks/purity` does not catch what its config comment claims.**
+      The rule was added on the strength of finding `Date.now()` inside a
+      `useMemo`, and `app-header.tsx` carries a workaround written in the
+      belief that it guards render bodies generally. It does not — it fires
+      inside hook callbacks only. Plain render bodies and `.map` callbacks sail
+      through: `development-tabs.tsx:144`, `rota-tabs.tsx:367`,
+      `menu-engineering.tsx:407`, `settings.tsx:296`,
+      `collection-print-page.tsx:81,122`,
+      `sub-recipe-print-page.tsx:62` all call `new Date()` during render.
+
+      One of them matters rather than being tidy-up:
+      `development-tabs.tsx:144` computes a late / not-late badge from "today"
+      at render time, so a page left open across midnight shows yesterday's
+      judgement until something unrelated re-renders it.
+
+- [ ] **The avatar is one tint rather than a colour per person.** The only
+      colours that clear 4,5:1 against their own initials in both themes are
+      the four status colours, and a red disc beside somebody's name — in a row
+      that also carries a status chip — reads as a statement about that person.
+      Six neutral `--avatar-tint-*` tokens would settle it; nothing else will,
+      because new raw hex outside `index.css` is not allowed.
+
+- [x] **The table container was a vertical scroll container and nobody knew.**
+      `overflow-x: auto` computes `overflow-y` to `auto`. That is why a naive
+      sticky header did nothing, and why the keyboard tab-stop logic — which
+      only measured the horizontal axis — would have left rows reachable by
+      mouse and not by keyboard the moment a height was capped. It now measures
+      both axes, and observes the table itself, because a capped container
+      stops resizing and rows arriving from the database would never
+      re-trigger the measurement.
+
+- [x] **The visual baselines are green again.** They had been stale for eight
+      weeks and fifteen of seventeen failed; CI excludes the suite, so nothing
+      caught it. Regenerated once for the whole stage, and rebound from
+      `seed_manuza.sql` — which `DEPLOY.md` applies at deployment and
+      `db reset` does not — to `seed.sql` alone, so a fresh clone can
+      reproduce them. The iPad baselines are still stale and need their own
+      pass.
+
 ## Backlog
 
 - [ ] **Organization switcher.** `auth_default_org_id()` now prefers an
