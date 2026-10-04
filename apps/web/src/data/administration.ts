@@ -424,3 +424,102 @@ export async function fetchHaccpTemplates(): Promise<
     id: r.id, code: r.code, title: r.title, active: Boolean(r.active),
   }));
 }
+
+// ── The overview ────────────────────────────────────────────────────────────
+/*
+ * One line per department and one for the venue (migration 0074).
+ *
+ * There is no role in any of this. What a caller sees is decided by the grants
+ * they already hold: the money columns come back null without Revenue, the
+ * profit columns without Pay. `maySeeMoney` and `maySeePay` come back as
+ * columns precisely so a screen can say "hidden" rather than drawing a zero —
+ * a dashboard that renders an inaccessible figure as 0 is worse than one that
+ * renders nothing, because somebody will act on the zero.
+ */
+
+export interface UnitOverview {
+  businessUnitId: string;
+  unitCode: string;
+  unitName: string;
+  parentId: string | null;
+  maySeeMoney: boolean;
+  maySeePay: boolean;
+  /** Decimal strings, or null — which means "nothing" or "not yours". See the flags. */
+  revenueToday: string | null;
+  coversToday: number | null;
+  profitToday: string | null;
+  labourToday: string | null;
+  requestsUnanswered: number;
+  requestsOverdue: number;
+  hygieneBreachesUntold: number;
+  shiftsToday: number;
+  lastHandoverStatus: string | null;
+  lastHandoverOn: string | null;
+  jobsOpen: number;
+  jobsEmergency: number;
+}
+
+export async function fetchUnitOverview(): Promise<UnitOverview[]> {
+  const { data, error } = await requireSupabase()
+    .from("unit_overview").select("*").order("unit_name");
+  if (error) fail("fetchUnitOverview", error);
+  return (data ?? []).map((r: any) => ({
+    businessUnitId: r.business_unit_id,
+    unitCode: r.unit_code, unitName: r.unit_name,
+    parentId: r.parent_id ?? null,
+    maySeeMoney: Boolean(r.may_see_money),
+    maySeePay: Boolean(r.may_see_pay),
+    revenueToday: r.revenue_today === null || r.revenue_today === undefined
+      ? null : String(r.revenue_today),
+    coversToday: r.covers_today === null || r.covers_today === undefined
+      ? null : Number(r.covers_today),
+    profitToday: r.profit_today === null || r.profit_today === undefined
+      ? null : String(r.profit_today),
+    labourToday: r.labour_today === null || r.labour_today === undefined
+      ? null : String(r.labour_today),
+    requestsUnanswered: Number(r.requests_unanswered ?? 0),
+    requestsOverdue: Number(r.requests_overdue ?? 0),
+    hygieneBreachesUntold: Number(r.hygiene_breaches_untold ?? 0),
+    shiftsToday: Number(r.shifts_today ?? 0),
+    lastHandoverStatus: r.last_handover_status ?? null,
+    lastHandoverOn: r.last_handover_on ?? null,
+    jobsOpen: Number(r.jobs_open ?? 0),
+    jobsEmergency: Number(r.jobs_emergency ?? 0),
+  }));
+}
+
+export interface VenueOverview {
+  venueName: string;
+  maySeeMoney: boolean;
+  maySeePay: boolean;
+  revenueToday: string | null;
+  profitToday: string | null;
+  requestsUnanswered: number;
+  requestsOverdue: number;
+  jobsEmergency: number;
+  handoversUnread: number;
+  /** A queue that is not draining means nobody is being told anything. */
+  messagesWaiting: number;
+}
+
+export async function fetchVenueOverview(): Promise<VenueOverview | null> {
+  const { data, error } = await requireSupabase()
+    .from("venue_overview").select("*").maybeSingle();
+  if (error) fail("fetchVenueOverview", error);
+  if (!data) return null;
+  const r = data as any;
+  return {
+    venueName: r.venue_name,
+    maySeeMoney: Boolean(r.may_see_money),
+    maySeePay: Boolean(r.may_see_pay),
+    revenueToday: r.revenue_today === null || r.revenue_today === undefined
+      ? null : String(r.revenue_today),
+    profitToday: r.profit_today === null || r.profit_today === undefined
+      ? null : String(r.profit_today),
+    requestsUnanswered: Number(r.requests_unanswered ?? 0),
+    requestsOverdue: Number(r.requests_overdue ?? 0),
+    jobsEmergency: Number(r.jobs_emergency ?? 0),
+    handoversUnread: Number(r.handovers_unread ?? 0),
+    messagesWaiting: Number(r.messages_waiting ?? 0),
+  };
+}

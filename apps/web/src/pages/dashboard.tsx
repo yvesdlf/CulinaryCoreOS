@@ -13,13 +13,19 @@
 // read. There is no separate summary to fall out of step with the dishes.
 // ---------------------------------------------------------------------------
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Package, ChefHat, Layers, ArrowRight, TriangleAlert } from "lucide-react";
 import type { Recipe } from "@ccos/shared";
 import type Decimal from "decimal.js";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { VenueLine, UnitTiles } from "@/components/shared/overview-tiles";
+import {
+  fetchVenueOverview, fetchUnitOverview,
+  type VenueOverview, type UnitOverview,
+} from "@/data/repository";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Card,
   CardContent,
@@ -65,6 +71,29 @@ interface OffTarget {
 }
 
 export function DashboardPage() {
+  /*
+   * Loaded beside the catalogue rather than instead of it: a venue with no
+   * database configured still gets the food-cost page off the mock catalogue,
+   * which is what `isSupabaseConfigured` has guarded since the first commit.
+   */
+  const [venue, setVenue] = useState<VenueOverview | null>(null);
+  const [units, setUnits] = useState<UnitOverview[]>([]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let live = true;
+    void Promise.all([fetchVenueOverview(), fetchUnitOverview()])
+      .then(([v, u]) => { if (live) { setVenue(v); setUnits(u); } })
+      .catch(() => {
+        /*
+         * The overview failing must not take the food-cost page with it. A
+         * venue whose grants are half set up should still see its menu.
+         */
+        if (live) { setVenue(null); setUnits([]); }
+      });
+    return () => { live = false; };
+  }, []);
+
   const products = useProductStore((s) => s.products);
   const recipes = useRecipeStore((s) => s.recipes);
   const subRecipes = useSubRecipeStore((s) => s.subRecipes);
@@ -172,8 +201,34 @@ export function DashboardPage() {
     <div>
       <PageHeader
         title="Dashboard"
-        description={`Food cost across the menu, against a ${TARGET_FOOD_COST_PERCENT}% target`}
+        description="Every department, today. Below it, food cost across the menu."
       />
+
+      {/*
+        * The whole venue first, then a tile per department, then the food-cost
+        * screen this page has always been.
+        *
+        * The ordering is the argument. The original brief was that the main
+        * dashboard should be "the CEO looking at the full scope of the
+        * business" while the food-cost view stays as the culinary one — so the
+        * culinary content is kept entirely and moved under the overview rather
+        * than to another route, because it is what a head chef opens this page
+        * for and a redirect would cost them a click to punish them for not
+        * being the owner.
+        *
+        * What anybody sees in the overview is their grants, not their role.
+        * See `unit_overview` in migration 0074.
+        */}
+      {venue && (
+        <section className="mb-6 space-y-3">
+          <VenueLine venue={venue} />
+          <UnitTiles units={units} />
+        </section>
+      )}
+
+      <h2 className="mb-3 border-t pt-6 text-sm font-medium">
+        Food cost across the menu, against a {TARGET_FOOD_COST_PERCENT}% target
+      </h2>
 
       {/* ── Headline figures ──────────────────────────────────────────────── */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

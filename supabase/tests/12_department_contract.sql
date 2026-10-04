@@ -221,20 +221,26 @@ select t.expect_value($$
   select raised_from_unit from request_board where title='T-SEC torch batteries'$$,
   'and the board says which department is asking', 'Security');
 
-select '── contract: what is NOT yet true ───────────────────────────────';
+select '── contract: and a tile on the overview ─────────────────────────';
 
 /*
- * One of Part C's bullets is still not built, and saying so here is cheaper
- * than this file reading greener than the platform is.
+ * The last of Part C's ten bullets, and this was a GAP assertion until 0074
+ * for the same reason the front-door one was: so that the day it was built,
+ * the line would fail and somebody would have to come and delete it.
  *
- * "A tile on the overview screen" — `request_load` is the row such a tile
- * would read and it exists, but the dashboard is still per-section rather than
- * per-unit. Asserted as a gap, the same way 05_people.sql asserts the leave
- * one, so that the day it is built this line fails.
+ * Security was created three sections above, as one row, by a venue rather
+ * than by a programmer. Nothing in `unit_overview` mentions it.
  */
 select t.expect_value($$
-  select count(*)::text from information_schema.views
-   where table_schema='public' and table_name='unit_overview'$$,
-  'GAP: the overview screen is still per-section, not per-department', '0');
+  select count(*)::text from unit_overview where unit_code='SECURITY'$$,
+  'Security has a tile on the overview without anybody adding one', '1');
+
+select t.expect_value($$
+  select requests_unanswered::text from unit_overview where unit_code='SECURITY'$$,
+  'carrying the work waiting on it', '1');
+
+select t.expect_value($$
+  select may_see_money::text from unit_overview where unit_code='SECURITY'$$,
+  'and saying what this caller is allowed to be shown about it', 'true');
 
 rollback;
