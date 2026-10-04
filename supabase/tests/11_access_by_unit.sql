@@ -50,7 +50,7 @@ select '── access by unit: which sections can be scoped ──────�
 select t.expect_value($$
   select string_agg(code, ',' order by code) from app_sections where scopes_by_unit$$,
   'the scopable sections come from the catalogue',
-  'MAINTENANCE,PARAMETERS,PEOPLE,PURCHASING,REVENUE');
+  'HANDOVER,MAINTENANCE,PARAMETERS,PEOPLE,PURCHASING,REVENUE');
 
 /*
  * Administration is not on that list, and the reason is worth its own

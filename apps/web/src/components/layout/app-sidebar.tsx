@@ -22,6 +22,7 @@ import {
   Inbox,
   UtensilsCrossed,
   DoorOpen,
+  ClipboardList,
 } from "lucide-react";
 import {
   Sidebar,
@@ -97,6 +98,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
        * does not think of themselves as doing maintenance.
        */
       { title: "Requests", to: "/requests", icon: DoorOpen },
+      { title: "Handover", to: "/handover", icon: ClipboardList },
       { title: "Production", to: "/production", icon: Factory },
       { title: "Hygiene", to: "/hygiene", icon: SprayCan },
       { title: "Maintenance", to: "/maintenance", icon: Wrench },

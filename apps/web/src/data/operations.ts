@@ -1596,3 +1596,151 @@ export async function fetchRequestLoad(): Promise<RequestLoadRow[]> {
     oldestUnansweredAt: r.oldest_unanswered_at ?? null,
   }));
 }
+
+// ── Handover ────────────────────────────────────────────────────────────────
+/*
+ * What the last shift needs the next one to know (migration 0071).
+ *
+ * The competitor is WhatsApp, which wins on four seconds and loses on
+ * everything afterwards. The parts of that worth carrying into the data layer:
+ * an item can point at the request it is about rather than describing it
+ * again, and a published handover does not change — a correction is another
+ * item, which is why `addHandoverItem` works on a published one and
+ * `updateHandover` does not.
+ */
+
+export type HandoverStatus = "DRAFT" | "PUBLISHED";
+export type HandoverItemKind =
+  "BROKEN" | "GUEST" | "STOCK" | "PEOPLE" | "SAFETY" | "NOTE";
+
+export interface HandoverRow {
+  id: string;
+  businessUnitId: string;
+  unitCode: string;
+  unitName: string;
+  onDate: string;
+  service: string | null;
+  status: HandoverStatus;
+  summary: string | null;
+  writtenByEmail: string | null;
+  publishedAt: string | null;
+  acknowledgedByEmail: string | null;
+  acknowledgedAt: string | null;
+  itemCount: number;
+  openItems: number;
+  /** Null for a draft: it has not been offered to anybody, so it is not unread. */
+  unread: boolean | null;
+}
+
+export interface HandoverItem {
+  id: string;
+  handoverId: string;
+  kind: HandoverItemKind;
+  note: string;
+  requestId: string | null;
+  workOrderId: string | null;
+  createdAt: string;
+}
+
+export async function fetchHandovers(sinceDate: string): Promise<HandoverRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("handover_board").select("*")
+    .gte("on_date", sinceDate)
+    .order("on_date", { ascending: false });
+  if (error) fail("fetchHandovers", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    businessUnitId: r.business_unit_id,
+    unitCode: r.unit_code, unitName: r.unit_name,
+    onDate: r.on_date, service: r.service ?? null,
+    status: r.status, summary: r.summary ?? null,
+    writtenByEmail: r.written_by_email ?? null,
+    publishedAt: r.published_at ?? null,
+    acknowledgedByEmail: r.acknowledged_by_email ?? null,
+    acknowledgedAt: r.acknowledged_at ?? null,
+    itemCount: Number(r.item_count ?? 0),
+    openItems: Number(r.open_items ?? 0),
+    unread: r.unread === null || r.unread === undefined ? null : Boolean(r.unread),
+  }));
+}
+
+export async function fetchHandoverItems(handoverId: string): Promise<HandoverItem[]> {
+  const { data, error } = await requireSupabase()
+    .from("handover_items").select("*")
+    .eq("handover_id", handoverId)
+    .order("created_at");
+  if (error) fail("fetchHandoverItems", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, handoverId: r.handover_id, kind: r.kind, note: r.note,
+    requestId: r.request_id ?? null, workOrderId: r.work_order_id ?? null,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function startHandover(input: {
+  businessUnitId: string;
+  onDate: string;
+  service?: string | null;
+  summary?: string | null;
+}): Promise<string> {
+  const { data, error } = await requireSupabase()
+    .from("handovers")
+    .insert({
+      business_unit_id: input.businessUnitId,
+      on_date: input.onDate,
+      service: input.service ?? null,
+      summary: input.summary ?? null,
+    })
+    .select("id").single();
+  if (error) fail("startHandover", error);
+  return (data as { id: string }).id;
+}
+
+/**
+ * Edit a draft, or publish it.
+ *
+ * Publishing is one way. The database refuses to change the summary afterwards
+ * — a handover is read by somebody who was not there, to learn what was known
+ * at the time, and editing it replaces the record rather than correcting it.
+ */
+export async function updateHandover(
+  id: string,
+  patch: { summary?: string | null; status?: HandoverStatus },
+): Promise<void> {
+  const row: Record<string, unknown> = {};
+  if (patch.summary !== undefined) row.summary = patch.summary;
+  if (patch.status !== undefined) row.status = patch.status;
+  const { error } = await requireSupabase().from("handovers").update(row).eq("id", id);
+  if (error) fail("updateHandover", error);
+}
+
+/**
+ * Say the next shift has read it.
+ *
+ * The address sent here is discarded: the database files it under the caller.
+ * "Somebody read this, by name" is the one fact a message on a phone cannot
+ * give you, and it is worth nothing if the client can choose the name.
+ */
+export async function acknowledgeHandover(id: string): Promise<void> {
+  const { error } = await requireSupabase()
+    .from("handovers")
+    .update({ acknowledged_by_email: "pending" })
+    .eq("id", id);
+  if (error) fail("acknowledgeHandover", error);
+}
+
+/** Works on a published handover too — that is how a correction is made. */
+export async function addHandoverItem(input: {
+  handoverId: string;
+  kind: HandoverItemKind;
+  note: string;
+  requestId?: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("handover_items").insert({
+    handover_id: input.handoverId,
+    kind: input.kind,
+    note: input.note,
+    request_id: input.requestId ?? null,
+  });
+  if (error) fail("addHandoverItem", error);
+}
