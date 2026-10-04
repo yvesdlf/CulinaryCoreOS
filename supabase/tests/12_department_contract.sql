@@ -243,4 +243,93 @@ select t.expect_value($$
   select may_see_money::text from unit_overview where unit_code='SECURITY'$$,
   'and saying what this caller is allowed to be shown about it', 'true');
 
+select '── contract: and three more, at once, with no code at all ───────';
+
+/*
+ * PLAN.md Stage 4 item 27: "add Security, Stewarding, IT, Bakery **as data**",
+ * and "you get the proof that Part C works".
+ *
+ * Security is above, built up one capability at a time. These three are the
+ * actual claim: a venue adds departments in one statement, and everything
+ * underneath is already true for them. If any line below needed a migration,
+ * Part C is wrong — and the roadmap says it is better to find that out at
+ * department three than at department eight. This is department five.
+ */
+select t.expect_rows($$
+  insert into business_units (org_id, code, name)
+  select o.id, c.code, c.name
+    from organizations o,
+         (values ('STEWARD', 'Stewarding'),
+                 ('IT', 'IT'),
+                 ('BAKERY', 'Bakery')) as c(code, name)
+   where o.name='Demo Kitchen'$$,
+  'three more departments, in one statement', 3);
+
+select t.expect_value($$
+  select string_agg(unit_code(code), ',' order by code) from business_units
+   where code in ('BAKERY','IT','STEWARD')
+     and org_id=(select id from organizations where name='Demo Kitchen')$$,
+  'each with a document prefix nobody chose', 'BAK,IT,STE');
+
+select t.expect_value($$
+  select count(*)::text from unit_overview
+   where unit_code in ('BAKERY','IT','STEWARD')$$,
+  'each with a tile on the overview', '3');
+
+select t.expect_rows($$
+  insert into work_orders (org_id, title, business_unit_id, raised_by_email)
+  select o.id, 'T-IT switch in the comms cupboard',
+         (select id from business_units where code='IT' and org_id=o.id),
+         'chef@test.local'
+    from organizations o where o.name='Demo Kitchen' limit 1$$,
+  'IT raises a job', 1);
+select t.expect_value($$
+  select left(reference, 6) from work_orders where title='T-IT switch in the comms cupboard'$$,
+  'numbered for IT', 'WO-IT-');
+
+select t.expect_rows($$
+  insert into haccp_forms (org_id, code, section, title, frequency, is_ccp, fields,
+                           business_unit_id, raises_job)
+  select o.id, 'T-STE.1', 'Stewarding', 'T-Pot wash final rinse', 'DAILY', true,
+         '[{"label":"Rinse °C","type":"number"}]'::jsonb,
+         (select id from business_units where code='STEWARD' and org_id=o.id), true
+    from organizations o where o.name='Demo Kitchen' limit 1$$,
+  'Stewarding gets its own food-safety form', 1);
+select t.expect_value($$
+  select count(*)::text from hygiene_by_unit
+   where unit_code='STEWARD' and form_code='T-STE.1'$$,
+  'which appears on its own compliance list and nobody else''s', '1');
+
+select t.expect_rows($$
+  insert into handovers (business_unit_id, on_date, summary)
+  select (select id from business_units where code='BAKERY' and org_id=o.id),
+         current_date, 'T-overnight prove went long'
+    from organizations o where o.name='Demo Kitchen' limit 1$$,
+  'the bakery writes a handover', 1);
+
+select t.expect_rows($$
+  insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount)
+  select (select id from business_units where code='BAKERY' and org_id=o.id),
+         (select id from revenue_channels where code='TAKEAWAY' and org_id=o.id),
+         current_date - 1, 350000
+    from organizations o where o.name='Demo Kitchen' limit 1$$,
+  'and takes money through a channel of its own', 1);
+
+select t.expect_rows($$
+  insert into member_access (org_id, user_id, section_code, level, business_unit_id)
+  select o.id, 'a0000000-0000-0000-0000-000000000004', 'MAINTENANCE', 'WRITE',
+         (select id from business_units where code='IT' and org_id=o.id)
+    from organizations o where o.name='Demo Kitchen'$$,
+  'and somebody can be given IT''s jobs and nobody else''s', 1);
+
+/*
+ * Five departments were added in this file — Security, Stewarding, IT, Bakery,
+ * plus the fixtures' own — and the migration count did not move. That sentence
+ * is the whole of Part C, and it is checked rather than asserted in prose.
+ */
+select t.expect_value($$
+  select count(*)::text from supabase_migrations.schema_migrations
+   where version > '0075'$$,
+  'and no migration was needed for any of it', '0');
+
 rollback;

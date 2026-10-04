@@ -6,11 +6,11 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `f2be0bd` · 65 migrations · 569 unit tests · 372 database controls ·
-5 browser spec files · 107 tables / 391 policies / 154 functions / 262 triggers
-/ 36 views / 17 sections, rebuilt from empty on 2026-10-03. Typecheck, lint,
-569 unit tests, 372 database controls and 54 desktop browser tests all green
-the same day. 54.433 lines of TypeScript under `apps/web/src`, 17.514 of SQL in
+**Head:** `4d5da93` · 75 migrations · 574 unit tests · 579 database controls ·
+5 browser spec files · 113 tables / 403 policies / 174 functions / 276 triggers
+/ 48 views / 19 sections, rebuilt from empty on 2026-10-04. Typecheck, lint,
+574 unit tests, 579 database controls and 54 desktop browser tests all green
+the same day. 56.218 lines of TypeScript under `apps/web/src`, 20.335 of SQL in
 migrations.
 
 > **Stages 1 and 2 of `PLAN.md` are complete.** Stage 1 merged the two
@@ -19,9 +19,26 @@ migrations.
 > `12_department_contract.sql`), and split the 5.260-line `repository.ts` into
 > six modules behind a barrel. Stage 2 added production records (0060), media
 > (0059), pay rates (0064) and daily takings (0065). The control suite went
-> from 98 checks to 372 over the same work.
+> from 98 checks to 579 over the same work.
 >
-> Every migration in that run was verified on a rebuild from empty, with its
+> **Stages 3 and 4 are complete as well, bar two things that need accounts.**
+> Stage 3 built the shared front door every department raises requests through
+> (0066, 0067), escalation up the department tree (0068), a scheduler — which
+> three earlier migrations had each said did not exist (0069) — the outbox
+> worker (0070) and shift handover (0071). Stage 4 scoped hygiene per
+> department and made a failed check open a request by itself (0072), added
+> profit per department and an accounting export (0073), the role-less overview
+> screen (0074) and bar pour cost (0075).
+>
+> **What those two stages do not include, said plainly.** No message has
+> reached anybody's inbox: the outbox worker is built and tested, and the last
+> hop needs a provider account the platform does not have. Nothing has been
+> proved against a live WhatsApp or assistant account for the same reason.
+> Supplier payments are not built, so a venue cannot answer "what do we owe"
+> here. All three are asserted as gaps in the control suite, so the day any of
+> them is built the suite fails and this paragraph has to change.
+>
+> Every migration in both runs was verified on a rebuild from empty, with its
 > new rules falsified by hand, before it was merged. That found four things
 > nothing else would have: 0060 silently dropped `seed_media_defaults` when it
 > rewrote the organisation seeder — a new venue got no retention policy, so
@@ -40,7 +57,7 @@ migrations.
 > rebuilding from empty and counting.
 
 > **The database controls are tested, and now in CI.** `supabase/tests/` holds
-> 372 checks across access, maintenance, housekeeping, purchasing, people,
+> 579 checks across access, maintenance, housekeeping, purchasing, people,
 > business units, media, production, starting data, use-by dates, unit-scoped
 > access, the department contract, pay and revenue,
 > run against a schema rebuilt from empty. Proved to go red: dropping the
@@ -393,8 +410,8 @@ operator's job, not automated.
       macros entered by hand.
 - [x] CI: three jobs, green. It failed on all seven of its first runs while
       reporting nothing, because it died at pnpm setup before a test ran. The
-      static job now runs typecheck, 569 unit tests, lint and the production
-      build; the browser job runs the 372 database controls against a schema
+      static job now runs typecheck, 574 unit tests, lint and the production
+      build; the browser job runs the 579 database controls against a schema
       rebuilt from empty before it starts a browser at all, because that step
       needs nothing but the schema and is the cheapest way to find a missing
       trigger.

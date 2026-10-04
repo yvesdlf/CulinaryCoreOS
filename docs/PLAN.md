@@ -197,11 +197,22 @@ are Stage 4.
 
 ### Stage 3 · The platform can talk — **L**
 
-- [ ] Send things by email *(13)*
-- [ ] One front door for reports — see Part C *(and 12)*
-- [ ] Shift handover *(14)*
-- [ ] Chase what nobody answers *(15)*
-- [ ] Prove WhatsApp and the assistant against live accounts *(16)*
+- [x] Send things by email *(13)* — the worker: claiming, backoff, quiet hours
+      including the window that crosses midnight, and nothing sent twice. **The
+      last hop still needs a provider account**, so no message has reached an
+      inbox; a channel with no endpoint waits rather than failing, and the
+      suite asserts that no real channel has one; 0070.
+- [x] One front door for reports — see Part C *(and 12)* — `requests`: anybody
+      may raise one, the receiving department answers it, and it can become a
+      work order while staying the record of what was asked; 0066, 0067.
+- [x] Shift handover *(14)* — published is append-only, an item can be the
+      request rather than a copy of it, and somebody read it by name; 0071.
+- [x] Chase what nobody answers *(15)* — up the department tree, once per
+      period ignored rather than once per sweep. `pg_cron` runs it, which is
+      also what three earlier migrations said did not exist; 0068, 0069.
+- [ ] Prove WhatsApp and the assistant against live accounts *(16)* —
+      **blocked on accounts.** Nothing here can be proved without credentials
+      the platform does not have.
 
 **You get:** an approver who knows there is something waiting, a supplier who
 receives the order, a porter who can photograph a leaking tap and be told when
@@ -209,11 +220,26 @@ it is fixed, and handover that stops living in WhatsApp.
 
 ### Stage 4 · Dashboards, and departments as data — **M**
 
-- [ ] The one overview screen, showing what you are responsible for *(33)*
-- [ ] Hygiene per department, and failed checks raising jobs *(24)*
-- [ ] Bar pour cost *(23)*
-- [ ] Finance: payments and profit per department *(22)*
-- [ ] Add Security, Stewarding, IT, Bakery **as data** *(27)*
+- [x] The one overview screen, showing what you are responsible for *(33)* —
+      one view, no role written anywhere: what a caller sees is their grants.
+      "Hidden" is drawn and a zero is never drawn in its place; 0074.
+- [x] Hygiene per department, and failed checks raising jobs *(24)* — a form
+      belongs to a department, and a breach opens a *request* rather than a
+      work order, so it uses the routing and escalation that already exist;
+      0072.
+- [x] Bar pour cost *(23)* — a second cost basis, expected loss defaulting to
+      zero so the variance is harsh rather than forgiving, and the same
+      theoretical-against-actual shape as the kitchen's; 0075.
+- [x] Finance: profit per department *(22)* — revenue, labour and cost of
+      goods in one line, with what could not be attributed shown rather than
+      spread. Called gross profit and nothing better, because rent, utilities
+      and tax are not in this platform. **Payments are not built** and the
+      suite asserts it; 0073.
+- [x] Add Security, Stewarding, IT, Bakery **as data** *(27)* — four
+      departments added in `12_department_contract.sql` with no migration, each
+      getting its own document prefix, tile, compliance list, handover,
+      revenue channel and scoped permission. The last assertion in that file
+      checks that no migration was needed for any of it.
 
 **You get:** the owner's view, the finance view, the chef's view — all the same
 screen, showing different things. And the proof that Part C works.
@@ -248,12 +274,8 @@ adding department eight.
 - [x] The places it looks after, and every piece of equipment in them
 - [x] Its own suppliers, and the full ordering chain through the same approvals
 - [x] Its own compliance forms and its own list of what is overdue
-- [ ] The ability to raise a request to any other department, and receive theirs
-      — **two of five shapes.** It can raise a maintenance job and a
-      requisition today. An incident, a complaint and a staff request have no
-      shared route, which is the one front door in Stage 3.
-- [ ] A tile on the overview screen — the overview is still per-section, not
-      per-unit.
+- [x] The ability to raise a request to any other department, and receive theirs
+- [x] A tile on the overview screen
 - [x] Permissions that can be limited to it
 
 One thing the test found rather than confirmed: a work order with a unit and no

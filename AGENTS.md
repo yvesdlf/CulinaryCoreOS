@@ -31,9 +31,9 @@ supabase/seed*.sql     demo data. Never required for correctness.
 
 ```bash
 pnpm -C apps/web exec tsc --noEmit      # typecheck
-pnpm -C apps/web exec vitest run        # 569 unit tests
+pnpm -C apps/web exec vitest run        # 574 unit tests
 pnpm --filter web lint                  # eslint
-./supabase/tests/run.sh                 # 372 database controls
+./supabase/tests/run.sh                 # 579 database controls
 pnpm -C apps/web dev                    # dev server on 5173 (pinned)
 ```
 
@@ -52,7 +52,7 @@ check**, because it sits in the script list and everybody assumes somebody runs
 it.
 
 The rule set is deliberately narrow, and `apps/web/eslint.config.js` says why
-at each rule. There is already a type checker in CI, 569 unit tests and 98
+at each rule. There is already a type checker in CI, 574 unit tests and 98
 database checks, so lint is not asked to find type errors or logic bugs. It is
 there for the category none of those catch: code that is dead, unreachable, or
 wrong in a way that still compiles.

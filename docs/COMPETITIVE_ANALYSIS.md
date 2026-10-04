@@ -143,7 +143,7 @@ integration and PCI DSS rather than with any function of their own software.
 | Traceability, lots, recall | not mentioned | one step back, Article 18 |
 | HR, rota, certificates, training | not mentioned | built |
 | Maintenance and housekeeping | not mentioned | built |
-| Controls proved in the database | not claimed | the whole basis of the design — and since 2026-09-20, 372 of those proofs run in CI on every push rather than having been run once by hand |
+| Controls proved in the database | not claimed | the whole basis of the design — and since 2026-09-20, 579 of those proofs run in CI on every push rather than having been run once by hand |
 | Shipping to paying customers | yes — a commercial product sold across six countries | **no — it runs on one laptop** |
 
 **They are a back office. We are an operation.** The overlap is one module out
@@ -185,7 +185,13 @@ document argued hardest for.**
   The note said it was blocked by gaps 5 and 6. Both are now done: one business
   unit tree (0058) and permissions that can name a unit (0062). The remaining
   work is the reporting, not the structure.
-- **Gaps 35, 37, 38, 39, 40 and 41 have not moved** — e-invoicing,
+- **Gap 38 — depreciation: still open, but the half it needed is now there.**
+The note said the asset register "holds a purchase cost and does nothing
+financial with it". `unit_profit_daily` and `accounting_export` are the
+financial side it would post into, so depreciation is now a schedule and a
+monthly line rather than a new reporting layer.
+
+**Gaps 35, 37, 39, 40 and 41 have not moved** — e-invoicing,
   depreciation, barcode counting, multi-currency and a USALI chart of accounts
   are all still open. This paragraph exists so nobody reads two closed gaps as
   the table above having improved generally.
@@ -203,7 +209,7 @@ rather than a feature:
   table above said the controls were "the whole basis of the design", which was
   true of the design and overstated the evidence: every one of them had been
   proved once, by hand, in a scratch file nobody kept. `supabase/tests/` now
-  holds 372 checks — up from 98 a fortnight ago — across access, maintenance,
+  holds 579 checks — up from 98 a fortnight ago — across access, maintenance,
   housekeeping, purchasing, the rota, the business-unit tree, unit-scoped
   permissions, media, production, starting data, use-by dates, the
   add-a-department contract, pay and revenue, run against a schema rebuilt from
@@ -215,6 +221,13 @@ rather than a feature:
 - **A lint gate exists**, which found one real defect and 29 pieces of dead
   code. Minor competitively; it belongs here only because the row above about
   being able to trust the thing is the row this document leans on.
+- **The platform can now talk, except for the last hop.** The outbox has been
+  filling since migration 0031 and nothing had ever drained it; there is now a
+  worker that claims, backs off, respects quiet hours and never sends the same
+  thing twice — and no message has reached an inbox, because that needs a
+  provider account. Against a competitor that emails suppliers today, "built
+  except for the part that emails" is the honest position and is not the same
+  as built.
 - **Deployment configuration exists**, and the product is still not deployed.
   The gap between those two sentences is the honest position: they are selling
   a running product across six countries, and nobody outside this building has
