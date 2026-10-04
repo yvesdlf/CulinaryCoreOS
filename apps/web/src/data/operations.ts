@@ -1400,3 +1400,199 @@ export async function fetchVarianceTolerance(): Promise<number> {
   // seeded default; falling back to zero would paint every gram red.
   return data ? Number((data as { value: number }).value) : 5;
 }
+
+// ── Requests: the shared front door ─────────────────────────────────────────
+/*
+ * The intake every department shares, from migration 0066.
+ *
+ * In this module rather than one of its own because a request is operational
+ * work — it sits beside maintenance jobs and hygiene records, and most of them
+ * become one or inform one. The department it goes to is a property of the
+ * kind, not of the caller, so nothing here lets a screen choose a destination.
+ */
+
+export type RequestStatus =
+  | "NEW" | "ACKNOWLEDGED" | "IN_PROGRESS" | "BLOCKED"
+  | "RESOLVED" | "CLOSED" | "REJECTED";
+
+export type RequestPriority = "EMERGENCY" | "HIGH" | "NORMAL" | "LOW";
+
+export interface RequestType {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  toUnitId: string;
+  defaultPriority: RequestPriority;
+  respondWithinHours: number | null;
+  becomes: "WORK_ORDER" | null;
+  active: boolean;
+}
+
+export async function fetchRequestTypes(): Promise<RequestType[]> {
+  const { data, error } = await requireSupabase()
+    .from("request_types").select("*").order("name");
+  if (error) fail("fetchRequestTypes", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, code: r.code, name: r.name, description: r.description ?? null,
+    toUnitId: r.to_unit_id,
+    defaultPriority: r.default_priority,
+    respondWithinHours: r.respond_within_hours === null || r.respond_within_hours === undefined
+      ? null : Number(r.respond_within_hours),
+    becomes: r.becomes ?? null,
+    active: Boolean(r.active),
+  }));
+}
+
+export interface RequestRow {
+  id: string;
+  reference: string;
+  title: string;
+  detail: string | null;
+  status: RequestStatus;
+  priority: RequestPriority;
+  businessUnitId: string;
+  unitCode: string;
+  unitName: string;
+  kindCode: string;
+  kindName: string;
+  raisedByEmail: string | null;
+  raisedFromUnit: string | null;
+  locationName: string | null;
+  ownerName: string | null;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+  respondBy: string | null;
+  resolution: string | null;
+  convertedType: string | null;
+  convertedId: string | null;
+  hoursOpen: number;
+  /** Null where nothing was promised. Not false — there is nothing to be on time against. */
+  answeredLate: boolean | null;
+}
+
+export async function fetchRequests(): Promise<RequestRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("request_board").select("*").order("created_at", { ascending: false });
+  if (error) fail("fetchRequests", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, reference: r.reference, title: r.title, detail: r.detail ?? null,
+    status: r.status, priority: r.priority,
+    businessUnitId: r.business_unit_id, unitCode: r.unit_code, unitName: r.unit_name,
+    kindCode: r.kind_code, kindName: r.kind_name,
+    raisedByEmail: r.raised_by_email ?? null,
+    raisedFromUnit: r.raised_from_unit ?? null,
+    locationName: r.location_name ?? null,
+    ownerName: r.owner_name ?? null,
+    createdAt: r.created_at,
+    acknowledgedAt: r.acknowledged_at ?? null,
+    resolvedAt: r.resolved_at ?? null,
+    respondBy: r.respond_by ?? null,
+    resolution: r.resolution ?? null,
+    convertedType: r.converted_type ?? null,
+    convertedId: r.converted_id ?? null,
+    hoursOpen: Number(r.hours_open ?? 0),
+    answeredLate: r.answered_late === null || r.answered_late === undefined
+      ? null : Boolean(r.answered_late),
+  }));
+}
+
+/**
+ * Raise one.
+ *
+ * No department is sent. The kind decides where it goes, and the database
+ * overwrites anything a client supplies — a request addressed by whoever
+ * raised it is a request that can be addressed to the wrong department, and
+ * the person waiting would never know.
+ */
+export async function raiseRequest(input: {
+  requestTypeId: string;
+  title: string;
+  detail?: string | null;
+  priority?: RequestPriority | null;
+  locationId?: string | null;
+  raisedFromUnitId?: string | null;
+}): Promise<string> {
+  const { data, error } = await requireSupabase()
+    .from("requests")
+    .insert({
+      request_type_id: input.requestTypeId,
+      title: input.title,
+      detail: input.detail ?? null,
+      priority: input.priority ?? undefined,
+      location_id: input.locationId ?? null,
+      raised_from_unit_id: input.raisedFromUnitId ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) fail("raiseRequest", error);
+  return (data as { id: string }).id;
+}
+
+/**
+ * Move one along.
+ *
+ * Only the receiving department may, and the database says so rather than this
+ * file: `enforce_request_write` reads the row's own department and asks for a
+ * grant on it, so a kitchen-scoped grant answers kitchen requests and nothing
+ * else. A rejection without a reason is refused by a check constraint, which
+ * is why `resolution` is required here for that one status.
+ */
+export async function updateRequest(
+  id: string,
+  patch: { status?: RequestStatus; resolution?: string | null; ownerEmployeeId?: string | null },
+): Promise<void> {
+  const row: Record<string, unknown> = {};
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.resolution !== undefined) row.resolution = patch.resolution;
+  if (patch.ownerEmployeeId !== undefined) row.owner_employee_id = patch.ownerEmployeeId;
+  const { error } = await requireSupabase().from("requests").update(row).eq("id", id);
+  if (error) fail("updateRequest", error);
+}
+
+/**
+ * Turn one into a maintenance job, keeping both.
+ *
+ * One transaction in the database, because two inserts from the browser leave
+ * a window in which the request says it was converted and the job does not
+ * exist — and the request is the thing somebody is watching.
+ */
+export async function convertRequestToWorkOrder(
+  requestId: string,
+  note?: string | null,
+): Promise<string> {
+  const { data, error } = await requireSupabase().rpc("convert_request_to_work_order", {
+    p_request: requestId,
+    p_note: note ?? null,
+  });
+  if (error) fail("convertRequestToWorkOrder", error);
+  return data as string;
+}
+
+export interface RequestLoadRow {
+  businessUnitId: string;
+  unitCode: string;
+  unitName: string;
+  openCount: number;
+  unansweredCount: number;
+  overdueCount: number;
+  emergencyCount: number;
+  oldestUnansweredAt: string | null;
+}
+
+/** One line per department: what is waiting on them. The row a tile reads. */
+export async function fetchRequestLoad(): Promise<RequestLoadRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("request_load").select("*").order("unit_name");
+  if (error) fail("fetchRequestLoad", error);
+  return (data ?? []).map((r: any) => ({
+    businessUnitId: r.business_unit_id,
+    unitCode: r.unit_code, unitName: r.unit_name,
+    openCount: Number(r.open_count ?? 0),
+    unansweredCount: Number(r.unanswered_count ?? 0),
+    overdueCount: Number(r.overdue_count ?? 0),
+    emergencyCount: Number(r.emergency_count ?? 0),
+    oldestUnansweredAt: r.oldest_unanswered_at ?? null,
+  }));
+}

@@ -31,10 +31,23 @@ export default defineConfig({
       // because #f8f7f4 and #ffffff are only a few points apart. 0.02 was
       // established empirically as the value that catches it.
       threshold: 0.02,
-      // Font hinting and sub-pixel AA still differ slightly between runs, so a
-      // small share of differing pixels is tolerated — but a real change moves
-      // far more than this.
-      maxDiffPixelRatio: 0.01,
+      /*
+       * Font hinting and sub-pixel AA still differ slightly between runs, so a
+       * small share of differing pixels is tolerated.
+       *
+       * This was 0.01 and the comment beside it said "a real change moves far
+       * more than this". That is not true of a sparse change. Adding a whole
+       * navigation item to the sidebar — which shifts four labels and their
+       * icons down a row — passed at 0.01 on every screen, because the pixels
+       * that actually differ are the glyphs, and four lines of text on a
+       * nine-hundred-thousand-pixel page is well under one per cent of it. The
+       * suite was guarding the colour of the page and not its contents.
+       *
+       * 0.002 catches it. Verified stable: the full suite run twice in a row
+       * at this value is green both times, so it is not trading a missed
+       * regression for a flaky one.
+       */
+      maxDiffPixelRatio: 0.002,
       animations: "disabled",
       caret: "hide",
     },

@@ -21,6 +21,7 @@ import {
   ShieldUser,
   Inbox,
   UtensilsCrossed,
+  DoorOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -90,6 +91,12 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "Operations",
     items: [
+      /*
+       * First in Operations, because it is the one screen in this group that
+       * everybody uses and nobody is assigned to: a porter reporting a tap
+       * does not think of themselves as doing maintenance.
+       */
+      { title: "Requests", to: "/requests", icon: DoorOpen },
       { title: "Production", to: "/production", icon: Factory },
       { title: "Hygiene", to: "/hygiene", icon: SprayCan },
       { title: "Maintenance", to: "/maintenance", icon: Wrench },

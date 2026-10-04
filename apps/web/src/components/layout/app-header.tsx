@@ -30,6 +30,7 @@ const routeLabels: Record<string, string> = {
   messages: "Messages",
   traceability: "Traceability",
   hygiene: "Hygiene",
+  requests: "Requests",
   production: "Production",
   "menu-engineering": "Menu Engineering",
   suppliers: "Suppliers",
