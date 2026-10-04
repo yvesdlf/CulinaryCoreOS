@@ -143,6 +143,25 @@
     --text-muted: #8a9099;
     --text-inverse: #ffffff;
 
+    /* Avatar tints.
+       Six, because one tint for everybody was the honest answer at the time
+       and not the right one: a rota of forty is forty identical grey discs and
+       the eye gets no help at all. The objection that blocked it was real and
+       is answered rather than ignored — these are not the status families, so
+       a disc beside somebody's name cannot read as a statement about them, and
+       they are desaturated far enough to look like paper rather than signal.
+       The initials carry 10,1:1 to 10,7:1 against #222222 here, measured
+       rather than eyeballed. The disc itself sits at about 1,5:1 against a
+       raised surface, which is deliberate: it is aria-hidden decoration beside
+       a name that is always rendered, so 1.4.11 does not apply to it — what
+       has to be legible is the two letters, and they are. */
+    --avatar-tint-1: #c7d0dc;     /* slate   10,22:1 */
+    --avatar-tint-2: #dbc9d8;     /* plum    10,12:1 */
+    --avatar-tint-3: #c2d8d4;     /* teal    10,66:1 */
+    --avatar-tint-4: #d3d6c0;     /* olive   10,72:1 */
+    --avatar-tint-5: #e0cdc2;     /* clay    10,36:1 */
+    --avatar-tint-6: #d6d2cb;     /* stone   10,56:1 */
+
     /* Borders, warmed to the new ground. A blue-grey rule on warm ivory reads
        as a different design system wandering in. */
     --border-subtle: #e4dfd3;
@@ -211,6 +230,16 @@
     --text-secondary: #b4b4b4;
     --text-muted: #8e8e8e;
     --text-inverse: #141312;
+
+    /* The same six, dropped rather than darkened towards their own hue, so a
+       person keeps the same tint across both themes. 11,4:1 to 12,2:1 for the
+       initials against #f7f7f7, measured. */
+    --avatar-tint-1: #2b3440;     /* slate   11,75:1 */
+    --avatar-tint-2: #3a2d38;     /* plum    12,16:1 */
+    --avatar-tint-3: #23383a;     /* teal    11,54:1 */
+    --avatar-tint-4: #343722;     /* olive   11,43:1 */
+    --avatar-tint-5: #3d2e26;     /* clay    12,12:1 */
+    --avatar-tint-6: #35312c;     /* stone   12,05:1 */
 
     --border-subtle: #37342f;
     --border-strong: #6b655c;

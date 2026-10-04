@@ -16,6 +16,7 @@ import {
   Lock, Plus, Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useToday } from "@/lib/today";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ export function TrainingTab({
   const [editing, setEditing] = useState<TrainingCourse | "new" | null>(null);
   const [assigning, setAssigning] = useState<TrainingCourse | null>(null);
   const byId = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
+  const today = useToday();
 
   const outstanding = assignments.filter((a) => !a.completedOn);
 
@@ -141,7 +143,8 @@ export function TrainingTab({
               </TableHeader>
               <TableBody>
                 {outstanding.map((a) => {
-                  const late = a.dueOn && a.dueOn < new Date().toISOString().slice(0, 10);
+                  // `today` is read once when the screen opens; see lib/today.
+                  const late = a.dueOn && a.dueOn < today;
                   return (
                     <TableRow key={a.id}>
                       <TableCell>
@@ -614,17 +617,17 @@ function ReviewDialog({ review, employees, onClose, onDone }: {
   review: PerformanceReview | null; employees: Employee[];
   onClose: () => void; onDone: () => void | Promise<void>;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [f, setF] = useState({
+  const today = useToday();
+  const [f, setF] = useState(() => ({
     employeeId: review?.employeeId ?? employees[0]?.id ?? "",
-    periodStart: review?.periodStart ?? `${new Date().getFullYear()}-01-01`,
+    periodStart: review?.periodStart ?? `${today.slice(0, 4)}-01-01`,
     periodEnd: review?.periodEnd ?? today,
     kind: review?.kind ?? "ANNUAL",
     status: review?.status ?? "DRAFT",
     selfComments: review?.selfComments ?? "",
     managerComments: review?.managerComments ?? "",
     agreedActions: review?.agreedActions ?? "",
-  });
+  }));
   const [busy, setBusy] = useState(false);
 
   return (
@@ -799,12 +802,12 @@ function CaseDialog({ employees, existing, onClose, onDone }: {
   employees: Employee[]; existing: string[];
   onClose: () => void; onDone: () => void | Promise<void>;
 }) {
-  const year = new Date().getFullYear();
+  const year = useToday().slice(0, 4);
   const next = `HR-${year}-${String(existing.length + 1).padStart(3, "0")}`;
-  const [f, setF] = useState({
+  const [f, setF] = useState(() => ({
     employeeId: employees[0]?.id ?? "", reference: next, kind: "CONDUCT",
     summary: "", detail: "", participants: "",
-  });
+  }));
   const [busy, setBusy] = useState(false);
 
   return (

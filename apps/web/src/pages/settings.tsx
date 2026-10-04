@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { UserPlus, ShieldCheck, Mail, X, Check, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
+import { useNow } from "@/lib/today";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -52,6 +53,8 @@ const ROLES: { value: OrgRole; label: string; can: string }[] = [
 ];
 
 export function SettingsPage() {
+  // Held still while the page is open; see lib/today for why that is a choice.
+  const now = useNow();
   const [people, setPeople] = useState<OrgPerson[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [mine, setMine] = useState<(Invitation & { organizationName: string | null })[]>([]);
@@ -293,7 +296,7 @@ export function SettingsPage() {
                           </span>
                         ) : i.revokedAt ? (
                           <span className="text-muted-foreground">revoked</span>
-                        ) : new Date(i.expiresAt) < new Date() ? (
+                        ) : new Date(i.expiresAt) < now ? (
                           <span className="text-status-warning">expired</span>
                         ) : (
                           <span className="text-status-info">pending</span>

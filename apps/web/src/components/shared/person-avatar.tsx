@@ -10,18 +10,41 @@ import { cn } from "@/lib/utils";
  * accessibility tree loses nothing and stops the tree reading "J S Jamie
  * Stewart".
  *
- * One tint for everybody, which is not what was asked for.
+ * Six tints, hashed from the name.
  *
- * A hashed background needs a set of hues that clear 4,5:1 against their own
- * initials in both themes. The only such families here are the four status
- * colours, and those mean something: a danger-red disc next to somebody's name
- * in a row that also carries a status chip reads as a statement about that
- * person. The module markers are mid-tones fixed across both themes — forest
- * green is 3,81:1 against white — and the brief forbids new raw hex. So the
- * honest options were a wrong colour or one colour, and the initials plus the
- * name do the identifying either way. Six neutral `--avatar-tint-*` tokens in
- * index.css would settle it properly; that file is not this change's to edit.
+ * This shipped with one tint for everybody, and the reasoning for that is
+ * worth keeping because it was right about the constraint and wrong about the
+ * conclusion: a hashed background needs hues that clear 4,5:1 against their
+ * own initials in both themes, the only families that did were the four status
+ * colours, and a danger-red disc beside somebody's name in a row that also
+ * carries a status chip reads as a statement about that person. The answer was
+ * not to give up on colour; it was to add six tokens that are not status
+ * colours. `--avatar-tint-1` to `-6` in index.css do that, desaturated far
+ * enough to read as paper rather than signal, measured at 10,1:1 to 12,2:1 for
+ * the initials across both themes.
+ *
+ * The hash is on the whole name, not the initials, so two people whose
+ * initials collide — which is the case the tint exists for — get different
+ * discs. It is stable: the same person is the same colour on every screen and
+ * after every reload, which is the only property that makes a colour worth
+ * recognising.
  */
+
+/**
+ * A small stable hash of a name to one of six tints.
+ *
+ * Deliberately not `Math.random`, a counter, or an index in the list: a tint
+ * that moves when the rota is re-sorted is worse than no tint, because the eye
+ * learns it and is then wrong.
+ */
+export function avatarTint(name: string): number {
+  let h = 0;
+  for (const ch of name.trim().toLowerCase()) {
+    // djb2, enough for six buckets and short enough to read.
+    h = ((h << 5) - h + ch.codePointAt(0)!) | 0;
+  }
+  return (Math.abs(h) % 6) + 1;
+}
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
@@ -40,8 +63,9 @@ export function PersonAvatar({
   return (
     <span
       aria-hidden="true"
+      style={{ backgroundColor: `var(--avatar-tint-${avatarTint(name)})` }}
       className={cn(
-        "inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground",
+        "inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium text-foreground",
         className,
       )}
     >

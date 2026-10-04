@@ -3,9 +3,25 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+/*
+ * forwardRef, for the same reason `Textarea` has it: React 18 does not pass
+ * `ref` through as a plain prop to a function component, so a ref pointed at
+ * this stayed null and every call through it did nothing.
+ *
+ * What that cost, concretely. The staff-comms screen clears the file input
+ * after sending — `fileInput.current.value = ""` — and the guard in front of
+ * it meant the line never ran. The input kept showing the file just sent, and
+ * because a browser fires no `change` event when the chosen file is the same
+ * one, picking it again set no state and the next message went without its
+ * attachment. Nothing errored and nothing looked wrong.
+ */
+const Input = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentProps<"input">
+>(function Input({ className, type, ...props }, ref) {
   return (
     <InputPrimitive
+      ref={ref}
       type={type}
       data-slot="input"
       className={cn(
@@ -15,6 +31,6 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       {...props}
     />
   )
-}
+})
 
 export { Input }

@@ -13,6 +13,7 @@ import { PackageCheck, FileWarning, Wallet, TriangleAlert, Check,
   Receipt, ChartNoAxesCombined, FileSignature, Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useToday } from "@/lib/today";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1166,18 +1167,21 @@ function ContractDialog({ contract, suppliers, onClose, onDone }: {
   contract: Contract | null; suppliers: Supplier[];
   onClose: () => void; onDone: () => void | Promise<void>;
 }) {
-  const [f, setF] = useState({
+  const today = useToday();
+  // Lazy, so the clock is read when the dialog opens rather than on every
+  // render of it — the argument to useState is evaluated every time either way.
+  const [f, setF] = useState(() => ({
     supplierId: contract?.supplierId ?? suppliers[0]?.id ?? "",
-    reference: contract?.reference ?? `CTR-${new Date().getFullYear()}-001`,
+    reference: contract?.reference ?? `CTR-${today.slice(0, 4)}-001`,
     title: contract?.title ?? "",
-    startsOn: contract?.startsOn ?? new Date().toISOString().slice(0, 10),
+    startsOn: contract?.startsOn ?? today,
     endsOn: contract?.endsOn ?? "",
     noticeBy: contract?.noticeBy ?? "",
     autoRenews: contract?.autoRenews ?? false,
     leadTimeDays: contract?.leadTimeDays?.toString() ?? "",
     deliveryDays: contract?.deliveryDays ?? "",
     serviceTerms: contract?.serviceTerms ?? "",
-  });
+  }));
   const [busy, setBusy] = useState(false);
   const valid = f.supplierId && f.reference.trim() && f.title.trim() && f.startsOn;
 
