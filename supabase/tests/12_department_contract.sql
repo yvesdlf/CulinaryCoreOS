@@ -175,29 +175,66 @@ select t.expect_rows($$
     from organizations where name='Demo Kitchen' limit 1$$,
   'Security''s own paperwork is a form, not a feature', 1);
 
+select '── contract: it can ask other departments, and be asked ─────────';
+
+/*
+ * This was a GAP assertion until 0066, written so that the day the front door
+ * was built the line would fail and somebody would have to come and delete it.
+ * That is what happened, and these are what replaced it.
+ *
+ * Security is the department created three sections above, as one row. Nothing
+ * here was written with Security in mind.
+ */
+select t.expect_rows($$
+  insert into request_types (org_id, code, name, to_unit_id, default_priority,
+                             respond_within_hours)
+  select o.id, 'T-SECINC', 'T-Security incident',
+         (select id from business_units where code='SECURITY' and org_id=o.id),
+         'HIGH', 1
+    from organizations o where o.name='Demo Kitchen' limit 1$$,
+  'Security defines its own kind of request, as a row', 1);
+
+select t.expect_rows($$
+  insert into requests (request_type_id, title, detail)
+  select id, 'T-SEC door left open', 'Back of house, by the bins'
+    from request_types where code='T-SECINC'$$,
+  'and somebody raises one against it', 1);
+
+select t.expect_value($$
+  select left(reference, 7) from requests where title='T-SEC door left open'$$,
+  'numbered for Security, like every other document it owns', 'RQ-SEC-');
+
+select t.expect_value($$
+  select unanswered_count::text from request_load where unit_code='SECURITY'$$,
+  'and it appears on Security''s own load, which is what a tile reads', '1');
+
+-- The other direction: Security asking somebody else for something.
+select t.expect_rows($$
+  insert into requests (request_type_id, title, raised_from_unit_id)
+  select rt.id, 'T-SEC torch batteries',
+         (select id from business_units where code='SECURITY' and org_id=rt.org_id)
+    from request_types rt
+   where rt.code='SUPPLY'
+     and rt.org_id=(select id from organizations where name='Demo Kitchen')$$,
+  'Security asks another department for something', 1);
+select t.expect_value($$
+  select raised_from_unit from request_board where title='T-SEC torch batteries'$$,
+  'and the board says which department is asking', 'Security');
+
 select '── contract: what is NOT yet true ───────────────────────────────';
 
 /*
- * Two of Part C's bullets are not built, and the honest thing is to say which
- * rather than leave them off the list so this file reads greener than the
- * platform is.
+ * One of Part C's bullets is still not built, and saying so here is cheaper
+ * than this file reading greener than the platform is.
  *
- *   "A tile on the overview screen" — the CEO dashboard is still per-section
- *   and not per-unit. Nothing below will fail; there is simply nothing to
- *   assert.
- *
- *   "The ability to raise a request to any other department, and receive
- *   theirs" — the one front door, which the roadmap puts in Stage 3. A new
- *   department can raise a maintenance job and a requisition today, which is
- *   two of the five shapes Part C lists; an incident, a complaint or a staff
- *   request still has no shared route.
- *
- * Asserted as a gap, the same way 05_people.sql asserts the leave one, so that
- * the day it is built this line fails and somebody has to come and delete it.
+ * "A tile on the overview screen" — `request_load` is the row such a tile
+ * would read and it exists, but the dashboard is still per-section rather than
+ * per-unit. Asserted as a gap, the same way 05_people.sql asserts the leave
+ * one, so that the day it is built this line fails.
  */
 select t.expect_value($$
-  select count(*)::text from information_schema.tables
-   where table_schema='public' and table_name='requests'$$,
-  'GAP: there is still no one front door for cross-department requests', '0');
+  select count(*)::text from information_schema.views
+   where table_schema='public' and table_name='unit_overview'$$,
+  'GAP: the overview screen is still per-section, not per-department', '0');
 
 rollback;

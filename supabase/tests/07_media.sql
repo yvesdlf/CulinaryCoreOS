@@ -325,7 +325,7 @@ select t.expect_value($$
 
 select t.act_as('b0000000-0000-0000-0000-000000000001','outsider@test.local');
 select t.expect_value($$select count(*)::text from attachment_retention$$,
-  'the outsider sees only their own venue''s retention, which is six rows', '6');
+  'the outsider sees only their own venue''s retention, which is eight rows', '8');
 
 -- Back to the owner, so the rollback is not the only thing undoing this.
 set local role postgres;

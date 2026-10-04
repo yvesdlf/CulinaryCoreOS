@@ -28,7 +28,7 @@ select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 select '── starting data: the list is rows, not a function body ─────────';
 
 select t.expect_value($$select count(*)::text from organization_seeders$$,
-  'ten seeders are registered', '10');
+  'eleven seeders are registered', '11');
 
 /*
  * Asked as `authenticated`, not as the suite's own connection.
@@ -67,7 +67,7 @@ reset role;
  * _harness.sql, which is a trigger silently correcting rather than refusing.
  */
 select t.expect_value($$select count(*)::text from organization_seeders$$,
-  'the list is the same length afterwards', '10');
+  'the list is the same length afterwards', '11');
 select t.expect_value($$
   select function_name from organization_seeders where ordinal = 80$$,
   'and the media seeder is still the eightieth', 'seed_media_defaults');
@@ -131,17 +131,24 @@ select t.expect_value($$select count(*)::text from organizations o
   where not exists (select 1 from room_types rt where rt.org_id = o.id)$$,
   'every venue has room types (seed_housekeeping_defaults)', '0');
 
--- The line that was dropped. Six rows, not one: a retention figure per parent
--- type per kind, and a venue with four of them is a venue keeping two kinds of
--- file forever.
+-- The line that was dropped. One retention figure per parent type per kind,
+-- and a venue missing any of them is a venue keeping that kind of file
+-- forever. Eight since 0067 added requests as a fourth parent — the count is
+-- derived rather than typed, so the next parent does not need this line edited
+-- and does not silently stop being checked either.
 select t.expect_value($$select count(*)::text from organizations o
-  where (select count(*) from attachment_retention r where r.org_id = o.id) <> 6$$,
-  'every venue has all six retention figures (seed_media_defaults)', '0');
+  where (select count(*) from attachment_retention r where r.org_id = o.id)
+        <> (select count(*) * 2 from unnest(enum_range(null::attachment_parent)))$$,
+  'every venue has a retention figure for every kind of attachment', '0');
 
 select t.expect_value($$select count(*)::text from organizations o
   where not exists (select 1 from venue_parameters v
     where v.org_id = o.id and v.code = 'PRODUCTION_VARIANCE_TOLERANCE')$$,
   'every venue has a variance tolerance (seed_production_defaults)', '0');
+
+select t.expect_value($$select count(*)::text from organizations o
+  where not exists (select 1 from request_types t where t.org_id = o.id)$$,
+  'every venue has somewhere to send a request (seed_request_types)', '0');
 
 select '── starting data: a venue created now gets all of it ────────────';
 
@@ -167,7 +174,7 @@ select t.expect_value($$
   select count(*)::text from attachment_retention r
    join organizations o on o.id = r.org_id
   where o.name = 'T-Seeded venue'$$,
-  'six retention figures on a venue that is seconds old', '6');
+  'a retention figure for every parent and kind on a venue seconds old', '8');
 
 select t.expect_value($$
   select count(*)::text from business_units b
