@@ -22,6 +22,13 @@
 -- so the file reads greener than the platform is.
 -- ---------------------------------------------------------------------------
 
+-- How many migrations exist before this file adds anything. The check at the
+-- bottom compares against this rather than a hard-coded version: it first said
+-- `version > '0075'`, which was the newest migration on the day it was written
+-- and turned red the day 0076 was added — for a reason that had nothing to do
+-- with departments.
+select count(*) as migrations_at_start from supabase_migrations.schema_migrations \gset
+
 begin;
 select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 
@@ -327,9 +334,9 @@ select t.expect_rows($$
  * plus the fixtures' own — and the migration count did not move. That sentence
  * is the whole of Part C, and it is checked rather than asserted in prose.
  */
-select t.expect_value($$
-  select count(*)::text from supabase_migrations.schema_migrations
-   where version > '0075'$$,
+select t.expect_value(format($$
+  select (count(*) - %s)::text from supabase_migrations.schema_migrations$$,
+  :migrations_at_start),
   'and no migration was needed for any of it', '0');
 
 rollback;

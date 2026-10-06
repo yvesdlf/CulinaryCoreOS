@@ -18,6 +18,24 @@ set -uo pipefail
 DB="${1:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# The fixtures write a test venue and the teardown deletes recipes, products and
+# stock history by name pattern (`T-%`). Against a real venue that deletes its
+# "T-Bone Steak" and everything hanging off it. DEPLOY.md once told people to
+# run this against the hosted database, so the refusal lives here rather than
+# in the documentation. A staging project or a restored copy can opt in.
+host="$(printf '%s' "$DB" | sed -E 's#^[a-z]+://([^@/]*@)?(\[([^]]+)\]|([^:/?]+)).*#\3\4#')"
+case "$host" in
+  127.0.0.1|localhost|::1) ;;
+  *)
+    if [ "${CCOS_ALLOW_REMOTE_TESTS:-}" != "1" ]; then
+      echo "Refusing to run against $host: the suite writes and deletes rows."
+      echo "Only ever point it at a local stack, a staging project or a restored"
+      echo "copy — never production. For staging: CCOS_ALLOW_REMOTE_TESTS=1 $0 <url>"
+      exit 2
+    fi
+    ;;
+esac
+
 run() { psql "$DB" -X -q -t -A -f "$1" 2>&1; }
 
 echo "Database controls"
