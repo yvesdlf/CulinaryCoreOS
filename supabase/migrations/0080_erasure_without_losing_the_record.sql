@@ -155,18 +155,35 @@ begin
    where a is not null and btrim(a) <> '';
 
   if addresses is not null then
+    /*
+     * Every column that copies an address — `*_email`, plain `email`, and the
+     * outbox's `destination` — in a table that says which venue the row
+     * belongs to. Only this venue's rows are touched: the first version of
+     * this had no venue filter, and one venue's owner could rewrite another
+     * venue's ledgers for any address they named. A table with no venue
+     * column is skipped and the skip is recorded, rather than guessed at.
+     */
     for col in
-      select c.table_name, c.column_name
+      select c.table_name, c.column_name,
+             (select v.column_name from information_schema.columns v
+               where v.table_schema = 'public' and v.table_name = c.table_name
+                 and v.column_name in ('org_id', 'organization_id')
+               order by v.column_name desc limit 1) as venue_col
         from information_schema.columns c
         join pg_class k on k.relname = c.table_name
                        and k.relnamespace = 'public'::regnamespace and k.relkind = 'r'
        where c.table_schema = 'public'
-         and c.column_name like '%\_email'
          and c.data_type = 'text'
+         and (c.column_name like '%\_email' or c.column_name = 'email'
+              or (c.table_name = 'message_deliveries' and c.column_name = 'destination'))
     loop
-      execute format('select exists (select 1 from public.%I where lower(%I) = any ($1))',
-                     col.table_name, col.column_name)
-        into hit using addresses;
+      if col.venue_col is null then
+        touched := touched || jsonb_build_object('skipped, no venue column: ' || col.table_name, 0);
+        continue;
+      end if;
+      execute format('select exists (select 1 from public.%I where %I = $1 and lower(%I) = any ($2))',
+                     col.table_name, col.venue_col, col.column_name)
+        into hit using e.org_id, addresses;
       continue when not hit;
       /*
        * The rows that hold an address are mostly closed: a clocked-out time
@@ -177,14 +194,17 @@ begin
        * the gap (the lock is exclusive), and a failure anywhere rolls the
        * switch back with everything else. Possible because the migration
        * role owns the tables, which is also what makes it an owner-only path.
+       * The lock covers the table, so other venues wait for it too; this is
+       * a rare, owner-initiated operation and the wait is the price of not
+       * editing a dozen closed-record guards.
        */
       if not col.table_name = any (quiet) then
         quiet := quiet || col.table_name::text;
       end if;
       execute format('alter table public.%I disable trigger user', col.table_name);
-      execute format('update public.%I set %I = $1 where lower(%I) = any ($2)',
-                     col.table_name, col.column_name, col.column_name)
-        using pseudonym_email, addresses;
+      execute format('update public.%I set %I = $1 where %I = $2 and lower(%I) = any ($3)',
+                     col.table_name, col.column_name, col.venue_col, col.column_name)
+        using pseudonym_email, e.org_id, addresses;
       get diagnostics changed = row_count;
       if changed > 0 then
         touched := touched || jsonb_build_object(col.table_name || '.' || col.column_name, changed);
@@ -260,7 +280,9 @@ begin
   delete from public.leave_attachments where id = p_attachment;
 
   insert into public.privacy_actions (org_id, action, subject, request_ref, rows_touched, done_by)
-  values (a.org_id, 'DELETE_SICK_NOTE', a.file_name, p_request_ref,
+  -- The attachment's id, not its file name: a file name is often the
+  -- person's name, and this ledger is the one record nothing can delete.
+  values (a.org_id, 'DELETE_SICK_NOTE', 'sick note ' || a.id, p_request_ref,
           jsonb_build_object('leave_attachments', 1, 'storage_deletions', 1),
           (select auth.uid()));
 end;
