@@ -10,6 +10,7 @@
 // all of it, so every caller imports exactly what it imported before.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
 import { requireSupabase } from "@/lib/supabase";
 import { fail, fetchAllPages } from "./_shared";
 import { createLot, recordMovements } from "./inventory";
@@ -612,7 +613,7 @@ export async function setPurchaseOrderStatus(
   status: PurchaseStatus,
 ): Promise<void> {
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-  if (status === "ORDERED") patch.ordered_on = new Date().toISOString().slice(0, 10);
+  if (status === "ORDERED") patch.ordered_on = venueToday();
   const { error } = await requireSupabase().from("purchase_orders").update(patch).eq("id", id);
   if (error) fail("setPurchaseOrderStatus", error);
 }

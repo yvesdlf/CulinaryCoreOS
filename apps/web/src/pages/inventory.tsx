@@ -79,6 +79,7 @@ import {
   type Supplier,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { venueToday } from "@/lib/today";
 
 const STATUS: Record<ParStatus, { label: string; tone: StatusTone }> = {
   out: { label: "Out of stock", tone: "danger" },
@@ -466,7 +467,7 @@ function MovementDialog({
           lotCode: lotCode.trim(),
           supplierId: supplierId || null,
           deliveryReference: deliveryRef.trim() || null,
-          receivedOn: new Date().toISOString().slice(0, 10),
+          receivedOn: venueToday(),
           expiresOn: expiresOn || null,
           expiryKind: expiryKind || null,
           receiptTemperatureC:

@@ -1,4 +1,5 @@
 import { EMPTY_PREPARATION } from "@ccos/shared";
+import { venue } from "@/lib/venue";
 // ---------------------------------------------------------------------------
 // Recipe import
 // ---------------------------------------------------------------------------
@@ -42,7 +43,6 @@ import {
   toDecimal,
 } from "@/engine/cost-engine";
 import {
-  DEFAULT_CURRENCY,
   DEFAULT_RECIPE_WASTE_PERCENT,
   DEFAULT_RECIPE_INFLATION_PERCENT,
   DEFAULT_TAX_PERCENT,
@@ -119,7 +119,7 @@ export function RecipeImportDialog() {
             foodCostPercent: calculateFoodCostPercent(totalCog, menuPrice)
               .toDecimalPlaces(1)
               .toNumber(),
-            currency: DEFAULT_CURRENCY,
+            currency: venue().currency,
           },
           wastePercent: waste,
           inflationPercent: inflation,

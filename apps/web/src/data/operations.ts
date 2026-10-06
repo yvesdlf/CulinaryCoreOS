@@ -10,6 +10,7 @@
 // all of it, so every caller imports exactly what it imported before.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
 import { requireSupabase } from "@/lib/supabase";
 import { fail, currentOrgId } from "./_shared";
 import { signedFileUrl } from "./people";
@@ -80,7 +81,7 @@ export async function completeTraining(
   id: string, score: number | null,
 ): Promise<void> {
   const { error } = await requireSupabase().from("training_assignments").update({
-    completed_on: new Date().toISOString().slice(0, 10),
+    completed_on: venueToday(),
     score, passed: score === null ? true : score >= 80,
   }).eq("id", id);
   if (error) fail("completeTraining", error);
@@ -232,7 +233,7 @@ export async function updateHrCase(
   const { error } = await requireSupabase().from("hr_cases").update({
     status, outcome,
     closed_on: ["RESOLVED", "WITHDRAWN"].includes(status)
-      ? new Date().toISOString().slice(0, 10) : null,
+      ? venueToday() : null,
     updated_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) fail("updateHrCase", error);

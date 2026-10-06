@@ -82,6 +82,7 @@ import {
   type ProductionRecordRow,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { venueToday } from "@/lib/today";
 
 /** Covers survive a reload — a service plan is not worth retyping. */
 const STORAGE_KEY = "ccos-production-covers";
@@ -96,7 +97,7 @@ function loadCovers(): Record<string, number> {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return venueToday();
 }
 
 const VERDICT: Record<VarianceVerdict, { label: string; tone: StatusTone }> = {

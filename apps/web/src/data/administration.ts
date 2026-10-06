@@ -189,6 +189,44 @@ export async function fetchMySectionAccess(): Promise<Record<string, AccessLevel
   return out;
 }
 
+/**
+ * The venue's currency, time zone and food-cost target, for the venue store.
+ * The venue is the caller's default organisation (auth_default_org_id), the
+ * same one rows are written into. Anything missing keeps its fallback.
+ */
+export async function fetchVenueSettings(
+  fallback: import("@/lib/venue").VenueSettings,
+): Promise<import("@/lib/venue").VenueSettings> {
+  const db = requireSupabase();
+  const { data: orgId } = await db.rpc("auth_default_org_id");
+  if (!orgId) return fallback;
+  const [org, params] = await Promise.all([
+    db.from("organizations").select("currency_code, timezone").eq("id", orgId).maybeSingle(),
+    db.from("venue_parameters").select("code, value")
+      .eq("org_id", orgId).in("code", ["TARGET_FOOD_COST", "FOOD_COST_TOLERANCE"]),
+  ]);
+  if (org.error) fail("fetchVenueSettings(org)", org.error);
+  if (params.error) fail("fetchVenueSettings(parameters)", params.error);
+  const value = (code: string) => {
+    const row = (params.data ?? []).find((r: any) => r.code === code);
+    return row ? Number(row.value) : undefined;
+  };
+  return {
+    currency: org.data?.currency_code ?? fallback.currency,
+    timezone: org.data?.timezone ?? fallback.timezone,
+    targetFoodCostPercent: value("TARGET_FOOD_COST") ?? fallback.targetFoodCostPercent,
+    foodCostTolerancePercent: value("FOOD_COST_TOLERANCE") ?? fallback.foodCostTolerancePercent,
+  };
+}
+
+/** Change the venue's time zone. Owners and administrators only (0081). */
+export async function saveVenueTimezone(timezone: string): Promise<void> {
+  const db = requireSupabase();
+  const { data: orgId } = await db.rpc("auth_default_org_id");
+  const { error } = await db.from("organizations").update({ timezone }).eq("id", orgId);
+  if (error) fail("saveVenueTimezone", error);
+}
+
 export interface VenueParameter {
   id: string;
   code: string;

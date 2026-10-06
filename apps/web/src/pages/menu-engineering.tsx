@@ -13,6 +13,7 @@
 // reading of a file nobody else has is not something a kitchen can act on.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Upload,
@@ -404,9 +405,12 @@ function ImportGuidance() {
 
 /** Guess a period name and dates from the filename, to be corrected. */
 function guessPeriod(filename: string): { name: string; start: string; end: string } {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const end = new Date(now.getFullYear(), now.getMonth(), 0);
+  // Last calendar month at the venue. Built from the venue's date rather than
+  // from local midnights read back in UTC, which east of Greenwich named the
+  // last day of the month before as the first day.
+  const [y, m] = venueToday().split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 2, 1, 12));
+  const end = new Date(Date.UTC(y, m - 1, 0, 12));
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const stem = filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
   return { name: stem || "Sales period", start: iso(start), end: iso(end) };
