@@ -109,10 +109,10 @@ settings:
    VITE_SUPABASE_ANON_KEY  <anon key>
    ```
 
-   Without them the build still succeeds — the application checks
-   `isSupabaseConfigured` and runs on its mock catalogue — which is worth
-   knowing, because a deployment that looks fine and shows invented data is
-   the failure mode to watch for here.
+   Without them a **production** build fails, saying which is missing. A
+   preview build still succeeds and runs on the mock catalogue — a deployment
+   that looks fine and saves nothing was the failure mode to watch for here,
+   and `vite.config.ts` now turns it into a red build where it matters.
 
 ### Anywhere else
 

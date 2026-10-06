@@ -77,6 +77,31 @@ async function loadContext(delivery) {
   return { notification: n[0], config: c[0]?.config ?? {} };
 }
 
+/**
+ * Take one delivery for this process, or learn that another one has it.
+ *
+ * Reading PENDING rows is not a claim: two adapters running at once — or one
+ * restarted mid-pass — read the same rows and both send. The PATCH only
+ * matches a row nobody has claimed in the last ten minutes, and PostgREST
+ * returns the rows it changed, so an empty answer means somebody else won.
+ * The ten minutes let a row claimed by a process that died be picked up again,
+ * and are also how long a failed send waits before its next attempt.
+ */
+async function claim(id) {
+  const stale = new Date(Date.now() - 10 * 60_000).toISOString();
+  const res = await rest(
+    `message_deliveries?id=eq.${id}&status=eq.PENDING` +
+      `&or=(claimed_at.is.null,claimed_at.lt.${stale})`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ claimed_at: new Date().toISOString() }),
+    },
+  );
+  if (!res.ok) return false;
+  return (await res.json()).length === 1;
+}
+
 async function markDelivery(id, patch) {
   const res = await rest(`message_deliveries?id=eq.${id}`, {
     method: "PATCH",
@@ -126,7 +151,13 @@ async function sendWhatsApp(destination, notification, config) {
     },
   );
   const text = await res.text();
-  if (!res.ok) throw new Error(`WhatsApp ${res.status}: ${text}`);
+  if (!res.ok) {
+    // The status, never the body: the body can echo the address, and
+    // \`last_error\` is read by every member of the venue.
+    const err = new Error(`WhatsApp provider refused it (HTTP ${res.status})`);
+    err.category = err.message;
+    throw err;
+  }
   let id = null;
   try { id = JSON.parse(text)?.messages?.[0]?.id ?? null; } catch { /* keep null */ }
   return id;
@@ -138,6 +169,7 @@ async function pass() {
   console.log(`${pending.length} to send`);
 
   for (const d of pending) {
+    if (!DRY_RUN && !(await claim(d.id))) continue;
     const { notification, config } = await loadContext(d);
     if (!notification) {
       await markDelivery(d.id, { status: "FAILED", last_error: "notification missing" });
@@ -149,7 +181,7 @@ async function pass() {
     }
 
     if (DRY_RUN) {
-      console.log(`  [dry run] → ${d.destination}: ${notification.subject}`);
+      console.log(`  [dry run] delivery ${d.id}: ${notification.subject}`);
       continue;
     }
 
@@ -159,16 +191,16 @@ async function pass() {
         status: "SENT", sent_at: new Date().toISOString(),
         external_id: externalId, attempts: d.attempts + 1, last_error: null,
       });
-      console.log(`  sent → ${d.destination}`);
+      console.log(`  sent delivery ${d.id}`);
     } catch (err) {
       const attempts = d.attempts + 1;
       // Left PENDING until the attempt cap, so a transient outage retries and
       // a permanently bad number eventually stops rather than looping.
       await markDelivery(d.id, {
         status: attempts >= MAX_ATTEMPTS ? "FAILED" : "PENDING",
-        attempts, last_error: String(err.message ?? err),
+        attempts, last_error: err.category ?? "could not send",
       });
-      console.error(`  failed → ${d.destination}: ${err.message ?? err}`);
+      console.error(`  failed delivery ${d.id}: ${err.category ?? err.message ?? err}`);
     }
   }
   return pending.length;
