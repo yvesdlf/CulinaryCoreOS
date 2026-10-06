@@ -88,7 +88,10 @@ select '── exposure: no view reads past RLS without a filter of its own ─'
 
 /*
  * A definer view is allowed — the supplier portal needs them — but only if
- * it names whose rows it returns. One that neither reads as the caller nor
+ * it names whose rows it returns, by section or by the caller's own identity.
+ * Venue membership alone is not enough: the first version of this check
+ * accepted it, and sixteen views read straight past the section gates of
+ * 0079 while it stayed green (found by the re-audit, fixed in 0083). One that neither reads as the caller nor
  * filters on the caller's identity returns everybody's.
  */
 select t.expect_value($$
@@ -99,8 +102,10 @@ select t.expect_value($$
      and has_table_privilege('authenticated', c.oid, 'select')
      and not coalesce('security_invoker=true' = any(c.reloptions)
                    or 'security_invoker=on'   = any(c.reloptions), false)
-     and pg_get_viewdef(c.oid) !~ '(auth_org_ids|auth_employee_id|auth_employee_org|auth_supplier_id|can_read_section)\('$$,
-  'every view a signed-in user can read is invoker-rights or filtered', '');
+     and pg_get_viewdef(c.oid) !~ '(auth_employee_id|auth_employee_org|auth_supplier_id|can_read_section)\('
+     -- The member list: every member sees who else works here (0083).
+     and c.relname not in ('organization_people')$$,
+  'every view a signed-in user can read is invoker-rights or filtered by section or identity', '');
 
 select t.expect_value($$
   select (has_table_privilege('authenticated', 'public.scheduled_jobs', 'select')

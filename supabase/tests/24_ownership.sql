@@ -105,27 +105,52 @@ select t.expect_fail($$update employees set user_id = auth.uid() where employee_
 select t.expect_fail($$insert into employees (org_id, user_id, employee_number, first_name, last_name)
     select org_id, auth.uid(), 'T-9', 'Made', 'Up' from employees where employee_number = 'T-1'$$,
   'nor create one already attached');
-select t.expect_rows($$update employees set work_email = 'chef@test.local' where employee_number = 'T-5'$$,
-  'a chef can still correct a work email', 1);
+/*
+ * The work email decides whose record a login resolves to, through the
+ * email fallback in auth_employee_id(). So whoever can change it can become
+ * anybody. A chef with People access could, until the reality check of
+ * these PRs pointed out that the earlier version of this file asserted the
+ * takeover as correct ("confirming it does, and links the record") — with a
+ * chef who happened to be unconfirmed. Real accounts are confirmed.
+ */
+reset role;
+update auth.users set email_confirmed_at = now()
+ where id = 'a0000000-0000-0000-0000-000000000002';
+set local role authenticated;
+select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
+
+select t.expect_refused($$update employees set work_email = 'chef@test.local' where employee_number = 'T-5'$$,
+  'a chef cannot point a colleague''s record at their own address',
+  'owner or administrator');
+select t.expect_value($$select (public.auth_employee_id() is distinct from
+    (select id from employees where employee_number = 'T-5'))::text$$,
+  'so a confirmed chef is not the colleague', 'true');
+
+select t.act_as('a0000000-0000-0000-0000-000000000001', 'owner@test.local');
+select t.expect_rows($$update employees set work_email = 'newaddress@test.local' where employee_number = 'T-5'$$,
+  'an owner can re-address a record', 1);
 
 reset role;
 select t.expect_value($$select (user_id is null)::text from employees where employee_number = 'T-5'$$,
   'and a re-addressed record stops belonging to the account it was linked to', 'true');
 
 /*
- * The chef's address is now T-5's work email, and the chef's account has
- * never been confirmed. Before 0078 that was enough to be T-5.
+ * The new address belongs to nobody yet. An account made with it, still
+ * unconfirmed, does not become T-5; confirming it does.
  */
+insert into auth.users (id, email, instance_id, aud, role)
+values ('a0000000-0000-0000-0000-00000000000e', 'newaddress@test.local',
+        '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');
 set local role authenticated;
-select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
+select t.act_as('a0000000-0000-0000-0000-00000000000e', 'newaddress@test.local');
 select t.expect_value($$select (public.auth_employee_id() is null)::text$$,
   'an unconfirmed address does not make somebody the employee it names', 'true');
 
 reset role;
 update auth.users set email_confirmed_at = now()
- where id = 'a0000000-0000-0000-0000-000000000002';
+ where id = 'a0000000-0000-0000-0000-00000000000e';
 select t.expect_value($$
-  select (user_id = 'a0000000-0000-0000-0000-000000000002')::text
+  select (user_id = 'a0000000-0000-0000-0000-00000000000e')::text
     from employees where employee_number = 'T-5'$$,
   'confirming it does, and links the record', 'true');
 
