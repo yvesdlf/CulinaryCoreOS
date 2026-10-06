@@ -20,6 +20,11 @@ delete from sales_periods where source = 'SAMPLE';
 delete from employees
  where employee_number in ('E-001','E-002','E-003','E-004','E-005');
 
+-- The demo login from seed.sql. Its password is in this repository, which is
+-- public, so on any database that ever had seed.sql loaded it is an owner
+-- account anybody can sign into. Memberships cascade from the user.
+delete from auth.users where id = '11111111-1111-4111-8111-111111111111';
+
 -- Purchasing worked through by hand while building.
 delete from supplier_invoices where invoice_number like 'SINV-%';
 delete from goods_receipts where reference like 'GRN-TEST%';

@@ -15,43 +15,65 @@ whose application lives in `apps/web`. `vercel.json` now says what to do — see
 
 ## 1. Supabase project
 
-Create a project, then from the repository root:
+Create **two** projects: staging and production. Choose the region with care —
+it cannot be changed afterwards, and it decides where staff data lives. Then,
+from the repository root, against each:
 
 ```bash
 supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-`db push` applies `supabase/migrations/*.sql` in order. The chain rebuilds a
-complete schema from empty — 98 tables and 373 row-level security policies as
-of migration 0057 — and that is checked on every push, so a failure here is a
-connection or permission problem rather than a broken migration.
+`db push` applies `supabase/migrations/*.sql` in order and records which have
+run. The chain rebuilds a complete schema from empty, and that is checked on
+every push, so a failure here is a connection or permission problem rather than
+a broken migration. `pg_cron` and `pg_net` are created by migrations 0069 and
+0076; no dashboard step is needed for them.
 
-Then prove the controls survived the trip:
-
-```bash
-./supabase/tests/run.sh "$DATABASE_URL"
-```
-
-98 checks. They are the same ones CI runs, and running them against the hosted
-database is the only way to know that the hosted database enforces what the
-local one does — a migration that applies is not the same as a trigger that
-fires.
-
-Then load the catalogue:
+Then prove the controls survived the trip — **on staging only**:
 
 ```bash
-psql "$DATABASE_URL" -f supabase/seed.sql
-psql "$DATABASE_URL" -f supabase/seed_manuza.sql
+CCOS_ALLOW_REMOTE_TESTS=1 ./supabase/tests/run.sh "$STAGING_DATABASE_URL"
 ```
 
-Do **not** run `supabase/seed_sample_sales.sql` on a production project. It
-invents three months of sales for demonstration.
+They are the same checks CI runs, and running them against a hosted database
+is the only way to know it enforces what the local one does — a migration that
+applies is not the same as a trigger that fires. **Never point `run.sh` at
+production.** Its fixtures create a test venue and users, and its teardown
+deletes recipes, products and stock history by name pattern (`T-%`), which on a
+real venue includes things like "T-Bone Steak". The script refuses any host
+that is not local unless told it is staging.
 
-## 2. First user
+### What never goes near production
+
+```text
+supabase/seed.sql               a demo owner whose password is in this repository
+supabase/seed_manuza.sql        starts by truncating every venue's catalogue
+supabase/seed_sample_sales.sql  three months of invented sales
+supabase/tests/run.sh           writes and deletes rows (see above)
+```
+
+An earlier version of this file told people to load the first two into the
+hosted database. That would have created an owner account anybody who reads
+this repository can sign into. If a hosted project was ever seeded that way,
+run `supabase/purge_sample_data.sql` there, which now deletes that user, and
+treat its sessions as compromised.
+
+## 2. First user, then the catalogue
 
 The first person to sign up becomes the owner of a new organisation. Sign up,
-then invite colleagues from Settings.
+then load the catalogue into **that** organisation:
+
+```bash
+supabase/bootstrap_catalogue.sh "$DATABASE_URL" <organisation-id>
+```
+
+It reads the same generated rows as `seed_manuza.sql` but never truncates,
+writes only into the organisation you name, creates no logins, and leaves any
+row that already exists alone, so running it twice changes nothing. Find the
+organisation id with `select id, name from organizations;`.
+
+Then invite colleagues from Settings.
 
 Approvals need at least two people. Nobody may approve their own requisition
 or their own leave, whatever their role, so a single-user installation cannot
@@ -105,6 +127,9 @@ psql "$DATABASE_URL" -f supabase/purge_sample_data.sql
 
 Removes the invented sales, sample employees, test purchasing documents and
 demonstration stock. Leaves the ingredient and recipe catalogue alone.
+Followed as written, production never received any of these. This is for a
+database that did — a local stack promoted to real use, or a hosted project
+seeded before §1 said not to. It also deletes the demo owner from `seed.sql`.
 
 ## 5. Still to decide
 
