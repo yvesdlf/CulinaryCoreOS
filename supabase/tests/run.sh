@@ -64,6 +64,15 @@ for f in "$HERE"/[0-9]*.sql; do
     echo "FAIL  $(basename "$f") produced no assertions at all"
     printf '%s\n' "$out" | tail -3
     failed=$((failed + 1))
+  # And a file that errored outside an assertion stopped part-way: inside its
+  # transaction every later statement is ignored, prints nothing, and the
+  # count simply comes out lower. Expected refusals are caught inside the
+  # t.expect_* functions and never reach psql, so any ERROR here is real.
+  # This is how 82 assertions once vanished behind "515 checks, all passing".
+  elif printf '%s\n' "$out" | grep -q 'ERROR:'; then
+    echo "FAIL  $(basename "$f") hit an error outside an assertion and stopped:"
+    printf '%s\n' "$out" | grep -m1 'ERROR:'
+    failed=$((failed + 1))
   fi
   total=$((total + n_pass + n_fail))
   failed=$((failed + n_fail))

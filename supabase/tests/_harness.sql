@@ -143,3 +143,11 @@ begin
   end if;
   return 'pass  ' || p_table || ' is guarded by ' || p_section;
 end $$;
+
+/*
+ * Explicit, because 0077 took away the default that used to make it
+ * unnecessary: every new function was executable by PUBLIC. The suite asks
+ * its questions as `authenticated`, and without this every file that does
+ * so stopped at its first `act_as` — 82 assertions that silently never ran.
+ */
+grant execute on all functions in schema t to authenticated;
