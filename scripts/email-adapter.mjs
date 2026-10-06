@@ -16,7 +16,8 @@
 // similar shape can be used by changing EMAIL_API_URL and the body builder.
 //
 //   EMAIL_API_KEY=...              provider key
-//   EMAIL_FROM=kitchen@venue.com   must be a verified sender
+//   EMAIL_FROM=noreply@your-domain   the platform's verified sender; every venue
+//                                  sends from it, under its own display name
 //   SUPABASE_URL=...
 //   SUPABASE_SERVICE_ROLE_KEY=...
 //
@@ -90,9 +91,23 @@ const escapeHtml = (s) =>
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
   ));
 
+/**
+ * The sending address is always the platform's verified sender. One API key
+ * sends for every venue, so a `from` taken from a venue's channel config let
+ * any venue's administrator send as any address on the verified domain —
+ * another venue, or the platform itself. The venue chooses a display name
+ * at most, and anything that looks like an address in it is dropped.
+ */
+function senderFor(config) {
+  const address = process.env.EMAIL_FROM;
+  if (!address) throw new Error("EMAIL_FROM is not set: it must be the platform's verified sender");
+  const name = String(config.from ?? "").replace(/[<>"\\\r\n]/g, "").trim().slice(0, 64);
+  if (!name || name.includes("@")) return address;
+  return `"${name}" <${address}>`;
+}
+
 async function sendEmail(destination, notification, config) {
-  const from = config.from || process.env.EMAIL_FROM;
-  if (!from) throw new Error("no from address configured on the channel");
+  const from = senderFor(config);
 
   const res = await fetch(EMAIL_API_URL, {
     method: "POST",

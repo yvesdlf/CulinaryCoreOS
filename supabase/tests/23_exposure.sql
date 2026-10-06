@@ -121,7 +121,11 @@ select '── exposure: a stranger sees nothing, a member still sees theirs ─
  */
 begin;
 
-update employees set date_of_birth = '1990-01-15', birthday_visible = true
+update employees set birthday_visible = true
+ where org_id = (select id from organizations where name = 'Demo Kitchen')
+   and employee_number = 'T-5';
+insert into employee_private (employee_id, org_id, date_of_birth)
+select id, org_id, '1990-01-15' from employees
  where org_id = (select id from organizations where name = 'Demo Kitchen')
    and employee_number = 'T-5';
 

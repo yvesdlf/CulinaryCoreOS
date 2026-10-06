@@ -745,7 +745,10 @@ function ChannelDialog({ channel, onClose, onDone }: {
           </label>
           {Object.keys(config).map((k) => (
             <div key={k} className="space-y-2">
-              <Label htmlFor={`ch-${k}`}>{k.replace(/_/g, " ")}</Label>
+              <Label htmlFor={`ch-${k}`}>
+                {/* `from` is a display name since 0078: the address is the platform's. */}
+                {k === "from" ? "sender name" : k.replace(/_/g, " ")}
+              </Label>
               <Input id={`ch-${k}`} value={config[k]}
                 onChange={(e) => setConfig({ ...config, [k]: e.target.value })} />
             </div>

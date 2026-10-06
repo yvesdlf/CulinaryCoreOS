@@ -59,6 +59,13 @@ this repository can sign into. If a hosted project was ever seeded that way,
 run `supabase/purge_sample_data.sql` there, which now deletes that user, and
 treat its sessions as compromised.
 
+### Auth settings on the hosted project
+
+In **Authentication → Sign In / Providers → Email**, turn **Confirm email**
+on. A staff record is linked to an account only once that account's address is
+confirmed (0078); with confirmation off, an address is confirmed the moment it
+is typed, and whoever types a colleague's work email first becomes them.
+
 ## 2. First user, then the catalogue
 
 The first person to sign up becomes the owner of a new organisation. Sign up,
