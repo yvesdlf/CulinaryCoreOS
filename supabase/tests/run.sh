@@ -24,6 +24,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # run this against the hosted database, so the refusal lives here rather than
 # in the documentation. A staging project or a restored copy can opt in.
 host="$(printf '%s' "$DB" | sed -E 's#^[a-z]+://([^@/]*@)?(\[([^]]+)\]|([^:/?]+)).*#\3\4#')"
+# libpq also takes the host from the query string (`?host=`, `?hostaddr=`),
+# which overrides the authority part — so a URL that says localhost can still
+# point elsewhere. Such a URL is treated as remote.
+case "$DB" in
+  *[?\&]host=*|*[?\&]hostaddr=*) host="(set in the query string)" ;;
+esac
 case "$host" in
   127.0.0.1|localhost|::1) ;;
   *)

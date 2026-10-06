@@ -34,27 +34,66 @@ if [ "$exists" != "1" ]; then
   exit 2
 fi
 
-# Every statement in the generated file ends on a line ending ');' and every
-# other values line ends '),' — checked here rather than assumed, because a
-# regenerated file that broke the shape would otherwise load half a catalogue.
+# The generated rows carry fixed ids, chosen for the demo venue. Loaded as
+# they are, the first venue gets them and every venue after it gets nothing —
+# `on conflict do nothing` turned that into a silent success, which the
+# reality check of this script found. So the rows are read into temporary
+# tables first and copied across with ids derived from the venue: the same
+# venue always gets the same ids, so a second run still changes nothing,
+# and two venues never collide.
 src="$HERE/seed_manuza.sql"
-statements="$(grep -c '^insert into' "$src")"
-endings="$(grep -c ');$' "$src")"
-if [ "$statements" != "$endings" ]; then
-  echo "seed_manuza.sql no longer has one ');' per insert ($statements vs $endings)." >&2
-  echo "Refusing to guess where its statements end." >&2
-  exit 1
-fi
+tables="products sub_recipes recipes sub_recipe_lines recipe_lines"
 
 {
   echo "begin;"
-  sed -e '/^truncate /d' \
-      -e "s/$DEMO_ORG/$ORG/g" \
-      -e 's/);$/) on conflict do nothing;/' "$src"
+  for t in $tables; do
+    echo "create temp table _$t (like public.$t including defaults) on commit drop;"
+    # The generated lines leave org_id to a trigger on the real table.
+    echo "alter table _$t alter column org_id drop not null;"
+  done
+  sed -E -e '/^truncate /d' \
+         -e 's/^insert into (products|sub_recipes|recipes|sub_recipe_lines|recipe_lines) /insert into _\1 /' "$src"
+  cat <<SQL
+create function pg_temp.remap(id uuid) returns uuid language sql immutable
+  as \$\$ select case when id is null then null else md5('$ORG' || id::text)::uuid end \$\$;
+
+insert into public.products
+select (jsonb_populate_record(null::public.products, to_jsonb(t) || jsonb_build_object(
+          'id', pg_temp.remap(t.id), 'org_id', '$ORG'))).*
+  from _products t on conflict do nothing;
+insert into public.sub_recipes
+select (jsonb_populate_record(null::public.sub_recipes, to_jsonb(t) || jsonb_build_object(
+          'id', pg_temp.remap(t.id), 'org_id', '$ORG'))).*
+  from _sub_recipes t on conflict do nothing;
+insert into public.recipes
+select (jsonb_populate_record(null::public.recipes, to_jsonb(t) || jsonb_build_object(
+          'id', pg_temp.remap(t.id), 'org_id', '$ORG'))).*
+  from _recipes t on conflict do nothing;
+insert into public.sub_recipe_lines
+select (jsonb_populate_record(null::public.sub_recipe_lines, to_jsonb(t) || jsonb_build_object(
+          'id', pg_temp.remap(t.id), 'org_id', '$ORG',
+          'sub_recipe_id', pg_temp.remap(t.sub_recipe_id),
+          'product_id', pg_temp.remap(t.product_id),
+          'child_sub_recipe_id', pg_temp.remap(t.child_sub_recipe_id)))).*
+  from _sub_recipe_lines t on conflict do nothing;
+insert into public.recipe_lines
+select (jsonb_populate_record(null::public.recipe_lines, to_jsonb(t) || jsonb_build_object(
+          'id', pg_temp.remap(t.id), 'org_id', '$ORG',
+          'recipe_id', pg_temp.remap(t.recipe_id),
+          'product_id', pg_temp.remap(t.product_id),
+          'sub_recipe_id', pg_temp.remap(t.sub_recipe_id)))).*
+  from _recipe_lines t on conflict do nothing;
+SQL
   echo "commit;"
 } | psql "$DB" -X -q -v ON_ERROR_STOP=1
 
-psql "$DB" -X -q -c "
-  select 'products' as kind, count(*) from products where org_id = '$ORG'
-  union all select 'sub_recipes', count(*) from sub_recipes where org_id = '$ORG'
-  union all select 'recipes',     count(*) from recipes     where org_id = '$ORG'"
+counts="$(psql "$DB" -X -q -t -A -F' ' -c "
+  select (select count(*) from products where org_id = '$ORG'),
+         (select count(*) from sub_recipes where org_id = '$ORG'),
+         (select count(*) from recipes where org_id = '$ORG')")"
+read -r n_products n_subs n_recipes <<<"$counts"
+echo "products $n_products · sub-recipes $n_subs · recipes $n_recipes in $ORG"
+if [ "$n_products" -eq 0 ]; then
+  echo "Nothing was loaded. That is a failure, not an empty catalogue." >&2
+  exit 1
+fi

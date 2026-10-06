@@ -125,6 +125,17 @@ jobs:
           accessibility.spec.ts keyboard.spec.ts screen-reader.spec.ts
           --project=desktop
 
+      # The production bundle, served with vercel.json's headers. Every other
+      # browser check uses the dev server, which is how a build that loaded
+      # to a blank page once passed CI.
+      - name: Production build loads under the production headers
+        run: |
+          pnpm --filter web build
+          node apps/web/scripts/serve-dist.mjs &
+          for i in $(seq 1 20); do curl -sf http://localhost:4173/ >/dev/null && break; sleep 0.5; done
+          E2E_BASE_URL=http://localhost:4173 E2E_NO_SERVER=1 \
+            pnpm --filter web exec playwright test production-smoke.spec.ts --project=desktop
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
