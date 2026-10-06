@@ -41,6 +41,7 @@ import {
 import { useRecipeStore } from "@/stores/recipe-store";
 import { Percent, MessageSquare, Sparkles } from "lucide-react";
 import { AiSettingsCard } from "@/components/ai/ai-settings-card";
+import { VenueClockCard } from "@/components/settings/venue-clock-card";
 import type { OrgRole, ApprovalPolicy } from "@/engine/purchasing";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
@@ -163,6 +164,7 @@ export function SettingsPage() {
             <ShieldCheck className="size-4" />People ({people.length})
           </TabsTrigger>
           <TabsTrigger value="invitations">Invitations ({pending.length})</TabsTrigger>
+          <TabsTrigger value="venue">Venue</TabsTrigger>
           <TabsTrigger value="tax"><Percent className="size-4" />Tax</TabsTrigger>
           <TabsTrigger value="messaging"><MessageSquare className="size-4" />Messaging</TabsTrigger>
           <TabsTrigger value="assistant">
@@ -330,6 +332,10 @@ export function SettingsPage() {
           <TaxTab rates={taxRates} categoryRates={categoryRates}
             categories={[...new Set(recipes.map((r) => r.category))].sort()}
             canManage={canManage} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="venue" className="mt-4">
+          <VenueClockCard canManage={canManage} />
         </TabsContent>
 
         <TabsContent value="messaging" className="mt-4">

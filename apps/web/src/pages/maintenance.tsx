@@ -45,6 +45,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   planDue, comparePlanUrgency, assetVerdict, manningVerdict, compareWorkOrders, isOpen,
 } from "@/engine/maintenance";
+import { venueToday } from "@/lib/today";
 
 const PRIORITY_TONE: Record<string, StatusTone> = {
   EMERGENCY: "danger",
@@ -763,7 +764,7 @@ function ReadingDialog({ meter, onClose, onDone }: {
     setSaving(true);
     try {
       await recordMeterReading({
-        meterId: meter!.id, readOn: new Date().toISOString().slice(0, 10),
+        meterId: meter!.id, readOn: venueToday(),
         reading: Number(value), reset, resetReason: reset ? reason.trim() : null, note: null,
       });
       toast.success("Reading recorded");

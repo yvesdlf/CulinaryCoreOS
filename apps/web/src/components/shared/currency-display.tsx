@@ -1,5 +1,5 @@
 import { formatCurrency, type Formattable } from "@/lib/format";
-import { DEFAULT_CURRENCY } from "@/lib/constants";
+import { venue } from "@/lib/venue";
 import { cn } from "@/lib/utils";
 
 interface CurrencyDisplayProps {
@@ -16,7 +16,7 @@ interface CurrencyDisplayProps {
 
 export function CurrencyDisplay({
   value,
-  currency = DEFAULT_CURRENCY,
+  currency = venue().currency,
   decimals,
   className,
 }: CurrencyDisplayProps) {

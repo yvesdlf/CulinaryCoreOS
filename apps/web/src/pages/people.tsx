@@ -13,6 +13,7 @@
 // has no business reaching a colleague's bank account by widening a select.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
 import { useEffect, useMemo, useState } from "react";
 import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert,
   UserPlus, CalendarRange, Clock, GraduationCap, Target, ClipboardCheck, Lock,
@@ -626,7 +627,7 @@ function AddEmployeeDialog({ businessUnits, roles, employees, onClose, onDone }:
     firstName: "", lastName: "", workEmail: "",
     businessUnitId: liveUnits[0]?.id ?? "", jobRoleId: "", managerId: "",
     employmentStatus: "PROBATION", employmentType: "FULL_TIME",
-    startedOn: new Date().toISOString().slice(0, 10), hours: "40",
+    startedOn: venueToday(), hours: "40",
   });
   const [busy, setBusy] = useState(false);
   const valid = form.firstName.trim() && form.lastName.trim() && form.employeeNumber.trim();

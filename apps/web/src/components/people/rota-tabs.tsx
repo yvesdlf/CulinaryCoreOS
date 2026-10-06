@@ -10,6 +10,7 @@
 // rostering somebody uncertified or on approved leave.
 // ---------------------------------------------------------------------------
 
+import { venueDate, venueToday } from "@/lib/today";
 import { useMemo, useState } from "react";
 import { Clock, TriangleAlert, Plus, Play, Square } from "lucide-react";
 import { toast } from "sonner";
@@ -71,7 +72,7 @@ export function RotaTab({
   );
 
   const byDay = (d: Date) =>
-    shifts.filter((s) => new Date(s.startsAt).toISOString().slice(0, 10) === d.toISOString().slice(0, 10));
+    shifts.filter((s) => venueDate(s.startsAt) === d.toISOString().slice(0, 10));
 
   return (
     <div className="space-y-4">
@@ -372,9 +373,9 @@ export function AttendanceTab({
               onClick={async () => {
                 try {
                   // Attach the shift they are due on today, where there is one.
-                  const today = new Date().toISOString().slice(0, 10);
+                  const today = venueToday();
                   const due = shifts.find(
-                    (s) => s.employeeId === clockingIn && s.startsAt.slice(0, 10) === today,
+                    (s) => s.employeeId === clockingIn && venueDate(s.startsAt) === today,
                   );
                   await clockIn(clockingIn, due?.id ?? null);
                   toast.success("Clocked in");

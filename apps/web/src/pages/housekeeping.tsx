@@ -16,6 +16,7 @@
 // that sells on it finds out the difference through the guest.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
 import { useEffect, useMemo, useState } from "react";
 import {
   BedDouble, ClipboardCheck, Search, PackageSearch, Users, Sparkles, TriangleAlert,
@@ -170,7 +171,7 @@ export function HousekeepingPage() {
         roomId: t.roomId, kind: t.kind,
         standardMinutes: t.standardMinutes, employeeId: t.employeeId,
       })),
-      new Date().toISOString().slice(0, 10),
+      venueToday(),
     );
 
     if (result.refused.length > 0) {

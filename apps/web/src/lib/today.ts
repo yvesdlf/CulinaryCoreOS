@@ -26,10 +26,41 @@
 // ---------------------------------------------------------------------------
 
 import { useMemo } from "react";
+import { venue } from "./venue";
 
-/** Today as `YYYY-MM-DD`, stable for the life of the component. */
+/*
+ * "Today" is the venue's, not Greenwich's. `toISOString()` gives the UTC date,
+ * which for a venue in Bali turned over at eight in the morning: a fridge
+ * check done at seven was filed under yesterday. The database reads the same
+ * day since 0082, so a screen and the view behind it agree.
+ */
+
+/** The calendar date of an instant, where the venue is: `YYYY-MM-DD`. */
+export function venueDate(instant: Date | string | number): string {
+  // en-CA formats as YYYY-MM-DD; the locale is chosen for that shape only.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: venue().timezone,
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(instant));
+}
+
+/** Today at the venue, as `YYYY-MM-DD`. */
+export function venueToday(): string {
+  return venueDate(new Date());
+}
+
+/**
+ * A calendar date plus whole days. Pure date arithmetic — no instant, no time
+ * zone — done at UTC noon so no daylight-saving change can move it a day.
+ */
+export function addDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days, 12)).toISOString().slice(0, 10);
+}
+
+/** Today at the venue as `YYYY-MM-DD`, stable for the life of the component. */
 export function useToday(): string {
-  return useMemo(() => new Date().toISOString().slice(0, 10), []);
+  return useMemo(() => venueToday(), []);
 }
 
 /** Now as a `Date`, stable for the life of the component. */

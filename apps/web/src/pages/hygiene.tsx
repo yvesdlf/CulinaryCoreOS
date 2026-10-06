@@ -37,6 +37,7 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { HaccpImportDialog } from "@/components/hygiene/haccp-import-dialog";
 import { checkFieldLimits, type HaccpField } from "@/engine/haccp-import";
+import { venueToday } from "@/lib/today";
 
 /** How long a form of each rhythm may go before it is overdue. */
 const GRACE_DAYS: Record<string, number> = {
@@ -361,7 +362,7 @@ function FormTable({ forms, onFill, showDue }: {
 function FillDialog({ form, onClose, onDone }: {
   form: HaccpForm; onClose: () => void; onDone: () => void | Promise<void>;
 }) {
-  const [coversDate, setCoversDate] = useState(new Date().toISOString().slice(0, 10));
+  const [coversDate, setCoversDate] = useState(venueToday());
   const [shift, setShift] = useState("");
   const [location, setLocation] = useState("");
   const [reading, setReading] = useState("");

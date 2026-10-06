@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
+import { useFoodCostTarget, useVenueStore } from "@/stores/venue-store";
 import { Link } from "react-router-dom";
 import { Package, ChefHat, Layers, ArrowRight, TriangleAlert } from "lucide-react";
 import type { Recipe } from "@ccos/shared";
@@ -54,9 +55,7 @@ import {
   toDecimal,
 } from "@/engine/cost-engine";
 import {
-  TARGET_FOOD_COST_PERCENT,
-  FOOD_COST_VARIANCE_PERCENT,
-  PRICE_ROUNDING_STEP,
+  priceRoundingStep,
 } from "@/lib/constants";
 
 /** How many off-target dishes to list before pointing at the full list. */
@@ -98,8 +97,11 @@ export function DashboardPage() {
   const recipes = useRecipeStore((s) => s.recipes);
   const subRecipes = useSubRecipeStore((s) => s.subRecipes);
 
-  const upper = TARGET_FOOD_COST_PERCENT + FOOD_COST_VARIANCE_PERCENT;
-  const lower = TARGET_FOOD_COST_PERCENT - FOOD_COST_VARIANCE_PERCENT;
+  const { target, tolerance } = useFoodCostTarget();
+  const currency = useVenueStore((v) => v.settings.currency);
+  const step = priceRoundingStep(currency);
+  const upper = target + tolerance;
+  const lower = target - tolerance;
 
   const summary = useMemo(() => {
     // A dish with no price cannot have a food cost, so it is counted as
@@ -117,11 +119,11 @@ export function DashboardPage() {
         suggested: roundToNearest(
           calculateRecommendedPrice(
             recipe.pricing.totalCog,
-            TARGET_FOOD_COST_PERCENT,
+            target,
           ),
-          PRICE_ROUNDING_STEP,
+          step,
         ).toFixed(0),
-        gap: recipe.pricing.foodCostPercent - TARGET_FOOD_COST_PERCENT,
+        gap: recipe.pricing.foodCostPercent - target,
       }))
       // Worst first: the dish losing the most money is the one to look at.
       .sort((a, b) => b.gap - a.gap);
@@ -195,7 +197,7 @@ export function DashboardPage() {
             .length > 0,
       ).length,
     };
-  }, [recipes, products, subRecipes, upper, lower]);
+  }, [recipes, products, subRecipes, upper, lower, target, step]);
 
   return (
     <div>
@@ -227,7 +229,7 @@ export function DashboardPage() {
       )}
 
       <h2 className="mb-3 border-t pt-6 text-sm font-medium">
-        Food cost across the menu, against a {TARGET_FOOD_COST_PERCENT}% target
+        Food cost across the menu, against a {target}% target
       </h2>
 
       {/* ── Headline figures ──────────────────────────────────────────────── */}
@@ -315,9 +317,9 @@ export function DashboardPage() {
             Dishes outside the target band
           </CardTitle>
           <CardDescription>
-            Suggested price is what would hit {TARGET_FOOD_COST_PERCENT}% food
+            Suggested price is what would hit {target}% food
             cost, rounded to the nearest{" "}
-            {PRICE_ROUNDING_STEP.toLocaleString("id-ID")}. It excludes tax —
+            {step.toLocaleString("id-ID")}. It excludes tax —
             the guest price is higher.
           </CardDescription>
         </CardHeader>
@@ -337,7 +339,7 @@ export function DashboardPage() {
                     <TableHead className="text-right">Menu price</TableHead>
                     <TableHead className="text-right">Food cost</TableHead>
                     <TableHead className="text-right">
-                      Suggested at {TARGET_FOOD_COST_PERCENT}%
+                      Suggested at {target}%
                     </TableHead>
                   </TableRow>
                 </TableHeader>

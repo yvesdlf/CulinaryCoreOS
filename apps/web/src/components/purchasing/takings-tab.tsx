@@ -36,15 +36,14 @@ import {
   fetchRevenueChannels, fetchTakings, recordTakings,
   type RevenueChannel, type TakingsRow, type BusinessUnit,
 } from "@/data/repository";
+import { venueToday, addDays } from "@/lib/today";
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return venueToday();
 }
 
 function daysAgoISO(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return addDays(venueToday(), -n);
 }
 
 export function TakingsTab({

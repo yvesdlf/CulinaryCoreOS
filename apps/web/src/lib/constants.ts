@@ -117,6 +117,15 @@ export const DEFAULT_RECIPE_WASTE_PERCENT = 0;
  */
 export const PRICE_ROUNDING_STEP = 1000;
 
+/**
+ * The rounding step for a suggested menu price in a given currency. Rupiah
+ * menus are quoted to the thousand; a currency with cents is quoted to the
+ * half-unit (€14.50). Fixed at 1.000 before, which suggested €1.000 dishes.
+ */
+export function priceRoundingStep(currency: string): number {
+  return currency === "IDR" ? PRICE_ROUNDING_STEP : 0.5;
+}
+
 /** Target food cost and the variance treated as acceptable (%). */
 export const TARGET_FOOD_COST_PERCENT = 25;
 export const FOOD_COST_VARIANCE_PERCENT = 2;
