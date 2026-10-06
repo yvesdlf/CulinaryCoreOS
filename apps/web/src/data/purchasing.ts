@@ -1341,15 +1341,20 @@ export async function setCategoryTaxRate(
 export interface MessageChannel {
   id: string; kind: string; name: string; enabled: boolean;
   config: Record<string, unknown>;
+  /** Whether a provider key is stored. The key itself never leaves the database (0078). */
+  hasSecret: boolean;
 }
 
 export async function fetchMessageChannels(): Promise<MessageChannel[]> {
+  // Named columns rather than `*`: this used to ship the provider key to every
+  // member's browser, because it lived in `config` and `*` included it.
   const { data, error } = await requireSupabase()
-    .from("message_channels").select("*").order("kind");
+    .from("message_channels").select("id, kind, name, enabled, config, has_secret").order("kind");
   if (error) fail("fetchMessageChannels", error);
   return (data ?? []).map((r: any) => ({
     id: r.id, kind: r.kind, name: r.name,
     enabled: Boolean(r.enabled), config: r.config ?? {},
+    hasSecret: Boolean(r.has_secret),
   }));
 }
 
