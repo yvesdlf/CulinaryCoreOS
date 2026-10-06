@@ -33,6 +33,20 @@ select id, org_id, 'T-ID-123', 'T-IBAN-456' from employees
  where employee_number = 'T-5'
    and org_id = (select id from organizations where name = 'Demo Kitchen');
 
+/*
+ * Another venue with the same address in its records. The first version of
+ * the anonymiser rewrote these too: one owner reaching into another venue's
+ * ledgers.
+ */
+insert into organizations (id, name, slug)
+values ('b0000000-0000-4000-8000-0000000000ee', 'T-Other Venue', 't-other-venue');
+insert into employees (id, org_id, employee_number, first_name, last_name, work_email, employment_status)
+values ('b0000000-0000-4000-8000-0000000000e5', 'b0000000-0000-4000-8000-0000000000ee',
+        'T-OTHER', 'Elsewhere', 'Employee', 'staff@test.local', 'ACTIVE');
+insert into time_entries (org_id, employee_id, clock_in_at, clock_out_at, recorded_by_email)
+values ('b0000000-0000-4000-8000-0000000000ee', 'b0000000-0000-4000-8000-0000000000e5',
+        now() - interval '9 hours', now() - interval '1 hour', 'staff@test.local');
+
 select t.expect_fail($$delete from employees where employee_number = 'T-5'$$,
   'an employee with working time on record cannot be deleted');
 
@@ -84,13 +98,21 @@ select t.expect_value($$
       join pg_class k on k.relname = c.table_name
                      and k.relnamespace = 'public'::regnamespace and k.relkind = 'r'
      where c.table_schema = 'public' and c.column_name like '%\_email')
-  select coalesce(string_agg(c.table_name || '.' || c.column_name, ', '), '')
+  select coalesce(string_agg(c.table_name || '.' || c.column_name, ', '
+                            order by c.table_name, c.column_name), '')
     from candidates c
    where (xpath('/row/n/text()', query_to_xml(
             format('select count(*) as n from public.%I where lower(%I) = %L',
                    c.table_name, c.column_name, 'staff@test.local'),
             false, true, '')))[1]::text::int > 0$$,
-  'and their address is no longer copied anywhere', '');
+  'their address is left only where the other venue holds it', 'employees.work_email, time_entries.recorded_by_email');
+
+select t.expect_value($$
+  select (select count(*) from time_entries
+           where org_id = 'b0000000-0000-4000-8000-0000000000ee'
+             and recorded_by_email = 'staff@test.local')
+      || '/' || (select work_email from employees where id = 'b0000000-0000-4000-8000-0000000000e5')$$,
+  'except in another venue, which is not this owner''s to touch', '1/staff@test.local');
 
 select t.expect_value($$
   select coalesce(string_agg(distinct c.relname, ', '), '')
