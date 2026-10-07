@@ -24,3 +24,4 @@ export * from "./purchasing";
 export * from "./people";
 export * from "./operations";
 export * from "./administration";
+export * from "./floor";

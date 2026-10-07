@@ -50,6 +50,7 @@ import {
 } from "@/data/repository";
 import type { LeaveType } from "@/engine/people";
 import { PortalHome } from "@/components/portal/home";
+import { ReportTab, ChecksTab, RoomsTab } from "@/components/portal/floor";
 import { useAuthStore } from "@/stores/auth-store";
 
 const KIND_LABEL: Record<string, string> = {
@@ -176,7 +177,10 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
 
 
       <Tabs value={tab} onValueChange={(v) => setTab(v ?? "home")} className="mt-6">
-        <TabsList>
+        {/* A grid on a phone rather than one row: the row ran past the right
+            edge and hid the floor's three tabs, and a tab you cannot see is
+            not a feature. From tablet width up it is the usual single row. */}
+        <TabsList className="grid w-full grid-cols-4 gap-1 group-data-horizontal/tabs:h-auto sm:flex sm:w-fit [&>*]:min-h-9">
           <TabsTrigger value="home">
             <House aria-hidden="true" /> Home
           </TabsTrigger>
@@ -190,7 +194,16 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
             <CalendarDays aria-hidden="true" /> My rota
           </TabsTrigger>
           <TabsTrigger value="leave">Leave ({leave.length})</TabsTrigger>
+          <TabsTrigger value="report">Report</TabsTrigger>
+          <TabsTrigger value="checks">Checks</TabsTrigger>
+          <TabsTrigger value="rooms">Rooms</TabsTrigger>
         </TabsList>
+
+        {/* The floor's own jobs (0084): each tab loads its own data, so a
+            venue without rooms or forms still gets a working portal. */}
+        <TabsContent value="report" className="mt-4"><ReportTab /></TabsContent>
+        <TabsContent value="checks" className="mt-4"><ChecksTab /></TabsContent>
+        <TabsContent value="rooms" className="mt-4"><RoomsTab /></TabsContent>
 
         <TabsContent value="home" className="mt-4">
           <PortalHome
