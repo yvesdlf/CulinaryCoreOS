@@ -179,8 +179,37 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
       <Tabs value={tab} onValueChange={(v) => setTab(v ?? "home")} className="mt-6">
         {/* A grid on a phone rather than one row: the row ran past the right
             edge and hid the floor's three tabs, and a tab you cannot see is
-            not a feature. From tablet width up it is the usual single row. */}
-        <TabsList className="grid w-full grid-cols-4 gap-1 group-data-horizontal/tabs:h-auto sm:flex sm:w-fit [&>*]:min-h-9">
+            not a feature. From tablet width up it is the usual single row.
+
+            The icons come off below `sm`, and that is the grid's own doing.
+            Tailwind's `grid-cols-4` is `minmax(0, 1fr)`, so each cell is
+            exactly a quarter and cannot grow; `TabsTrigger` is
+            `whitespace-nowrap` with no `min-w-0`, so a label too wide for its
+            quarter is not wrapped, shrunk or clipped — it is painted straight
+            over the neighbouring tab. Measured: at 390px "Training (0)" needs
+            91px of an 85px cell, and at 320px "Inbox (0)", "Training (0)" and
+            "My rota" overflow by 8, 16 and 3 pixels. The graduation cap sat on
+            top of "Inbox (0)".
+
+            An icon is `size-4` plus a `gap-1.5`, so dropping it returns 22px
+            and costs nothing that is read: every one is `aria-hidden`, and the
+            label beside it already says the same word. Truncating instead
+            would have eaten the counts, which are the only part of "Inbox (0)"
+            a porter is checking.
+
+            That is not enough on its own. "Training (0)" wants 92px with no
+            icon at all, and the cell is 85px at 390px and 68px at 320px, so
+            the labels also wrap below `sm`. Wrapping rather than shaving the
+            padding down until this one English word fits, because that is a
+            fix that breaks the first time somebody translates this screen —
+            and this is the screen written for the floor, which is the likeliest
+            part of the product to be read in another language.
+
+            `items-stretch` because `h-auto` stops the triggers filling their
+            grid row, and a 36px tab sitting beside a 50px one in the same row
+            reads as a mistake: the active tab is drawn as a filled box, so the
+            difference is visible, not theoretical. */}
+        <TabsList className="grid w-full grid-cols-4 gap-1 group-data-horizontal/tabs:h-auto sm:flex sm:w-fit max-sm:items-stretch [&>*]:min-h-9 [&_svg]:hidden sm:[&_svg]:block [&_[data-slot=tabs-trigger]]:h-auto [&_[data-slot=tabs-trigger]]:py-1 [&_[data-slot=tabs-trigger]]:text-center [&_[data-slot=tabs-trigger]]:whitespace-normal sm:[&_[data-slot=tabs-trigger]]:whitespace-nowrap">
           <TabsTrigger value="home">
             <House aria-hidden="true" /> Home
           </TabsTrigger>
