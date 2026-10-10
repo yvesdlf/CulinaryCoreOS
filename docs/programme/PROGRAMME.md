@@ -31,15 +31,23 @@ account's monthly spend limit (HTTP 429).** Not one produced a file.
 
 | # | Workstream | Output | Status |
 |---|---|---|---|
-| 1 | Gap reconciliation — the briefs against the real 84 migrations and 118 tables | `programme/GAP_RECONCILIATION.md` | **failed, no output** |
+| 1 | Gap reconciliation — the briefs against the real 84 migrations and 118 tables | `programme/GAP_RECONCILIATION.md` | **done** — written sequentially in the coordinating session, 2026-10-09/10 |
 | 2 | UI/UX direction — architecture, dashboard, colour, tenant theming, customisation | `design/UI_UX_DIRECTION.md` | **failed, no output** |
 | 3 | Security and vulnerability review | `security/THREAT_AND_VULN_REVIEW.md` | **failed, no output** |
 | 4 | Scale stress test — 100+ staff, multi-outlet, multi-revenue-centre | `scale/SCALE_STRESS_REPORT.md` | **failed, no output** |
 | 5 | Naming and positioning | `brand/NAMING_AND_POSITIONING.md` | **failed, no output** |
 | 6 | Pricing and packaging | `gtm/PRICING_AND_PACKAGING.md` | **failed, no output** |
 
-Workstream 1 is the load-bearing one. Until it lands, no plan may assert that
-a feature is missing — see `CONTEXT.md` §2. It is still not landed.
+Workstream 1 was the load-bearing one. **It has since been done in the
+coordinating session rather than by an agent**, reading the inputs once —
+which is the approach the failure argued for. The embargo in `CONTEXT.md` §2
+is therefore lifted: `GAP_RECONCILIATION.md` is the authority on what exists.
+
+Its headline: about half of both briefs is already built, a further quarter
+needs finishing, and the genuine new-build list is 25 items — a much smaller
+and differently shaped programme than the briefs imply. Two brief proposals
+should be rejected rather than scheduled, and two architectural decisions
+belong to the owner, not to a plan.
 
 ### What the failure costs, and the lesson
 
