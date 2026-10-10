@@ -7,7 +7,7 @@
 // be released — so nothing here decides anything; it asks and reports.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { BedDouble, ClipboardCheck, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,16 @@ function said(err: unknown): string {
 }
 
 const selectClass = "h-11 w-full rounded-md border bg-transparent px-3 text-base";
+
+/*
+ * A HACCP field is labelled by its own text — "Core temperature", "Probe
+ * sanitised" — and that text went straight into the id, producing
+ * `id="fl-Core temperature"`. An id with a space in it is not a valid id: the
+ * label stops being associated with the field for a screen reader, and
+ * `getByLabel` could not find it either, which is how it was noticed.
+ */
+const fieldId = (label: string) =>
+  "fl-" + label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 // ── Report a fault or raise a request ────────────────────────────────────────
 
@@ -124,7 +134,22 @@ export function ChecksTab() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [action, setAction] = useState("");
   const [needsAction, setNeedsAction] = useState<string | null>(null);
+  const [actionMissing, setActionMissing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const actionRef = useRef<HTMLTextAreaElement>(null);
+
+  /*
+   * Follow the refusal with the cursor.
+   *
+   * role="alert" tells a screen reader what happened; this is for everybody
+   * else, and for the person who is holding a probe in the other hand. The
+   * block appears below the fields and on a phone it can be off-screen
+   * entirely, so announcing it without going there still leaves somebody
+   * pressing a button that keeps failing.
+   */
+  useEffect(() => {
+    if (needsAction) actionRef.current?.focus();
+  }, [needsAction]);
 
   async function load() {
     try {
@@ -160,7 +185,7 @@ export function ChecksTab() {
         </div>
         {form?.fields.map((f) => (
           <div key={f.label} className="space-y-2">
-            <Label htmlFor={`fl-${f.label}`}>
+            <Label htmlFor={fieldId(f.label)}>
               {f.label}{f.unit ? ` (${f.unit})` : ""}
               {(f.min !== null || f.max !== null) && (
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -169,31 +194,62 @@ export function ChecksTab() {
               )}
             </Label>
             {f.type === "yes_no" ? (
-              <select id={`fl-${f.label}`} className={selectClass} value={values[f.label] ?? ""}
+              <select id={fieldId(f.label)} className={selectClass} value={values[f.label] ?? ""}
                 onChange={(e) => setValues({ ...values, [f.label]: e.target.value })}>
                 <option value="">Choose</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
               </select>
             ) : (
-              <Input id={`fl-${f.label}`} className="h-11 text-base"
+              <Input id={fieldId(f.label)} className="h-11 text-base"
                 inputMode={f.type === "number" ? "decimal" : undefined}
                 value={values[f.label] ?? ""}
                 onChange={(e) => setValues({ ...values, [f.label]: e.target.value })} />
             )}
           </div>
         ))}
+        {/*
+            role="alert" and focus, because this block is the entire refusal.
+
+            The database refuses a failed check that carries no corrective
+            action (0035, and 852/2004 Annex II Ch XII behind it). This
+            appeared silently: no live region, so a screen reader said
+            nothing; focus left at the top of the page, so nothing led
+            anybody here; and the button stayed enabled, so pressing it again
+            failed in exactly the same way with nothing on screen changing.
+            A legally required record, in a silent loop. */}
         {needsAction && (
-          <div className="space-y-2 rounded-lg border border-status-warning bg-status-warning-soft p-3">
+          <div role="alert"
+               className="space-y-2 rounded-lg border border-status-warning bg-status-warning-soft p-3">
             <p className="text-sm font-medium">{needsAction}</p>
             <Label htmlFor="fl-action">What did you do about it?</Label>
-            <Textarea id="fl-action" value={action} onChange={(e) => setAction(e.target.value)}
+            <Textarea id="fl-action" ref={actionRef} value={action}
+              aria-required="true" aria-invalid={actionMissing || undefined}
+              aria-describedby={actionMissing ? "fl-action-missing" : undefined}
+              onChange={(e) => { setAction(e.target.value); setActionMissing(false); }}
               placeholder="Moved stock to fridge 1 and told the chef" />
+            {actionMissing && (
+              <p id="fl-action-missing" className="text-sm font-medium text-status-warning">
+                Say what you did about it before recording.
+              </p>
+            )}
           </div>
         )}
         <Button className="h-11 w-full text-base" disabled={busy || !form}
           onClick={async () => {
             if (!form) return;
+            /*
+             * Caught here rather than sent, because the database's refusal
+             * for this case is the one the user has already seen. Pressing
+             * again with an empty box produced the identical message and no
+             * visible change. The button is left enabled on purpose: a
+             * disabled control that does not say why is the same dead end.
+             */
+            if (needsAction && action.trim() === "") {
+              setActionMissing(true);
+              actionRef.current?.focus();
+              return;
+            }
             setBusy(true);
             try {
               const result = await recordFloorCheck({
@@ -201,7 +257,7 @@ export function ChecksTab() {
               });
               if (result.breach) toast.warning("Recorded as out of limits", { description: result.detail });
               else toast.success("Recorded");
-              setValues({}); setAction(""); setNeedsAction(null);
+              setValues({}); setAction(""); setNeedsAction(null); setActionMissing(false);
               await load();
             } catch (err) {
               const message = said(err);

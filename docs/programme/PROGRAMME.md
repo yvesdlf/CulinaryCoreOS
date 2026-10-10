@@ -96,33 +96,34 @@ failure `CONTEXT.md` §2 exists to prevent.
   customer's brand colour reskin the application, that is a product call, not
   a design one.
 
-## Standing on the four confirmed defects
+## The four confirmed defects — closed 2026-10-09/10
 
-`CONTEXT.md` §3 lists four defects confirmed by execution on 2026-10-08. They
-are **open**, and they are not assigned to any wave-1 workstream — the
-security review treats them as its starting point rather than re-finding them.
+`CONTEXT.md` §3 listed four defects confirmed by execution on 2026-10-08.
+**All four are now fixed** — migrations 0085, 0086 and 0087, plus the portal
+HACCP card, proved by `supabase/tests/31_the_four_defects.sql` (23 checks,
+each watched going red first). The security review should still treat them as
+its starting point, sweeping for more of the same shapes rather than
+re-finding these.
 
-They should be fixed before, not after, the programme's feature work, for one
-specific reason: the approval-forgery defect defeats the control that both
-briefs call the product's main advantage over every project they studied, and
-that the positioning workstream is being asked to build a market claim on. A
-claim made on a control that does not hold is the worst of the available
-outcomes.
+They were done before the programme's feature work for one specific reason:
+the approval-forgery defect defeated the control that both briefs call the
+product's main advantage over every project they studied, and that the
+positioning workstream is to build a market claim on. That claim can now be
+made.
 
-Proposed order, unchanged from when it was first put to the owner and still
-awaiting a decision:
+What was done, and what is left:
 
-1. Approval forgery — `enforce_approval_rules` trusting a client-supplied
-   `actor_id`.
-2. HACCP refusal announced to assistive technology, and the corrective-action
-   field actually gated (852/2004 CCP record).
-3. Sick-note deletion — `storage_deletions` is never drained (GDPR Art 9).
-4. HR case self-add.
-5. Portal, `/requests`, `/handover`, `/administration` and `/settings` added
-   to `tests/accessibility.spec.ts` — none are covered, which is why the
-   portal's tab overlap had to be caught by eye.
-6. Tab reflow on `/settings` and `/requests`, the same defect fixed on the
-   portal in `7335aff`.
+1. ~~Approval forgery~~ — done, 0085.
+2. ~~HACCP refusal announced and the field gated~~ — done, `floor.tsx`.
+3. ~~Sick-note deletion~~ — done, 0087. One follow-up: `storage_api` must be
+   given a base URL and credential per deployment, or the drain correctly
+   does nothing and says so.
+4. ~~HR case self-add~~ — done, 0086.
+5. **Still open.** Portal, `/requests`, `/handover`, `/administration` and
+   `/settings` added to `tests/accessibility.spec.ts` — none are covered,
+   which is why the portal's tab overlap had to be caught by eye.
+6. **Still open.** Tab reflow on `/settings` and `/requests`, the same defect
+   fixed on the portal in `7335aff`.
 
 ## Log
 

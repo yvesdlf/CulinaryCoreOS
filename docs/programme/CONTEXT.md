@@ -70,29 +70,38 @@ schema.
 is needed. The authoritative list is `docs/programme/GAP_RECONCILIATION.md`.
 Until that file exists, no workstream may assert that a feature is missing.
 
-## 3. Four confirmed defects, unfixed
+## 3. Four confirmed defects — fixed 2026-10-09/10
 
-Found by audit earlier on 2026-10-08 and **confirmed by execution against a
-running database**, not by inspection. They are open. Any plan that assumes
-these controls work is wrong.
+Found by audit on 2026-10-08 and **confirmed by execution against a running
+database**, not by inspection. All four are now closed, each with the test
+that was watched going red first. Migrations 0085, 0086, 0087 and a change to
+`apps/web/src/components/portal/floor.tsx`; the controls are proved by
+`supabase/tests/31_the_four_defects.sql`.
 
-1. **Approval forgery.** `enforce_approval_rules` reads `new.actor_id` /
-   `new.actor_email` from the row rather than `auth.uid()`. A CHEF was refused
-   self-approval, then passed the same approval naming the OWNER as `actor_id`
-   and it was **allowed**, clearing a 99,000,000 OWNER-threshold requisition
-   with the owner recorded as the approver.
-   **This matters commercially:** both briefs call the approval engine and
-   segregation of duties CCOS's main advantage over the reference projects. It
-   is currently forgeable by any authenticated member.
-2. **HR case self-add.** A user added themselves to an HR case they were not
-   party to: readable before 0, after 1, and the sensitive detail was returned.
-3. **Sick-note deletion.** `sick_notes_read` keys on the storage path and
-   `can_write_section('PEOPLE')`, never on `leave_attachments`; nothing drains
-   `storage_deletions`. GDPR Art 9 special-category data.
-4. **HACCP refusal is silent.** On a failed check the corrective-action block
-   has no `role`/`aria-live`, focus does not move, and the button is not
-   gated on the now-required text — so a second press fails identically. On a
-   legally required 852/2004 CCP record.
+1. **Approval forgery — fixed in 0085.** `enforce_approval_rules` read
+   `new.actor_id` / `new.actor_email` from the row rather than `auth.uid()`.
+   A CHEF was refused self-approval, then passed the same approval naming the
+   OWNER as `actor_id` and it was **allowed**, clearing a 99,000,000
+   OWNER-threshold requisition with the owner recorded as the approver.
+   The actor is now taken from the session and whatever the client sends is
+   discarded — the position 0054 took, which had never reached purchasing.
+2. **HR case self-add — fixed in 0086.** A user added themselves to
+   `hr_case_participants` and read a case they were not party to. A case is
+   now joinable only by somebody already on it, or by whoever opened it.
+3. **Sick-note deletion — fixed in 0087.** `sick_notes_read` keyed on the
+   storage path and a section grant and never on `leave_attachments`, and
+   nothing drained `storage_deletions` — so an erasure was recorded that had
+   not happened, of GDPR Art 9 data. Read now requires a live attachment row,
+   and the queue is drained through the Storage API on a timer.
+4. **HACCP refusal was silent — fixed in `floor.tsx`.** On a failed check the
+   corrective-action block had no `role`/`aria-live`, focus did not move, and
+   the button was not gated, so a second press failed identically with
+   nothing on screen changing. On a legally required 852/2004 CCP record.
+
+**What this section is for now:** these are the four *shapes* of defect this
+codebase has produced, and the security review should sweep for more of each
+rather than re-finding these. The first two are the same mistake — a control
+that reads who the caller is from a column the caller writes.
 
 ## 4. Prior work that must be built on, not duplicated
 
