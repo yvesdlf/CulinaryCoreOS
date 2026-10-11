@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- The four defects found by audit on 2026-10-08 (0085, 0086, 0087)
+-- The four defects found by audit on 2026-10-08 (0085, 0086, 0087, 0088)
 -- ---------------------------------------------------------------------------
 -- Every one of these was confirmed by execution before it was fixed, and each
 -- assertion below was watched going red against the schema as it stood. The
@@ -256,12 +256,66 @@ select t.expect_value($$select count(*)::text from storage_deletions
 -- Pointed at the discard port, so the request goes nowhere and pg_net's
 -- asynchrony does not make this test wait on a reply it does not need.
 update storage_api set base_url = 'http://127.0.0.1:9/storage/v1',
-                       auth_header = 'Bearer t-not-a-real-key' where id;
+                       auth_header = 'Bearer t-not-a-real-key',
+                       api_key = 't-not-a-real-key' where id;
 select t.expect_value($$select drain_storage_deletions()$$,
-  'configured, it sends the deletion', '1 sent to the storage API');
+  'configured, it sends the deletion', '1 sent, 0 confirmed, 0 failed');
+
+/*
+ * And it does NOT call it done (0088).
+ *
+ * 0087 stamped deleted_at on dispatch. Combined with the missing apikey
+ * header — which the hosted gateway requires, so every request would have
+ * been rejected — the queue would have emptied itself on schedule while
+ * every file stayed where it was. The same false record 0087 exists to fix,
+ * one layer along and harder to see.
+ */
+select t.expect_value($$select count(*)::text from storage_deletions
+                         where path like '%T-sicknote.pdf' and deleted_at is null$$,
+  'and does not call it done until the storage service says so', '1');
+select t.expect_value($$select (request_id is not null and attempts = 1)::text
+                          from storage_deletions where path like '%T-sicknote.pdf'$$,
+  'it remembers the request it is waiting on', 'true');
+select t.expect_value($$select drain_storage_deletions()$$,
+  'and does not send it twice while it waits', '0 sent, 0 confirmed, 0 failed');
+
+-- Both headers, and the path encoded. Nobody is called Sorensen without an o.
+select t.expect_value($$select percent_encode_path('org/emp/sick note Sørensen.pdf')$$,
+  'a file name a person typed survives the round trip',
+  'org/emp/sick%20note%20S%C3%B8rensen.pdf');
+
+/*
+ * A reply that never came is a failure, not a request in flight.
+ *
+ * 0070's first draft read only status_code, so a transport failure left a
+ * row pending forever with nothing retrying it and nothing reporting it.
+ * This is that assertion, for this queue.
+ */
+insert into net._http_response (id, status_code, error_msg)
+select request_id, null, 'Connection refused'
+  from storage_deletions where path like '%T-sicknote.pdf';
+select t.expect_value($$select drain_storage_deletions()$$,
+  'a request that never reached a server is a failure',
+  '0 sent, 0 confirmed, 1 failed');
+select t.expect_value($$select last_error from storage_deletions
+                         where path like '%T-sicknote.pdf'$$,
+  'with the reason kept', 'Connection refused');
+select t.expect_value($$select (deleted_at is null and next_attempt_at > now())::text
+                          from storage_deletions where path like '%T-sicknote.pdf'$$,
+  'and it waits before trying again', 'true');
+
+-- A 404 is the outcome this row wanted.
+update storage_deletions set next_attempt_at = null where path like '%T-sicknote.pdf';
+select t.expect_value($$select drain_storage_deletions()$$,
+  'it tries again when the wait is over', '1 sent, 0 confirmed, 0 failed');
+insert into net._http_response (id, status_code)
+select request_id, 404 from storage_deletions where path like '%T-sicknote.pdf';
+select t.expect_value($$select drain_storage_deletions()$$,
+  'and a file storage has already forgotten counts as gone',
+  '0 sent, 1 confirmed, 0 failed');
 select t.expect_value($$select count(*)::text from storage_deletions
                          where path like '%T-sicknote.pdf' and deleted_at is not null$$,
-  'and the queue row says when', '1');
+  'so the queue row finally says when', '1');
 select t.expect_value($$select count(*)::text from cron.job
                          where command like '%drain_storage_deletions%'$$,
   'on a timer, not only when somebody remembers', '1');

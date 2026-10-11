@@ -115,9 +115,13 @@ What was done, and what is left:
 
 1. ~~Approval forgery~~ — done, 0085.
 2. ~~HACCP refusal announced and the field gated~~ — done, `floor.tsx`.
-3. ~~Sick-note deletion~~ — done, 0087. One follow-up: `storage_api` must be
-   given a base URL and credential per deployment, or the drain correctly
-   does nothing and says so.
+3. ~~Sick-note deletion~~ — done, 0087, corrected by 0088. The first drain
+   sent no `apikey` header and stamped the row on dispatch, so on a hosted
+   project it would have emptied the queue while every file stayed in place.
+   It now confirms the reply before recording the erasure. **Deployment step
+   outstanding:** `storage_api` needs a base URL, a service key and an api
+   key per deployment. Until then the drain does nothing and says so, which
+   is the safe state, not the finished one.
 4. ~~HR case self-add~~ — done, 0086.
 5. **Still open.** Portal, `/requests`, `/handover`, `/administration` and
    `/settings` added to `tests/accessibility.spec.ts` — none are covered,
