@@ -282,6 +282,34 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 
 ## 7. The genuine gap list, ordered by what it unblocks
 
+> **Progress, 2026-10-11.** Five of twenty-five built, tier 1 complete.
+> Each is enforced in the database with its controls proved by a test that
+> was watched failing first, and the suite has grown from 738 checks to 856.
+> **None of them has a screen yet** — "built" here means built and enforced
+> in the database, not reachable by a user. That is deliberate: the rules
+> come first, and a form over a table with no controls is the thing
+> `AGENTS.md` §1 exists to prevent.
+>
+> | # | Item | State |
+> |---|---|---|
+> | 1 | Stocktake sessions | **built** — 0091 |
+> | 2 | Sales consumption | **built** — 0092 |
+> | 3 | Per-product unit conversions | **built** — 0090 (not yet wired into costing) |
+> | 4 | Menus, menu items, modifiers | **built** — 0093 |
+> | 5 | Supplier price history + move alert | **built** — 0094 |
+> | 6–25 | | outstanding |
+>
+> Three things the work changed about this document's own conclusions:
+> `units.ts` is about business units and has nothing to do with measurement,
+> so §3.1's "global conversion only" was wrong — there was **no** conversion
+> anywhere; `sales_lines.recipe_id` was `not null`, which made the briefs'
+> POS import impossible and had to be relaxed; and
+> `production_usage_theoretical` expands only one level of sub-recipe, so
+> the production figures it feeds are understated for any nested
+> preparation. That last one is a defect in existing code, not a gap, and is
+> not yet fixed.
+
+
 Tier 1 — unblocks the most, and the KPIs everyone wants depend on it.
 
 1. **Stocktake sessions** (`stocktakes`, `stocktake_lines`, snapshot freeze,

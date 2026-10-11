@@ -175,3 +175,28 @@ The wider point about third-party agent files: they are instructions that
 would then steer the work. `AGENTS.md` wins over any persona they carry, and
 nothing should be installed from a repository whose licence and provenance
 have not been checked by hand.
+
+## Gap list delivery — running log
+
+| Date | Item | Migration | Suite |
+|---|---|---|---|
+| 2026-10-11 | Per-product unit conversions | 0090 | 766 |
+| 2026-10-11 | Stocktake sessions | 0091 | 796 |
+| 2026-10-11 | Sales consumption + food cost variance | 0092 | 814 |
+| 2026-10-11 | Menus, items, modifiers | 0093 | 836 |
+| 2026-10-11 | Supplier price history + alert | 0094 | 856 |
+
+**Tier 1 of the gap list is complete.** Twenty items remain.
+
+Two standing caveats on all of it:
+
+- **None of these has a screen.** They are enforced and proved in the
+  database; nothing in the interface opens a stocktake, records a
+  conversion, builds a menu or charts a price. Each needs its own UI pass.
+- **Verification is slow and occasionally false** while the repository sits
+  in iCloud Drive. `~/Documents` is synced, `brctl` confirms `node_modules`
+  and `.git` are included, and evicted files read as empty — which has
+  already produced an hour chasing a dependency failure that did not exist,
+  and a `tsc` run that reported clean over two type errors. Moving the
+  repository to a folder outside iCloud is the highest-value thing anybody
+  could do to this project.
