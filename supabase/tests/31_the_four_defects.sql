@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- The four defects found by audit on 2026-10-08 (0085, 0086, 0087, 0088)
+-- The four defects found by audit on 2026-10-08 (0085, 0086, 0087, 0088, 0089)
 -- ---------------------------------------------------------------------------
 -- Every one of these was confirmed by execution before it was fixed, and each
 -- assertion below was watched going red against the schema as it stood. The
@@ -255,9 +255,24 @@ select t.expect_value($$select count(*)::text from storage_deletions
 
 -- Pointed at the discard port, so the request goes nowhere and pg_net's
 -- asynchrony does not make this test wait on a reply it does not need.
-update storage_api set base_url = 'http://127.0.0.1:9/storage/v1',
-                       auth_header = 'Bearer t-not-a-real-key',
-                       api_key = 't-not-a-real-key' where id;
+update storage_api set base_url = 'http://127.0.0.1:9/storage/v1' where id;
+
+/*
+ * An endpoint without a credential is its own state (0089).
+ *
+ * The two say different things to whoever reads them — "nobody set this up"
+ * and "this was set up and I cannot get at the key" send a person to
+ * different places — so they are not one message.
+ */
+select t.expect_value($$select drain_storage_deletions()$$,
+  'an endpoint with no key in the vault is its own answer',
+  'waiting: no storage_service_key in the vault');
+select t.expect_value($$select count(*)::text from storage_deletions
+                         where path like '%T-sicknote.pdf' and deleted_at is null$$,
+  'and still nothing is called done', '1');
+
+select t.fixture($$select vault.create_secret('t-not-a-real-key',
+                     'storage_service_key', 'test credential')$$);
 select t.expect_value($$select drain_storage_deletions()$$,
   'configured, it sends the deletion', '1 sent, 0 confirmed, 0 failed');
 
@@ -319,5 +334,7 @@ select t.expect_value($$select count(*)::text from storage_deletions
 select t.expect_value($$select count(*)::text from cron.job
                          where command like '%drain_storage_deletions%'$$,
   'on a timer, not only when somebody remembers', '1');
+
+select t.fixture($$delete from vault.secrets where name = 'storage_service_key'$$);
 
 rollback;
