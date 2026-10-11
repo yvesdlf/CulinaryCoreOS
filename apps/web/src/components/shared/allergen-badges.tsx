@@ -2,6 +2,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAllergens, allergenNames } from "@/lib/allergens";
+import { allergenIcon } from "@/lib/allergen-icons";
 
 interface AllergenBadgesProps {
   /** Stored allergen values; mapped onto the EU/UK 14 registry for display. */
@@ -59,7 +60,7 @@ export function AllergenBadges({
         const key = item.known ? item.definition.id : `unknown:${item.raw}`;
         const label = item.known ? item.definition.name : item.raw;
         const code = item.known ? item.definition.code : "?";
-        const Icon = item.known ? item.definition.icon : TriangleAlert;
+        const Icon = item.known ? allergenIcon(item.definition.id) : TriangleAlert;
         const note = item.known ? item.definition.note : undefined;
 
         return (
@@ -132,7 +133,7 @@ export function AllergenPanelList({ allergens }: { allergens: string[] }) {
     <ul className="space-y-1.5">
       {resolved.map((item) => {
         const key = item.known ? item.definition.id : `unknown:${item.raw}`;
-        const ItemIcon = item.known ? item.definition.icon : TriangleAlert;
+        const ItemIcon = item.known ? allergenIcon(item.definition.id) : TriangleAlert;
         return (
           <li key={key} className="flex items-start gap-2 text-sm">
             <ItemIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
