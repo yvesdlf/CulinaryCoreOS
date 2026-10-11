@@ -18,6 +18,7 @@ import { RecipeAllergenMatrix } from "@/components/recipes/recipe-allergen-matri
 import { nutritionCoverage, deriveRecipeNutrition } from "@/engine/nutrition-engine";
 import { resolveAllergens } from "@/lib/allergens";
 import { formatCurrency, formatPercent, formatNumber } from "@/lib/format";
+import { AllergenGlyph } from "@/components/shared/allergen-glyph";
 
 export function RecipeSheet({ recipe }: { recipe: Recipe }) {
   const products = useProductStore((s) => s.products);
@@ -84,7 +85,7 @@ export function RecipeSheet({ recipe }: { recipe: Recipe }) {
               <li key={r.known ? r.definition.id : r.raw} className="flex items-center gap-1.5 text-sm">
                 {r.known ? (
                   <>
-                    <r.definition.icon className="size-4" aria-hidden="true" />
+                    <AllergenGlyph id={r.definition.id} className="size-4" />
                     {/* The written name, always — a code never stands alone. */}
                     <span>{r.definition.name}</span>
                     <span className="text-muted-foreground">({r.definition.code})</span>
