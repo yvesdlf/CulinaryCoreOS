@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Scale,
   BookOpen,
   ClipboardCheck,
   LayoutDashboard,
@@ -51,6 +52,7 @@ const navigationItems = [
   { label: "Go to Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
   { label: "Go to Stocktake", to: "/stocktake", icon: ClipboardCheck },
   { label: "Go to Menus", to: "/menus", icon: BookOpen },
+  { label: "Go to Food Cost", to: "/food-cost", icon: Scale },
   { label: "Go to Purchasing", to: "/purchasing", icon: ShoppingCart },
   { label: "Go to People", to: "/people", icon: Users },
   { label: "Go to Messages", to: "/messages", icon: Inbox },

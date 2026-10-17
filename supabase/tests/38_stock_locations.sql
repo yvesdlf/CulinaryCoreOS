@@ -138,8 +138,12 @@ select t.expect_value($$select post_stocktake('b0000000-0000-4000-8000-000000030
   'posting it writes one adjustment', '1');
 
 reset role;
+-- Scoped to this test's own product: a venue that has counted anything else
+-- has other COUNT movements and the unscoped query read whichever came back
+-- first.
 select t.expect_value($$select location_id::text from stock_movements
-                         where kind = 'COUNT' and reason = 'stocktake'$$,
+                         where kind = 'COUNT' and reason = 'stocktake'
+                           and product_id = 'b0000000-0000-4000-8000-000000030001'$$,
   'filed against the room that was counted',
   'b0000000-0000-4000-8000-000000030011');
 select t.expect_value($$select on_hand::text from product_stock_by_location

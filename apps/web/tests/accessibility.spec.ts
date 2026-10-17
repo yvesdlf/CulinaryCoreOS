@@ -44,6 +44,7 @@ const PAGES = [
   // portal's tab-row overlap reached a phone before anybody saw it.
   { name: "stocktake", path: "/stocktake", heading: "Stocktake" },
   { name: "menus", path: "/menus", heading: "Menus" },
+  { name: "food cost", path: "/food-cost", heading: "Food cost" },
 ];
 
 for (const p of PAGES) {

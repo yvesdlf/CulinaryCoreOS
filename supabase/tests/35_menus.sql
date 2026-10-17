@@ -125,8 +125,15 @@ values (:'demo', 'b0000000-0000-4000-8000-00000000f130', null, 4, 40000,
 
 set local role authenticated;
 select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
-select t.expect_value($$select pos_item_code from sales_codes_unmapped$$,
-  'the coffee nobody has mapped is on the worklist', 'TILL-COFFEE');
+/*
+ * Asserted as present rather than as the only row. The worklist is
+ * venue-wide, so the first draft passed only against a database nobody had
+ * ever demoed the app on — the moment a screenshot run left two unmapped
+ * codes behind, it read back whichever sorted first.
+ */
+select t.expect_value($$select count(*)::text from sales_codes_unmapped
+                         where pos_item_code = 'TILL-COFFEE'$$,
+  'the coffee nobody has mapped is on the worklist', '1');
 select t.expect_value($$select count(*)::text from sales_codes_unmapped
                          where pos_item_code = 'TILL-BUR-R'$$,
   'and the burger, which a menu item answers, is not', '0');

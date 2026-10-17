@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
+  Scale,
   BookOpen,
   ClipboardCheck,
   LayoutDashboard,
@@ -90,6 +91,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Suppliers", to: "/suppliers", icon: Truck },
       { title: "Inventory", to: "/inventory", icon: Warehouse },
       { title: "Stocktake", to: "/stocktake", icon: ClipboardCheck },
+      { title: "Food Cost", to: "/food-cost", icon: Scale },
       { title: "Traceability", to: "/traceability", icon: ShieldCheck },
     ],
   },
