@@ -23,6 +23,7 @@ export * from "./inventory";
 export * from "./stocktake";
 export * from "./menus";
 export * from "./food-cost";
+export * from "./sales";
 export * from "./purchasing";
 export * from "./people";
 export * from "./operations";

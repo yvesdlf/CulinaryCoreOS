@@ -26,6 +26,7 @@ const routeLabels: Record<string, string> = {
   stocktake: "Stocktake",
   menus: "Menus",
   "food-cost": "Food Cost",
+  sales: "Sales",
   inventory: "Inventory",
   purchasing: "Purchasing",
   people: "People",

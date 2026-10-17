@@ -45,6 +45,7 @@ const PAGES = [
   { name: "stocktake", path: "/stocktake", heading: "Stocktake" },
   { name: "menus", path: "/menus", heading: "Menus" },
   { name: "food cost", path: "/food-cost", heading: "Food cost" },
+  { name: "sales", path: "/sales", heading: "Sales" },
 ];
 
 for (const p of PAGES) {

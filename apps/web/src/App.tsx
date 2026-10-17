@@ -27,6 +27,7 @@ const StaffPortalPage = lazy(() => import("@/pages/portal").then((x) => ({ defau
 const StocktakePage = lazy(() => import("@/pages/stocktake").then((x) => ({ default: x.StocktakePage })));
 const MenusPage = lazy(() => import("@/pages/menus").then((x) => ({ default: x.MenusPage })));
 const FoodCostPage = lazy(() => import("@/pages/food-cost").then((x) => ({ default: x.FoodCostPage })));
+const SalesPage = lazy(() => import("@/pages/sales").then((x) => ({ default: x.SalesPage })));
 const AdministrationPage = lazy(() => import("@/pages/administration").then((x) => ({ default: x.AdministrationPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
@@ -159,6 +160,7 @@ export function App() {
         <Route path="/collections/:id/print" element={<CollectionPrintPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/stocktake" element={<StocktakePage />} />
+        <Route path="/sales" element={<SalesPage />} />
         <Route path="/food-cost" element={<FoodCostPage />} />
         <Route path="/production" element={<ProductionPage />} />
         <Route path="/menus" element={<MenusPage />} />
