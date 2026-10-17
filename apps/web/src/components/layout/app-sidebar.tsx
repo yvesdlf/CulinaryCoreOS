@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
+  BookOpen,
   ClipboardCheck,
   LayoutDashboard,
   Package,
@@ -78,6 +79,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Products", to: "/products", icon: Package },
       { title: "Collections", to: "/collections", icon: FolderOpen },
       { title: "Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
+      { title: "Menus", to: "/menus", icon: BookOpen },
       { title: "Menu Engineering", to: "/menu-engineering", icon: ChartNoAxesCombined },
     ],
   },

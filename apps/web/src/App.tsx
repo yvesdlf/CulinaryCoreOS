@@ -25,6 +25,7 @@ const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ defa
 const MessagesPage = lazy(() => import("@/pages/messages").then((x) => ({ default: x.MessagesPage })));
 const StaffPortalPage = lazy(() => import("@/pages/portal").then((x) => ({ default: x.StaffPortalPage })));
 const StocktakePage = lazy(() => import("@/pages/stocktake").then((x) => ({ default: x.StocktakePage })));
+const MenusPage = lazy(() => import("@/pages/menus").then((x) => ({ default: x.MenusPage })));
 const AdministrationPage = lazy(() => import("@/pages/administration").then((x) => ({ default: x.AdministrationPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
@@ -158,6 +159,7 @@ export function App() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/stocktake" element={<StocktakePage />} />
         <Route path="/production" element={<ProductionPage />} />
+        <Route path="/menus" element={<MenusPage />} />
         <Route path="/menu-engineering" element={<MenuEngineeringPage />} />
         <Route path="/traceability" element={<TraceabilityPage />} />
         <Route path="/purchasing" element={<PurchasingPage />} />

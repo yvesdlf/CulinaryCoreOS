@@ -21,6 +21,7 @@ export { ConflictError } from "./_shared";
 export * from "./catalogue";
 export * from "./inventory";
 export * from "./stocktake";
+export * from "./menus";
 export * from "./purchasing";
 export * from "./people";
 export * from "./operations";

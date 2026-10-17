@@ -43,6 +43,7 @@ const PAGES = [
   // administration and settings are still uncovered, which is how the
   // portal's tab-row overlap reached a phone before anybody saw it.
   { name: "stocktake", path: "/stocktake", heading: "Stocktake" },
+  { name: "menus", path: "/menus", heading: "Menus" },
 ];
 
 for (const p of PAGES) {
