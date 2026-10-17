@@ -129,7 +129,7 @@ absent on quality.
 | 7.2 | Multi-currency | **PARTIAL** | `currency` columns on `requisitions`, `purchase_orders`, `supplier_invoices`, `budgets`, `contracts`; `organizations.currency_code`. **No `exchange_rates` table and no conversion** — so documents can be *denominated* in another currency but reports cannot convert them. |
 | 7.3 | Budgets and committed spend | **BUILT** | `budgets` (12) with `hard_stop`, and view `budget_positions` exposing `committed` and `actual` against `amount`. `cost_centres`, `business_units.approval_threshold`. `invoice-matching.ts` exports a `BudgetPosition` type. Escalation-instead-of-block was not verified. |
 | 7.4 | AP, payment runs, period lock | **PARTIAL** | Invoice status reaches APPROVED_FOR_PAYMENT and PAID, with `payment_terms_days` and `due_date` on the invoice — so aging is computable. **Absent:** an aging report, a weekly payment proposal, and `closed periods` with a posting block. A view `accounting_export` (`on_date`, `unit_code`, `account`, `amount`, `org_id`) **already exists**, which is the brief's CSV journal export in view form. |
-| 7.5 | Supplier scorecard | **ABSENT** | No scorecard. `apps/web/src/engine/procurement-analytics.ts` exists and may hold some of it — not verified. All the inputs exist. |
+| 7.5 | Supplier scorecard | **BUILT — 0110** | Views `supplier_scorecard`, `supplier_delivery_record`, `supplier_quality_record`, `supplier_paperwork_record`, with thresholds and window in `venue_parameters` through the seeder registry. `procurement-analytics.ts` did hold `deliveryPerformance()` in TypeScript; the scorecard is in SQL instead, per §1 and METRICS.md §1 — a figure computed in the browser is one that can disagree with the same figure in a report. **Deliberately not a single blended score**, with the reasoning recorded in the migration and in METRICS.md. |
 | 7.6 | Offline-first on iOS | **ABSENT, AND BLOCKED** | `apps/ios/` and `apps/macos/` contain **a README each and zero Swift files**. There is no mobile app to make offline. Every brief item that says "on the iOS app" — offline counting, camera capture, attendant room flow, "My day" — has no host. The staff portal is a responsive web page; that is the current mobile story. |
 | 7.7 | Localisation | **ABSENT** | No i18n library, no translation files, strings inline. Bahasa Indonesia not shipped. |
 | 7.8 | Webhooks | **BUILT, DIFFERENT NAME** | `message_channels` (with `kind`, `config`, `quiet_from`/`quiet_to`), `message_channel_secrets`, `message_deliveries` (attempts, backoff, `next_attempt_at`, `claimed_at`), `message_endpoint_origins` allow-list, `drain_outbox()`, `attempt_delivery()`, `delivery_backoff()`, `check_channel_endpoint()`, view `outbox_health`. Migrations `0069`, `0070`, `0076`. **More robust than the brief's sketch** — it has retry, backoff, an origin allow-list and quiet hours. |
@@ -311,7 +311,8 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > | 16 | Custom fields | **built** — 0106 |
 > | 13 | Sales forecast, known events, accuracy | **built** — 0107/0108 |
 > | 20 | Landed cost | **built** — 0109 |
-> | 18–19, 21, 24–25 | labels, barcodes, scorecard, payroll export, i18n | outstanding |
+> | 21 | Supplier scorecard | **built** — 0110 |
+> | 18–19, 24–25 | labels, barcodes, payroll export, i18n | outstanding |
 >
 > Three things the work changed about this document's own conclusions:
 > `units.ts` is about business units and has nothing to do with measurement,

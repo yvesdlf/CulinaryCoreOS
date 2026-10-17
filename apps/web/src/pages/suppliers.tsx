@@ -32,6 +32,7 @@ import { toDecimal } from "@/engine/cost-engine";
 import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PriceHistoryPanel } from "@/components/suppliers/price-history-panel";
+import { ScorecardPanel } from "@/components/suppliers/scorecard-panel";
 
 interface Supplier {
   name: string;
@@ -129,6 +130,9 @@ export function SuppliersPage() {
         <TabsList>
           <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           <TabsTrigger value="prices">Price history</TabsTrigger>
+          {/* Beside the prices, because "they are dearer" and "they are late"
+              are the same conversation with a supplier. */}
+          <TabsTrigger value="scorecard">Scorecard</TabsTrigger>
         </TabsList>
 
         <TabsContent value="suppliers" className="mt-4">
@@ -228,6 +232,10 @@ export function SuppliersPage() {
 
         <TabsContent value="prices" className="mt-4">
           <PriceHistoryPanel />
+        </TabsContent>
+
+        <TabsContent value="scorecard" className="mt-4">
+          <ScorecardPanel />
         </TabsContent>
       </Tabs>
     </div>

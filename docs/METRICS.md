@@ -9,7 +9,7 @@ can mean different things without anybody noticing.
 disagree the view is the bug, not this file — but say so rather than
 quietly editing one to match the other.
 
-Written 2026-10-18 against migrations 0001–0109.
+Written 2026-10-18 against migrations 0001–0110.
 
 ---
 
@@ -171,6 +171,8 @@ looks identical in a total and means the opposite.
 | `forecast_accuracy.covers_error_percent` | What happened has not been recorded | The forecast was exactly right |
 | `receipt_line_landed_cost.landed_unit_cost` | Nobody recorded a price for the line, or the whole line went back | — |
 | `receipt_line_landed_cost.uplift_percent` | There is no goods value for the charge to be a percentage of | The delivery carried no charges |
+| `supplier_scorecard.late_percent` | No dated order has been delivered — the supplier has not been tried | Every delivery arrived on time |
+| `supplier_scorecard.rejected_percent` | Nothing has been received from them | Nothing was ever refused |
 | `recipe_lines_needing_conversion` | — | (a row here means the line **cannot** be costed, not that it costs nothing) |
 
 ---
@@ -289,6 +291,33 @@ accounted for.
 > one delivery, and letting a delivery overwrite the catalogue would move
 > every recipe's cost silently on the day a pallet arrived.
 
+### Supplier scorecard — `supplier_scorecard`
+
+Three components, over a window of `SCORECARD_DAYS` (default 180), each with
+its own denominator and its own flag against a venue threshold:
+
+```
+late_percent     = deliveries arriving after expected_on ÷ deliveries scored × 100
+                   (only orders that carried an expected date are scored)
+rejected_percent = Σ quantity_rejected ÷ Σ quantity_received × 100
+argued_percent   = invoices in EXCEPTION or DISPUTED ÷ invoices × 100
+concerns         = count of the three flags raised
+```
+
+**There is deliberately no blended score.** The weights behind one number are
+arbitrary, nobody remembers them a month later, and a supplier who is late but
+cheap comes out level with one who is punctual and dear — the figure settles
+the argument by hiding it. `concerns` orders the list without claiming the
+three are commensurable.
+
+Thresholds are `venue_parameters`, not constants: `SCORECARD_LATE_PERCENT`,
+`SCORECARD_REJECT_PERCENT`, `SCORECARD_DISPUTE_PERCENT`. A fishmonger
+rejecting 2% is a problem; a greengrocer rejecting 2% is Tuesday.
+
+`thin_evidence` is raised below `SCORECARD_MIN_ORDERS` scored deliveries. It
+labels the figure rather than hiding it — "83% late, from 6 deliveries" can be
+weighed, and a suppressed row cannot.
+
 ### `supplier_price_history`
 
 ```
@@ -397,7 +426,6 @@ drift inside it does not need modelling.
 ---
 
 ## 11. What is deliberately not here
-- **Supplier scorecard.** Not built; every input exists.
 - **Landed cost.** Not built, so `unit_cost` on a receipt excludes freight
   and duty.
 - **Rooms cleaned per attendant hour** lives in `housekeeping_workload` and
