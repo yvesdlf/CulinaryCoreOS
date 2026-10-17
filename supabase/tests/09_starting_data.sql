@@ -28,7 +28,7 @@ select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 select '── starting data: the list is rows, not a function body ─────────';
 
 select t.expect_value($$select count(*)::text from organization_seeders$$,
-  'fifteen seeders are registered', '15');
+  'sixteen seeders are registered', '16');
 
 /*
  * Asked as `authenticated`, not as the suite's own connection.
@@ -67,7 +67,7 @@ reset role;
  * _harness.sql, which is a trigger silently correcting rather than refusing.
  */
 select t.expect_value($$select count(*)::text from organization_seeders$$,
-  'the list is the same length afterwards', '15');
+  'the list is the same length afterwards', '16');
 select t.expect_value($$
   select function_name from organization_seeders where ordinal = 80$$,
   'and the media seeder is still the eightieth', 'seed_media_defaults');
