@@ -125,7 +125,7 @@ absent on quality.
 
 | § | Capability | Verdict | Evidence |
 |---|---|---|---|
-| 7.1 | Landed cost | **ABSENT** | No landed-cost entry, no allocation of freight/duty across receipt lines. |
+| 7.1 | Landed cost | **BUILT — 0109** | `receipt_charges` with a basis per charge (value, quantity, weight), `receipt_line_charges` holding the allocation as rows, `allocate_receipt_charges()` on a trigger, and views `receipt_line_landed_cost`, `landed_cost_ready`, `product_landed_cost`. Found and fixed in passing: a goods receipt line carried **no price at all**, so `recordGoodsReceipt` posted every stock movement with a null cost. **Deliberately not done:** the landed cost does not write back to `products.gross_price_per_unit` — a delivery is evidence about one delivery, and letting it overwrite the catalogue would move every recipe's cost on the day a pallet arrived. |
 | 7.2 | Multi-currency | **PARTIAL** | `currency` columns on `requisitions`, `purchase_orders`, `supplier_invoices`, `budgets`, `contracts`; `organizations.currency_code`. **No `exchange_rates` table and no conversion** — so documents can be *denominated* in another currency but reports cannot convert them. |
 | 7.3 | Budgets and committed spend | **BUILT** | `budgets` (12) with `hard_stop`, and view `budget_positions` exposing `committed` and `actual` against `amount`. `cost_centres`, `business_units.approval_threshold`. `invoice-matching.ts` exports a `BudgetPosition` type. Escalation-instead-of-block was not verified. |
 | 7.4 | AP, payment runs, period lock | **PARTIAL** | Invoice status reaches APPROVED_FOR_PAYMENT and PAID, with `payment_terms_days` and `due_date` on the invoice — so aging is computable. **Absent:** an aging report, a weekly payment proposal, and `closed periods` with a posting block. A view `accounting_export` (`on_date`, `unit_code`, `account`, `amount`, `org_id`) **already exists**, which is the brief's CSV journal export in view form. |
@@ -310,7 +310,8 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > | 23 | Notification preferences | **built** — 0105 |
 > | 16 | Custom fields | **built** — 0106 |
 > | 13 | Sales forecast, known events, accuracy | **built** — 0107/0108 |
-> | 18–21, 24–25 | labels, barcodes, landed cost, scorecard, payroll export, i18n | outstanding |
+> | 20 | Landed cost | **built** — 0109 |
+> | 18–19, 21, 24–25 | labels, barcodes, scorecard, payroll export, i18n | outstanding |
 >
 > Three things the work changed about this document's own conclusions:
 > `units.ts` is about business units and has nothing to do with measurement,

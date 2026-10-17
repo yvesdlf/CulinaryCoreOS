@@ -655,6 +655,18 @@ export interface GoodsReceiptLineInput {
   quantityRejected: number;
   rejectionReason: string | null;
   conditionNote: string | null;
+  /**
+   * What the line actually cost, per unit.
+   *
+   * Null means "the ordered price": a trigger fills it from the purchase
+   * order line, so the ordinary case needs no retyping and a delivery that
+   * came in dearer is a deliberate statement rather than a default. Null
+   * with no order behind it really is unknown, and the landed cost views
+   * say so rather than treating it as free.
+   */
+  unitPrice: number | null;
+  /** For a freight charge spread by weight. Null where nobody weighed it. */
+  lineWeightKg: number | null;
   /** Delivery details, when the line creates a traceable lot. */
   lot: NewLot | null;
 }
@@ -692,7 +704,16 @@ export async function recordGoodsReceipt(input: {
     .single();
   if (error) fail("recordGoodsReceipt", error);
 
-  const movements: NewMovement[] = [];
+  /*
+   * Movements are built alongside the lines but costed afterwards.
+   *
+   * The price may come from the purchase order line, and the rule for that
+   * lives in a trigger (0109) — so the only way to post a movement at the
+   * price the line ended up with is to read the line back. Resolving the
+   * fallback here as well would be a second copy of the rule, and the second
+   * copy is the one that drifts.
+   */
+  const pending: { lineNumber: number; movement: NewMovement }[] = [];
   const lineRows: Record<string, unknown>[] = [];
 
   for (const [i, l] of input.lines.entries()) {
@@ -707,6 +728,8 @@ export async function recordGoodsReceipt(input: {
       product_id: l.productId,
       quantity_received: l.quantityReceived,
       unit: l.unit,
+      unit_price: l.unitPrice,
+      line_weight_kg: l.lineWeightKg,
       lot_id: lotId,
       quantity_rejected: l.quantityRejected,
       rejection_reason: l.rejectionReason,
@@ -716,24 +739,51 @@ export async function recordGoodsReceipt(input: {
     // Only what was accepted becomes stock. Rejected goods went back on the van.
     const accepted = l.quantityReceived - l.quantityRejected;
     if (l.productId && accepted > 0) {
-      movements.push({
-        productId: l.productId,
-        kind: "RECEIPT",
-        quantity: accepted,
-        unit: l.unit,
-        unitCost: l.lot ? null : null,
-        reason: null,
-        note: `Receipt ${input.reference}`,
-        lotId,
+      pending.push({
+        lineNumber: i + 1,
+        movement: {
+          productId: l.productId,
+          kind: "RECEIPT",
+          quantity: accepted,
+          unit: l.unit,
+          // Filled in below from the line as it was actually written.
+          unitCost: null,
+          reason: null,
+          note: `Receipt ${input.reference}`,
+          lotId,
+        },
       });
     }
   }
 
-  const { error: lineError } = await db.from("goods_receipt_lines").insert(lineRows);
+  const { data: written, error: lineError } = await db
+    .from("goods_receipt_lines")
+    .insert(lineRows)
+    .select("line_number, unit_price");
   if (lineError) {
     await db.from("goods_receipts").delete().eq("id", data.id);
     fail("recordGoodsReceipt(lines)", lineError);
   }
+
+  /*
+   * Kept as the string PostgREST returns. `NewMovement.unitCost` is a string
+   * for the reason AGENTS.md §3 gives — money does not go through a float on
+   * its way to a ledger — and parsing it here only to print it again is the
+   * one place a rounding error could get in.
+   */
+  const priced = new Map<number, string | null>(
+    (written ?? []).map((r: any) => [
+      r.line_number as number,
+      r.unit_price === null || r.unit_price === undefined ? null : String(r.unit_price),
+    ]),
+  );
+  const movements = pending.map((p) => ({
+    ...p.movement,
+    // Null, not zero. Every receipt before this carried no cost at all, and
+    // `cost_of_goods_daily.movements_with_no_cost` counts them for exactly
+    // that reason — a zero would stop it counting and start lying.
+    unitCost: priced.get(p.lineNumber) ?? null,
+  }));
   if (movements.length > 0) await recordMovements(movements);
 }
 

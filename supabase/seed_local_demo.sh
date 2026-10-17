@@ -21,6 +21,9 @@
 #                     come before anything that references a product
 #   seed_suppliers    promotes products.supplier text into supplier records
 #   seed_stock        par levels and opening stock, over those products
+#   seed_purchasing   orders, deliveries and the freight on them; needs the
+#                     par levels above, since those are what make a product
+#                     one the venue actually counts
 #   seed_people       departments, staff, approvers
 #   seed_sample_sales invented sales periods, over those recipes
 #   seed_takings      daily takings and the forecasts built from them
@@ -47,7 +50,7 @@ esac
 echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
-for f in seed_manuza seed_suppliers seed_stock seed_people seed_sample_sales seed_takings; do
+for f in seed_manuza seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings; do
   echo "Applying $f.sql…"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/$f.sql"
 done

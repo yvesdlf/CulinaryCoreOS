@@ -55,7 +55,7 @@ takings — run the script rather than the files:**
 supabase/seed_local_demo.sh
 ```
 
-It resets, applies the six extra seed files in dependency order, and then
+It resets, applies the seven extra seed files in dependency order, and then
 costs the catalogue. That last step is not optional: the seed ships every
 recipe with a zero cost and an empty allergen list, and `pnpm recost` is what
 fills them in. Skipping it leaves 115 recipes costing nothing and a blank

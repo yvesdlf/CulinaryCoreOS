@@ -93,6 +93,7 @@ const TAB_PANELS = [
   { page: "inventory", path: "/inventory", heading: "Inventory", tab: "By place" },
   { page: "inventory", path: "/inventory", heading: "Inventory", tab: "Units" },
   { page: "purchasing", path: "/purchasing", heading: "Purchasing", tab: "Returns" },
+  { page: "purchasing", path: "/purchasing", heading: "Purchasing", tab: "Landed cost" },
   { page: "suppliers", path: "/suppliers", heading: "Suppliers", tab: "Price history" },
   { page: "sales", path: "/sales", heading: "Sales", tab: "Forecast" },
 ];

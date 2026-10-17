@@ -232,6 +232,15 @@ function ReceiveDialog({
           quantityRejected: Number(r.rejected) || 0,
           rejectionReason: r.rejectionReason.trim() || null,
           conditionNote: null,
+          /*
+           * Null on purpose: this screen receives against an order, so the
+           * ordered price is the right answer and the trigger supplies it.
+           * Asking somebody to retype it would invite a typo in the figure
+           * every recipe cost is built on. A delivery at a different price
+           * is a separate statement and not one this dialog makes yet.
+           */
+          unitPrice: null,
+          lineWeightKg: null,
           lot: r.lotCode.trim() && r.productId
             ? {
                 productId: r.productId,

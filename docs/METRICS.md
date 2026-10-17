@@ -9,7 +9,7 @@ can mean different things without anybody noticing.
 disagree the view is the bug, not this file — but say so rather than
 quietly editing one to match the other.
 
-Written 2026-10-18 against migrations 0001–0108.
+Written 2026-10-18 against migrations 0001–0109.
 
 ---
 
@@ -169,6 +169,8 @@ looks identical in a total and means the opposite.
 | `checklist_answers.passed` | Not yet answered | — |
 | `sales_forecasts.covers` | No trading history for that weekday — **no row is written at all** | — |
 | `forecast_accuracy.covers_error_percent` | What happened has not been recorded | The forecast was exactly right |
+| `receipt_line_landed_cost.landed_unit_cost` | Nobody recorded a price for the line, or the whole line went back | — |
+| `receipt_line_landed_cost.uplift_percent` | There is no goods value for the charge to be a percentage of | The delivery carried no charges |
 | `recipe_lines_needing_conversion` | — | (a row here means the line **cannot** be costed, not that it costs nothing) |
 
 ---
@@ -248,6 +250,44 @@ stuck       = count of invoices in EXCEPTION or DISPUTED
 
 `stuck` sits beside the total deliberately: a balance of zero means
 something different when three invoices are in an argument.
+
+### Landed cost — `receipt_line_landed_cost`
+
+```
+goods_value       = (quantity_received − quantity_rejected) × unit_price
+charges           = Σ allocated receipt charges for the line
+landed_value      = goods_value + charges
+landed_unit_cost  = landed_value ÷ (quantity_received − quantity_rejected)
+uplift_percent    = charges ÷ goods_value × 100
+```
+
+Each charge is spread on its **own basis**: by value (duty, insurance), by
+weight (freight, pallet charges) or by quantity (a flat fee per case).
+Spreading freight by value makes the saffron carry the cost of moving the
+potatoes.
+
+Three rules the allocation holds to:
+
+- **Only accepted quantity carries a charge.** Rejected goods went back on the
+  van, and putting freight on a crate the venue does not have would charge it
+  to the margin of the one it does.
+- **The parts sum to the whole exactly.** Shares are rounded and the remainder
+  goes to the largest — three lines sharing 100.00000 by thirds otherwise
+  comes to 99.99999, which is a reconciliation somebody spends an afternoon on.
+- **It refuses rather than guesses.** A weight basis where a line has no
+  weight, or a value basis over lines worth nothing, is refused. An even
+  spread is not a cautious answer; it is a fabricated one that is
+  indistinguishable from a real allocation afterwards.
+
+`landed_cost_ready` names the receipts that cannot be costed and why, because
+a landed cost report that silently omits them reads as though everything were
+accounted for.
+
+> **Deliberately not written back.** `product_landed_cost` sits beside
+> `products.gross_price_per_unit` and does not update it. The catalogue price
+> is what the venue has decided a product costs; a receipt is evidence about
+> one delivery, and letting a delivery overwrite the catalogue would move
+> every recipe's cost silently on the day a pallet arrived.
 
 ### `supplier_price_history`
 

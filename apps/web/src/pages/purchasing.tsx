@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Undo2,
+  Truck,
   ClipboardList,
   FileText,
   Plus,
@@ -115,6 +116,7 @@ import {
 } from "@/data/repository";
 import type { BudgetPosition, Tolerances } from "@/engine/invoice-matching";
 import { ReturnsPanel } from "@/components/purchasing/returns-panel";
+import { LandedCostPanel } from "@/components/purchasing/landed-cost-panel";
 
 /*
  * Nine statuses, five tones. ORDERED and PARTIALLY_RECEIVED share one because
@@ -312,6 +314,12 @@ export function PurchasingPage() {
               share their number. */}
           <TabsTrigger value="returns" className="justify-start">
             <Undo2 className="size-4" />Returns
+          </TabsTrigger>
+          {/* Beside receiving, because a freight invoice is about a delivery
+              — and arrives days after it, which is why this is not a field
+              on the receiving dialog. */}
+          <TabsTrigger value="landed" className="justify-start">
+            <Truck className="size-4" />Landed cost
           </TabsTrigger>
 
           <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
@@ -547,6 +555,10 @@ export function PurchasingPage() {
 
           <ReturnsPanel />
 
+        </TabsContent>
+
+        <TabsContent value="landed" className="mt-4">
+          <LandedCostPanel />
         </TabsContent>
 
         <TabsContent value="budgets" className="mt-4">
