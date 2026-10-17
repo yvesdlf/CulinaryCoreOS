@@ -1557,3 +1557,151 @@ export async function recordTakings(input: {
     );
   if (error) fail("recordTakings", error);
 }
+
+// ── Returns and credit notes (0095) ─────────────────────────────────────────
+
+export interface SupplierReturn {
+  id: string;
+  reference: string | null;
+  supplierId: string;
+  supplierName: string | null;
+  status: string;
+  reason: string | null;
+  postedAt: string | null;
+  lines: number;
+}
+
+export interface SupplierReturnLine {
+  id: string;
+  productId: string;
+  productName: string | null;
+  quantity: number;
+  unit: string;
+  reason: string | null;
+  /** False for goods refused at the door, which never reached the shelf. */
+  fromStock: boolean;
+}
+
+export interface OutstandingCredit {
+  creditNoteId: string;
+  reference: string | null;
+  creditNumber: string | null;
+  supplierName: string | null;
+  status: string;
+  amount: number | null;
+  returnReference: string | null;
+  daysOutstanding: number | null;
+}
+
+export async function fetchSupplierReturns(): Promise<SupplierReturn[]> {
+  const db = requireSupabase();
+  const { data, error } = await db
+    .from("supplier_returns")
+    .select("*, suppliers(name)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) fail("fetchSupplierReturns", error);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const { data: lines, error: lineErr } = await db
+    .from("supplier_return_lines")
+    .select("return_id")
+    .in("return_id", rows.map((r: any) => r.id));
+  if (lineErr) fail("fetchSupplierReturns lines", lineErr);
+  const counts = new Map<string, number>();
+  for (const l of lines ?? []) {
+    counts.set((l as any).return_id, (counts.get((l as any).return_id) ?? 0) + 1);
+  }
+
+  return rows.map((r: any) => ({
+    id: r.id,
+    reference: r.reference,
+    supplierId: r.supplier_id,
+    supplierName: r.suppliers?.name ?? null,
+    status: r.status,
+    reason: r.reason,
+    postedAt: r.posted_at,
+    lines: counts.get(r.id) ?? 0,
+  }));
+}
+
+export async function fetchReturnLines(returnId: string): Promise<SupplierReturnLine[]> {
+  const { data, error } = await requireSupabase()
+    .from("supplier_return_lines")
+    .select("*, products(name)")
+    .eq("return_id", returnId)
+    .order("line_number");
+  if (error) fail("fetchReturnLines", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    productId: r.product_id,
+    productName: r.products?.name ?? null,
+    quantity: Number(r.quantity),
+    unit: r.unit,
+    reason: r.reason,
+    fromStock: Boolean(r.from_stock),
+  }));
+}
+
+export async function postSupplierReturn(returnId: string): Promise<number> {
+  const { data, error } = await requireSupabase().rpc("post_supplier_return", {
+    p_return: returnId,
+  });
+  if (error) fail("postSupplierReturn", error);
+  return Number(data ?? 0);
+}
+
+export async function fetchOutstandingCredits(): Promise<OutstandingCredit[]> {
+  const { data, error } = await requireSupabase()
+    .from("credit_notes_outstanding")
+    .select("*")
+    .order("days_outstanding", { ascending: false });
+  if (error) fail("fetchOutstandingCredits", error);
+  return (data ?? []).map((r: any) => ({
+    creditNoteId: r.credit_note_id,
+    reference: r.reference,
+    creditNumber: r.credit_number,
+    supplierName: r.supplier_name,
+    status: r.status,
+    amount: r.amount === null ? null : Number(r.amount),
+    returnReference: r.return_reference,
+    daysOutstanding: r.days_outstanding === null ? null : Number(r.days_outstanding),
+  }));
+}
+
+// ── Supplier price history (0094) ───────────────────────────────────────────
+
+export interface PriceHistoryRow {
+  priceId: string;
+  productSupplierId: string;
+  productName: string | null;
+  supplierName: string | null;
+  validFrom: string;
+  packPrice: number;
+  pricePerUnit: number | null;
+  source: string;
+  previousPerUnit: number | null;
+  movedPercent: number | null;
+}
+
+export async function fetchPriceHistory(): Promise<PriceHistoryRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("supplier_price_history")
+    .select("*")
+    .order("valid_from", { ascending: false })
+    .limit(400);
+  if (error) fail("fetchPriceHistory", error);
+  return (data ?? []).map((r: any) => ({
+    priceId: r.price_id,
+    productSupplierId: r.product_supplier_id,
+    productName: r.product_name,
+    supplierName: r.supplier_name,
+    validFrom: r.valid_from,
+    packPrice: Number(r.pack_price),
+    pricePerUnit: r.price_per_unit === null ? null : Number(r.price_per_unit),
+    source: r.source,
+    previousPerUnit: r.previous_per_unit === null ? null : Number(r.previous_per_unit),
+    movedPercent: r.moved_percent === null ? null : Number(r.moved_percent),
+  }));
+}

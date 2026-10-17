@@ -51,11 +51,15 @@ select t.expect_value($$select (transfer_stock(
   'two dozen go to the bar', 'true');
 
 reset role;
+-- Scoped to this test's own product, for the same reason 36 is: a venue
+-- that has ever moved anything has other transfer legs.
 select t.expect_value($$select count(*)::text from stock_movements
-                         where transfer_id is not null$$,
+                         where transfer_id is not null
+                           and product_id = 'b0000000-0000-4000-8000-000000030001'$$,
   'as a pair sharing one transfer id', '2');
 select t.expect_value($$select sum(quantity)::text from stock_movements
-                         where transfer_id is not null$$,
+                         where transfer_id is not null
+                           and product_id = 'b0000000-0000-4000-8000-000000030001'$$,
   'that creates and destroys nothing', '0.00000');
 select t.expect_value($$select on_hand::text from product_stock
                          where product_id = 'b0000000-0000-4000-8000-000000030001'$$,
@@ -90,7 +94,8 @@ select t.expect_refused($$select transfer_stock(
 
 reset role;
 select t.expect_value($$select count(*)::text from stock_movements
-                         where transfer_id is not null$$,
+                         where transfer_id is not null
+                           and product_id = 'b0000000-0000-4000-8000-000000030001'$$,
   'and none of those wrote half a pair', '2');
 
 select '── a movement belongs to this venue''s own places' as "──";

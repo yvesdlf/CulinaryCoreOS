@@ -76,8 +76,14 @@ select t.expect_rows($$
   values ('b0000000-0000-4000-8000-000000010003', 107, current_date - 5, 'invoice')$$,
   'a small rise is recorded', 1);
 reset role;
+/*
+ * Scoped to this test's own supplier product. Counting every PRICE_MOVED in
+ * the venue passes only on a database nobody has used — which is how this
+ * went red the moment a screen recorded a real price.
+ */
 select t.expect_value($$select count(*)::text from notifications
-                         where kind = 'PRICE_MOVED'$$,
+                         where kind = 'PRICE_MOVED'
+                           and entity_id = 'b0000000-0000-4000-8000-000000010003'$$,
   'and says nothing, because it is inside the threshold', '0');
 
 -- 107 -> 130 is 21.5%.
@@ -89,10 +95,12 @@ select t.expect_rows($$
   'a large one is recorded too', 1);
 reset role;
 select t.expect_value($$select count(*)::text from notifications
-                         where kind = 'PRICE_MOVED'$$,
+                         where kind = 'PRICE_MOVED'
+                           and entity_id = 'b0000000-0000-4000-8000-000000010003'$$,
   'and this one is told', '1');
 select t.expect_value($$select subject like 'Price up 21.5%%%' from notifications
-                         where kind = 'PRICE_MOVED'$$,
+                         where kind = 'PRICE_MOVED'
+                           and entity_id = 'b0000000-0000-4000-8000-000000010003'$$,
   'with the direction and the size in the subject', 'true');
 
 select '── the chart recomputes its own steps' as "──";
