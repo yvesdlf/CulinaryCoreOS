@@ -297,7 +297,18 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > | 3 | Per-product unit conversions | **built** — 0090 (not yet wired into costing) |
 > | 4 | Menus, menu items, modifiers | **built** — 0093 |
 > | 5 | Supplier price history + move alert | **built** — 0094 |
-> | 6–25 | | outstanding |
+> | 6 | Supplier returns and credit notes | **built** — 0095 |
+> | 7 | Stock locations and transfers | **built** — 0096 |
+> | 8 | Closed periods and AP aging | **built** — 0098 |
+> | 9 | Exchange rates | **built** — 0099 |
+> | 10–11 | Cooling logs; delivery temperature to HACCP | **built** — 0100 |
+> | 12 | Rota patterns, availability, swaps | **built** — 0101 |
+> | 14 | Checklist forms, runs and answers | **built** — 0102 |
+> | 15 | `docs/METRICS.md` | **built** |
+> | 17 | Product aliases and `pg_trgm` | **built** — 0103 |
+> | 22 | Incidents | **built** — 0104 |
+> | 23 | Notification preferences | **built** — 0105 |
+> | 13, 16, 18–21, 24–25 | forecast, custom fields, labels, barcodes, landed cost, scorecard, payroll export, i18n | outstanding |
 >
 > Three things the work changed about this document's own conclusions:
 > `units.ts` is about business units and has nothing to do with measurement,
