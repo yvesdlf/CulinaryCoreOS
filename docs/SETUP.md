@@ -48,6 +48,24 @@
 
 ### Seed data
 
+**For the full demo venue — the catalogue, suppliers, stock, staff, sales and
+takings — run the script rather than the files:**
+
+```bash
+supabase/seed_local_demo.sh
+```
+
+It resets, applies the six extra seed files in dependency order, and then
+costs the catalogue. That last step is not optional: the seed ships every
+recipe with a zero cost and an empty allergen list, and `pnpm recost` is what
+fills them in. Skipping it leaves 115 recipes costing nothing and a blank
+allergen matrix, which looks like a data problem and is a missing step.
+
+The script exists because this used to be done by hand in whatever order the
+person remembered — and the visual regression baselines are screenshots *of
+that database*. They are now taken from the state this script builds, so
+`pnpm --filter web test:visual` means something.
+
 `supabase/seed.sql` is generated from the mock catalogue in
 `apps/web/src/data/`, so the two never drift:
 

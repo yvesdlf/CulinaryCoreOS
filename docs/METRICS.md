@@ -9,7 +9,7 @@ can mean different things without anybody noticing.
 disagree the view is the bug, not this file — but say so rather than
 quietly editing one to match the other.
 
-Written 2026-10-18 against migrations 0001–0105.
+Written 2026-10-18 against migrations 0001–0108.
 
 ---
 
@@ -167,6 +167,8 @@ looks identical in a total and means the opposite.
 | `in_base_currency(...)` | No exchange rate is known for that date | The amount really is zero |
 | `menu_item_pricing.price` | Neither the menu item nor the recipe is priced | The dish is free |
 | `checklist_answers.passed` | Not yet answered | — |
+| `sales_forecasts.covers` | No trading history for that weekday — **no row is written at all** | — |
+| `forecast_accuracy.covers_error_percent` | What happened has not been recorded | The forecast was exactly right |
 | `recipe_lines_needing_conversion` | — | (a row here means the line **cannot** be costed, not that it costs nothing) |
 
 ---
@@ -308,10 +310,53 @@ shift, never refused.
 
 ---
 
-## 10. What is deliberately not here
+## 10. The sales forecast
 
-- **Sales forecast.** Not built. Rostering targets, prep quantities and
-  auto-reorder all want it.
+`sales_forecasts`, written by `build_sales_forecast(org, date, unit)` (0107).
+
+```
+sample  = the same weekday as `date`, over the last FORECAST_WEEKS weeks,
+          excluding any day that is a public holiday
+covers  = avg( sum of covers per day )        -- per DAY, not per row
+net     = avg( sum of net_amount per day )
+```
+
+**Per day, not per row**, and the distinction is the whole arithmetic:
+`daily_takings` holds one row per channel per day, so averaging rows averages
+channels — a Tuesday trading through the till and a delivery app counts as two
+half-Tuesdays.
+
+A known event for that date then overrides the covers outright
+(`covers_override`) or adds to them (`covers_extra`), never both.
+
+**The figure is stored, not recomputed.** A roster built against Tuesday's
+forecast must still be explicable in March, and accuracy has to be measured
+against the number that was used.
+
+### `forecast_accuracy`
+
+```
+covers_error_percent = |forecast − actual| ÷ actual × 100   (null until actual is recorded)
+thin_evidence        = samples_used < 3
+```
+
+`thin_evidence` is a column rather than screen text for the usual reason: a
+forecast from one past day is a guess with a decimal point, and an export that
+drops the caveat is worse than one that never had it.
+
+### What it deliberately does not do
+
+No seasonality model, no trend, no regression. A forecast nobody can explain
+is one nobody trusts, and an untrusted forecast is worse than none because the
+system then looks like it is planning. The sample is short enough that the
+drift inside it does not need modelling.
+
+> **Not wired up yet.** Rostering targets, prep quantities and auto-reorder all
+> want this figure and none of them reads it.
+
+---
+
+## 11. What is deliberately not here
 - **Supplier scorecard.** Not built; every input exists.
 - **Landed cost.** Not built, so `unit_cost` on a receipt excludes freight
   and duty.

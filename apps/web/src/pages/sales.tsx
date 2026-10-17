@@ -25,7 +25,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Receipt, Upload, TriangleAlert, CircleCheck, Link2Off } from "lucide-react";
+import { Receipt, Upload, TriangleAlert, CircleCheck, Link2Off, ChartLine } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -44,6 +44,8 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ForecastPanel } from "@/components/sales/forecast-panel";
 import { parseCsv } from "@/lib/csv";
 import { useCanWriteSection } from "@/stores/access-store";
 import { planSalesImport, type SalesImportPlan } from "@/engine/sales-import";
@@ -150,6 +152,22 @@ export function SalesPage() {
         )}
       </PageHeader>
 
+      {/* The forecast is made of the takings this screen already owns, so it
+          belongs beside them rather than in a sidebar the UI review already
+          calls too flat. */}
+      <Tabs defaultValue="takings" className="mt-6">
+        <TabsList>
+          <TabsTrigger value="takings">
+            <Receipt className="size-4" />
+            Takings
+          </TabsTrigger>
+          <TabsTrigger value="forecast">
+            <ChartLine className="size-4" />
+            Forecast
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="takings" className="mt-4">
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : periods.length === 0 ? (
@@ -290,6 +308,12 @@ export function SalesPage() {
           )}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="forecast" className="mt-4">
+          <ForecastPanel />
+        </TabsContent>
+      </Tabs>
 
       <Dialog
         open={importOpen}

@@ -74,6 +74,60 @@ for (const p of PAGES) {
   }
 }
 
+/**
+ * Tab panels, which the loop above cannot reach.
+ *
+ * The loop scans whatever a page renders first, and a tab panel renders when
+ * somebody clicks the tab — so every panel added since tabs arrived has been
+ * behind the scan rather than inside it. That is the same blind spot recorded
+ * against the PAGES list above: the portal's tab row overlapped on a phone
+ * because nothing scanned it, and five panels were added in one session with
+ * the scan reporting green throughout.
+ *
+ * One theme each rather than two. Contrast is the usual failure and these
+ * panels use the same tokens as the pages holding them, which are scanned in
+ * both; the thing unique to a panel is its own markup — unlabelled selects,
+ * a table with no header, a control named only by an icon.
+ */
+const TAB_PANELS = [
+  { page: "inventory", path: "/inventory", heading: "Inventory", tab: "By place" },
+  { page: "inventory", path: "/inventory", heading: "Inventory", tab: "Units" },
+  { page: "purchasing", path: "/purchasing", heading: "Purchasing", tab: "Returns" },
+  { page: "suppliers", path: "/suppliers", heading: "Suppliers", tab: "Price history" },
+  { page: "sales", path: "/sales", heading: "Sales", tab: "Forecast" },
+];
+
+for (const p of TAB_PANELS) {
+  test(`${p.page} — the ${p.tab} tab has no WCAG AA violations`, async ({ page }) => {
+    await page.goto(p.path);
+    await ready(page, p.heading);
+    await page.getByRole("tab", { name: p.tab }).click();
+    // The panel, not the page: asserting the tab is selected proves the click
+    // landed, and scanning before the panel mounts scans the old one.
+    await expect(page.getByRole("tab", { name: p.tab })).toHaveAttribute(
+      "aria-selected", "true",
+    );
+    // Named, because Base UI keeps the outgoing panel in the DOM — inert —
+    // while it transitions out, so a bare tabpanel locator matches two.
+    await expect(page.getByRole("tabpanel", { name: p.tab })).toBeVisible();
+
+    const results = await scanner(page).analyze();
+    if (results.violations.length) {
+      console.log(
+        `\n${p.page} / ${p.tab}:\n` +
+          results.violations
+            .map(
+              (v) =>
+                `  [${v.impact}] ${v.id}: ${v.help}\n` +
+                v.nodes.slice(0, 3).map((n) => `      ${n.target}`).join("\n"),
+            )
+            .join("\n"),
+      );
+    }
+    expect(results.violations).toEqual([]);
+  });
+}
+
 test("recipe editor has no WCAG AA violations", async ({ page }) => {
   await page.goto("/recipes");
   await ready(page, "Recipes");

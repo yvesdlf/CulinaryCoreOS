@@ -153,7 +153,13 @@ export function AppHeader() {
           *   Both become honest once units carry service periods and covers
           *   are a shared record. Recorded in PLAN.md rather than faked.
           */}
-        <p className="mr-3 hidden text-xs text-muted-foreground lg:block">
+        {/* Hooked so the visual baselines can mask it. Every screenshot
+            carries this corner, and a date that changes at midnight turned
+            the whole suite red once a day with no code behind it. */}
+        <p
+          data-testid="todays-date"
+          className="mr-3 hidden text-xs text-muted-foreground lg:block"
+        >
           {today}
         </p>
 

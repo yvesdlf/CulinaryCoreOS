@@ -177,7 +177,7 @@ absent on quality.
 | 6.1 | Metrics layer | **BUILT, DIFFERENT SHAPE** | No `insights` schema, but the pattern the brief asks for — each KPI defined once as a view, RLS respected, UI reads only from it — **is exactly what exists**, as ~20 views in `public`: `unit_profit_daily`, `unit_labour_against_revenue`, `labour_cost_daily`, `cost_of_goods_daily`, `revenue_daily`, `venue_overview`, `unit_overview`, `pour_cost`, `asset_health`, `maintenance_due`, `hygiene_by_unit`, `request_load`, `outbox_health`, `housekeeping_workload`, `budget_positions`, `purchasing_chain`, `accounting_export`. **Absent:** `docs/METRICS.md` documenting each formula — which matters, because the formulas are currently only in SQL. |
 | 6.2 | Sales data | **PARTIAL** | `sales_lines` is thin (7 cols: `period_id`, `recipe_id`, `units_sold`, `net_sales`) against the brief's 14. **Missing:** `business_date`, `pos_item_code`, `covers`, `discount`, `service_charge`, `tax`, `gross_amount`. `daily_takings` (15) carries covers, gross, commission, net by channel — so covers exist, at day/channel grain, not per line. No `sale_consume` movement, so **selling a dish does not deplete stock**. That breaks the theoretical-vs-actual chain the brief calls its most valuable report. |
 | 6.3 | Core KPIs | **MOSTLY BUILT** | Present: labour cost % (`unit_labour_against_revenue`), prime cost inputs, sales per labour hour inputs, waste (`WASTE` movements, `cost_of_goods_daily.wasted_cost`), spend per cover (`revenue_daily.spend_per_cover`), HACCP compliance (`hygiene_by_unit`), maintenance backlog (`asset_health`, `maintenance_due`), pour cost + `pour_variance()` (not in the brief at all). **Absent:** actual food cost % and theoretical food cost %, both of which need the stocktake (§6.1) and sales consumption (§6.2). Rooms cleaned per attendant hour: `housekeeping_workload` has it. |
-| 6.4 | Sales forecast | **ABSENT** | No forecast anywhere. It is an input to rostering targets, prep plans and auto-reorder, so three other items quietly depend on it. |
+| 6.4 | Sales forecast | **BUILT — 0107** | `sales_forecasts` (stored, not recomputed, so a roster is still explicable later), `known_events`, `build_sales_forecast()`, `forecast_accuracy`. Method is the same weekday averaged over `FORECAST_WEEKS`, public holidays out of the sample, known events added back — deliberately explainable rather than accurate. **Still absent:** the three things that wanted it are not yet wired to it; prep plans, rostering targets and auto-reorder all still ignore the figure. |
 | 6.5 | Dashboards, scheduled reports, alerts | **PARTIAL** | `venue_overview` and `unit_overview` exist with `may_see_money`/`may_see_pay` flags — role-awareness already modelled in the view. **Absent:** role-specific dashboards, the daily flash email, configurable metric thresholds, and universal CSV/PDF export. |
 
 ### Platform-wide
@@ -308,7 +308,9 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > | 17 | Product aliases and `pg_trgm` | **built** — 0103 |
 > | 22 | Incidents | **built** — 0104 |
 > | 23 | Notification preferences | **built** — 0105 |
-> | 13, 16, 18–21, 24–25 | forecast, custom fields, labels, barcodes, landed cost, scorecard, payroll export, i18n | outstanding |
+> | 16 | Custom fields | **built** — 0106 |
+> | 13 | Sales forecast, known events, accuracy | **built** — 0107/0108 |
+> | 18–21, 24–25 | labels, barcodes, landed cost, scorecard, payroll export, i18n | outstanding |
 >
 > Three things the work changed about this document's own conclusions:
 > `units.ts` is about business units and has nothing to do with measurement,

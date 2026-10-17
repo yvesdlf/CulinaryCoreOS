@@ -15,6 +15,29 @@
 begin;
 select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 
+/*
+ * Two outlets of this file's own, and every assertion below is scoped to
+ * them.
+ *
+ * It used to use the venue's own Kitchen and Bar and sum the whole day. That
+ * held only for as long as nothing else put a figure in `daily_takings`, and
+ * the moment a seed gave the demo venue ten weeks of trading history,
+ * fourteen assertions here went red — not one of them because anything they
+ * describe had stopped being true. The same shape has now cost this suite
+ * three times; AGENTS.md section 2 says to write the test so you can watch it
+ * fail, and a test that fails when somebody else writes a row is failing for
+ * the wrong reason.
+ *
+ * `unit_code` takes a three-letter prefix and `idx_business_units_prefix` is
+ * unique on it, so the two codes differ in their first three letters.
+ */
+insert into business_units (id, org_id, code, name)
+select 'b0000000-0000-4000-8000-00000014a001', id, 'T-TILLU', 'T-Takings outlet'
+  from organizations where name = 'Demo Kitchen';
+insert into business_units (id, org_id, code, name)
+select 'b0000000-0000-4000-8000-00000014a002', id, 'T-BARU', 'T-Takings bar'
+  from organizations where name = 'Demo Kitchen';
+
 select '── takings: a venue starts with somewhere to put them ───────────';
 
 select t.expect_value($$
@@ -26,7 +49,7 @@ select '── takings: gross, commission and what was actually kept ───�
 
 select t.expect_rows($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount, covers)
-  select (select id from business_units where code='KITCHEN' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a001',
          (select id from revenue_channels where code='TILL' and org_id=o.id),
          current_date - 1, 12000000, 80
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -34,6 +57,7 @@ select t.expect_rows($$
 
 select t.expect_value($$
   select net_amount::text from daily_takings where on_date = current_date - 1
+     and business_unit_id = 'b0000000-0000-4000-8000-00000014a001'
      and channel_id = (select id from revenue_channels where code='TILL'
             and org_id=(select id from organizations where name='Demo Kitchen'))$$,
   'with nothing withheld, the venue kept all of it', '12000000.00000');
@@ -41,7 +65,7 @@ select t.expect_value($$
 select t.expect_rows($$
   insert into daily_takings
     (business_unit_id, channel_id, on_date, gross_amount, commission_amount, covers)
-  select (select id from business_units where code='KITCHEN' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a001',
          (select id from revenue_channels where code='DELIVERY' and org_id=o.id),
          current_date - 1, 4000000, 800000, 25
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -54,10 +78,12 @@ select t.expect_rows($$
  * and neither is named "revenue".
  */
 select t.expect_value($$
-  select sum(gross_amount)::text from daily_takings where on_date = current_date - 1$$,
+  select sum(gross_amount)::text from daily_takings where on_date = current_date - 1
+     and business_unit_id = 'b0000000-0000-4000-8000-00000014a001'$$,
   'the customers paid sixteen million', '16000000.00000');
 select t.expect_value($$
-  select sum(net_amount)::text from daily_takings where on_date = current_date - 1$$,
+  select sum(net_amount)::text from daily_takings where on_date = current_date - 1
+     and business_unit_id = 'b0000000-0000-4000-8000-00000014a001'$$,
   'and the venue kept fifteen million two', '15200000.00000');
 
 /*
@@ -68,18 +94,20 @@ select t.expect_value($$
  * about the column; the report is a separate thing that can disagree with it.
  */
 select t.expect_value($$
-  select sum(net_amount)::text from revenue_daily where on_date = current_date - 1$$,
+  select sum(net_amount)::text from revenue_daily where on_date = current_date - 1
+     and business_unit_code = 'T-TILLU'$$,
   'and the report says the same, rather than quietly reporting the gross',
   '15200000.00000');
 select t.expect_value($$
   select net_amount::text from revenue_daily
-   where on_date = current_date - 1 and channel_code='DELIVERY'$$,
+   where on_date = current_date - 1 and channel_code='DELIVERY'
+     and business_unit_code = 'T-TILLU'$$,
   'with the platform''s share off the delivery line in particular', '3200000.00000');
 
 select t.expect_fail($$
   insert into daily_takings
     (business_unit_id, channel_id, on_date, gross_amount, commission_amount)
-  select (select id from business_units where code='BAR' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a002',
          (select id from revenue_channels where code='DELIVERY' and org_id=o.id),
          current_date - 1, 100000, 200000
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -89,7 +117,7 @@ select '── takings: one figure per unit per channel per day ─────�
 
 select t.expect_fail($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount)
-  select (select id from business_units where code='KITCHEN' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a001',
          (select id from revenue_channels where code='TILL' and org_id=o.id),
          current_date - 1, 999
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -98,7 +126,7 @@ select t.expect_fail($$
 -- The bar is a different unit, so it is a different figure, not a duplicate.
 select t.expect_rows($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount, covers)
-  select (select id from business_units where code='BAR' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a002',
          (select id from revenue_channels where code='TILL' and org_id=o.id),
          current_date - 1, 5000000, 80
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -113,7 +141,7 @@ select '── takings: tomorrow has not happened ──────────
  */
 select t.expect_fail($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount)
-  select (select id from business_units where code='KITCHEN' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a001',
          (select id from revenue_channels where code='TILL' and org_id=o.id),
          current_date + 1, 1000000
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -124,12 +152,12 @@ select '── takings: spend per cover, and the day nobody counted ────
 select t.expect_value($$
   select spend_per_cover::text from revenue_daily
    where on_date = current_date - 1 and channel_code='TILL'
-     and business_unit_code='KITCHEN'$$,
+     and business_unit_code='T-TILLU'$$,
   'eighty covers into twelve million is a hundred and fifty thousand', '150000.00');
 
 select t.expect_rows($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount)
-  select (select id from business_units where code='KITCHEN' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a001',
          (select id from revenue_channels where code='TAKEAWAY' and org_id=o.id),
          current_date - 1, 900000
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -140,6 +168,7 @@ select t.expect_rows($$
 select t.expect_value($$
   select count(*)::text from revenue_daily
    where on_date = current_date - 1 and channel_code='TAKEAWAY'
+     and business_unit_code = 'T-TILLU'
      and spend_per_cover is not null$$,
   'has no spend per cover rather than a made-up one', '0');
 
@@ -150,16 +179,20 @@ select t.expect_rows($$
    where on_date = current_date - 1
      and channel_id = (select id from revenue_channels where code='TILL'
             and org_id=(select id from organizations where name='Demo Kitchen'))
-     and business_unit_id = (select id from business_units where code='KITCHEN'
-            and org_id=(select id from organizations where name='Demo Kitchen'))$$,
+     and business_unit_id = 'b0000000-0000-4000-8000-00000014a001'$$,
   'the closing figure was transposed and is corrected the next morning', 1);
 
 select t.expect_value($$
-  select was_gross::text || ' -> ' || now_gross::text from takings_changes
-   order by changed_at desc limit 1$$,
+  select c.was_gross::text || ' -> ' || c.now_gross::text from takings_changes c
+    join daily_takings d on d.id = c.takings_id
+   where d.business_unit_id = 'b0000000-0000-4000-8000-00000014a001'
+   order by c.changed_at desc limit 1$$,
   'and what it was is still on the record', '12000000.00000 -> 12500000.00000');
 select t.expect_value($$
-  select changed_by_email from takings_changes order by changed_at desc limit 1$$,
+  select c.changed_by_email from takings_changes c
+    join daily_takings d on d.id = c.takings_id
+   where d.business_unit_id = 'b0000000-0000-4000-8000-00000014a001'
+   order by c.changed_at desc limit 1$$,
   'under the person who changed it', 'chef@test.local');
 
 -- A note is not a figure. An audit trail that fills up with rows saying
@@ -169,10 +202,12 @@ select t.expect_rows($$
    where on_date = current_date - 1
      and channel_id = (select id from revenue_channels where code='TILL'
             and org_id=(select id from organizations where name='Demo Kitchen'))
-     and business_unit_id = (select id from business_units where code='KITCHEN'
-            and org_id=(select id from organizations where name='Demo Kitchen'))$$,
+     and business_unit_id = 'b0000000-0000-4000-8000-00000014a001'$$,
   'adding a note', 1);
-select t.expect_value($$select count(*)::text from takings_changes$$,
+select t.expect_value($$
+  select count(*)::text from takings_changes c
+    join daily_takings d on d.id = c.takings_id
+   where d.business_unit_id = 'b0000000-0000-4000-8000-00000014a001'$$,
   'does not add a row saying the money is unchanged', '1');
 
 select '── takings: whose day is it ─────────────────────────────────────';
@@ -185,8 +220,7 @@ select t.expect_value($$
 
 select t.expect_fail($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount)
-  select (select id from business_units where code='KITCHEN'
-           and org_id=(select id from organizations where name='Demo Kitchen')),
+  select 'b0000000-0000-4000-8000-00000014a001',
          (select c.id from revenue_channels c join organizations o2 on o2.id=c.org_id
            where o2.name <> 'Demo Kitchen' limit 1),
          current_date - 2, 100000$$,
@@ -199,13 +233,14 @@ select t.expect_guarded('daily_takings', 'REVENUE');
 select t.act_as('a0000000-0000-0000-0000-000000000003', 'nobody@test.local');
 select t.expect_fail($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount)
-  select (select id from business_units where code='KITCHEN' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000014a001',
          (select id from revenue_channels where code='TILL' and org_id=o.id),
          current_date - 3, 1
     from organizations o where o.name='Demo Kitchen' limit 1$$,
   'somebody with no Revenue access records nothing');
 select t.expect_value($$
-  select count(*)::text from daily_takings where on_date = current_date - 3$$,
+  select count(*)::text from daily_takings where on_date = current_date - 3
+     and business_unit_id = 'b0000000-0000-4000-8000-00000014a001'$$,
   'and no row was written', '0');
 
 select '── takings: labour against revenue needs Pay ────────────────────';
@@ -243,7 +278,9 @@ select t.expect_fail($$
 select t.act_as('a0000000-0000-0000-0000-000000000001', 'owner@test.local');
 select t.expect_value($$
   select count(*)::text from unit_labour_against_revenue
-   where on_date = current_date - 1$$,
+   where on_date = current_date - 1
+     and business_unit_id in ('b0000000-0000-4000-8000-00000014a001',
+                              'b0000000-0000-4000-8000-00000014a002')$$,
   'and with it, yesterday is there for the two units that traded', '2');
 reset role;
 

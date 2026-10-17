@@ -26,14 +26,29 @@ select t.expect_value($$
      and not exists (select 1 from section_read_rules r where r.table_name = c.relname)$$,
   'every table with a section guard has a read rule or a reason it is shared', '');
 
+/*
+ * `auth_can_write` is in the pattern as well as `auth_org_ids`, and it was
+ * added after this check watched a gated table leak.
+ *
+ * 0107 wrote `sales_forecasts`' write policy `for all`, which is how most of
+ * them are written. `for all` includes SELECT and policies are OR'd, so the
+ * section check in the read policy was one of two routes in and the other
+ * asked only whether the caller may write something — true of every chef.
+ * This assertion looked straight at that policy and passed it, because it
+ * was only looking for one of the two ways to be too generous.
+ *
+ * The behavioural check below did not catch it either: the table was empty,
+ * and an empty table reads exactly like a refusal.
+ */
 select t.expect_value($$
-  select coalesce(string_agg(r.table_name, ', ' order by r.table_name), '')
+  select coalesce(string_agg(distinct r.table_name, ', ' order by r.table_name), '')
     from section_read_rules r
    where r.section_code is not null
      and exists (select 1 from pg_policy p
                   where p.polrelid = ('public.' || r.table_name)::regclass
                     and p.polcmd in ('r', '*')
-                    and pg_get_expr(p.polqual, p.polrelid) ~ 'auth_org_ids\(\)'
+                    and pg_get_expr(p.polqual, p.polrelid)
+                          ~ '(auth_org_ids\(\)|auth_can_write\()'
                     and pg_get_expr(p.polqual, p.polrelid) !~ 'can_read_section\(')$$,
   'and no gated table is still readable on membership alone', '');
 
