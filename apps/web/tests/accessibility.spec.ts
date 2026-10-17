@@ -39,6 +39,10 @@ const PAGES = [
   { name: "dashboard", path: "/", heading: "Dashboard" },
   { name: "maintenance", path: "/maintenance", heading: "Maintenance" },
   { name: "housekeeping", path: "/housekeeping", heading: "Housekeeping" },
+  // Added with the screen itself (0091/0096). The portal, requests, handover,
+  // administration and settings are still uncovered, which is how the
+  // portal's tab-row overlap reached a phone before anybody saw it.
+  { name: "stocktake", path: "/stocktake", heading: "Stocktake" },
 ];
 
 for (const p of PAGES) {

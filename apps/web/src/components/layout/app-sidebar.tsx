@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
+  ClipboardCheck,
   LayoutDashboard,
   Package,
   ChefHat,
@@ -86,6 +87,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Purchasing", to: "/purchasing", icon: ShoppingCart },
       { title: "Suppliers", to: "/suppliers", icon: Truck },
       { title: "Inventory", to: "/inventory", icon: Warehouse },
+      { title: "Stocktake", to: "/stocktake", icon: ClipboardCheck },
       { title: "Traceability", to: "/traceability", icon: ShieldCheck },
     ],
   },

@@ -24,6 +24,7 @@ const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x)
 const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
 const MessagesPage = lazy(() => import("@/pages/messages").then((x) => ({ default: x.MessagesPage })));
 const StaffPortalPage = lazy(() => import("@/pages/portal").then((x) => ({ default: x.StaffPortalPage })));
+const StocktakePage = lazy(() => import("@/pages/stocktake").then((x) => ({ default: x.StocktakePage })));
 const AdministrationPage = lazy(() => import("@/pages/administration").then((x) => ({ default: x.AdministrationPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
@@ -155,6 +156,7 @@ export function App() {
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id/print" element={<CollectionPrintPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/stocktake" element={<StocktakePage />} />
         <Route path="/production" element={<ProductionPage />} />
         <Route path="/menu-engineering" element={<MenuEngineeringPage />} />
         <Route path="/traceability" element={<TraceabilityPage />} />
