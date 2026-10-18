@@ -316,6 +316,28 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > | 24 | Payroll export | **built** — 0114 |
 > | 25 | i18n and Bahasa Indonesia | **built, scoped** — the staff portal is translated; the management app deliberately is not. See §7.7. |
 >
+> **Found in 0116, not fixed there.** `refresh_section_unit_scoping()` (0062)
+> derives `app_sections.scopes_by_unit` from whether a section's guarded
+> tables carry `business_unit_id`, and it has not been run since 0062. Run
+> today it also flips **HYGIENE, INVENTORY and MENU** — whose read policies
+> do *not* consult the unit, so a unit-scoped grant in those sections would
+> be accepted, read as "the kitchen" on the screen that wrote it, and refuse
+> everything afterwards: precisely the failure 0062 exists to prevent.
+>
+> The derivation is the incomplete part. The question it asks is "does a
+> guarded table have the column"; the question that decides whether a grant
+> works is "do the read policies consult it". Strengthening it is not a
+> one-line change either — under the stricter reading **PARAMETERS** would
+> flip to false and existing grants would narrow, and HYGIENE and INVENTORY
+> honour the unit on some of their tables and not others, which is partial
+> rather than clean.
+>
+> 0116 therefore sets PAY directly and leaves the refresh uncalled. Doing
+> this properly means going section by section: make every read policy in a
+> section unit-aware, then let the derivation flip it. It is its own piece of
+> work and it is an access-control change, which is the kind that should not
+> ride along inside a payroll commit.
+
 > Three things the work changed about this document's own conclusions:
 > `units.ts` is about business units and has nothing to do with measurement,
 > so §3.1's "global conversion only" was wrong — there was **no** conversion

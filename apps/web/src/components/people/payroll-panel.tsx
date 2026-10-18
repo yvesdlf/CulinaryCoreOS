@@ -24,7 +24,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, FileSpreadsheet, Send, TriangleAlert } from "lucide-react";
+import { Download, FileSpreadsheet, Send, TriangleAlert, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/empty-state";
@@ -40,7 +40,8 @@ import {
 import { toCsv, downloadCsv } from "@/lib/csv";
 import {
   fetchPayrollRuns, fetchPayrollLines, buildPayrollRun, exportPayrollRun,
-  type PayrollRun, type PayrollLine,
+  fetchPayScope,
+  type PayrollRun, type PayrollLine, type PayScope,
 } from "@/data/payroll";
 
 function said(err: unknown): string {
@@ -56,11 +57,18 @@ export function PayrollPanel({ canWrite }: { canWrite: boolean }) {
   const [busy, setBusy] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [scope, setScope] = useState<PayScope | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const r = await fetchPayrollRuns();
+      const [r, sc] = await Promise.all([
+        fetchPayrollRuns(),
+        // Tolerated as unknown: a venue that cannot answer this still gets a
+        // working screen, and the banner simply does not appear.
+        fetchPayScope().catch(() => null),
+      ]);
       setRuns(r);
+      setScope(sc);
       setSelected((s) => s ?? r[0]?.id ?? null);
     } catch (err) {
       toast.error("Could not load payroll runs", { description: said(err) });
@@ -93,11 +101,46 @@ export function PayrollPanel({ canWrite }: { canWrite: boolean }) {
         l.openPunches, l.correctionsApplied,
       ]),
     );
-    downloadCsv(`payroll-${here.periodFrom}-to-${here.periodTo}.csv`, csv);
+    // The filename carries the scope, because a partial export that is
+    // named like a whole one is the version that reaches a bureau.
+    const scopeTag = partial
+      ? `-${(scope?.unitsVisible ?? ["partial"]).join("-").replace(/\s+/g, "")}`
+      : "";
+    downloadCsv(
+      `payroll-${here.periodFrom}-to-${here.periodTo}${scopeTag}.csv`, csv);
   }
+
+  const partial = scope !== null && !scope.seesWholeVenue;
 
   return (
     <div className="space-y-6">
+      {/*
+        * Said before anything else on the screen.
+        *
+        * A head of department sees their own department's lines and no sign
+        * that there are others — and a total that looks like the venue's.
+        * Somebody signing off a figure they believe is complete is the
+        * failure this prevents, and it is not prevented by hiding the rows
+        * more carefully.
+        *
+        * It names the departments rather than counting what is hidden: the
+        * count would be a fact about other departments' headcount, which is
+        * the thing being withheld.
+        */}
+      {partial && (
+        <p className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+          <Users className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            You are seeing{" "}
+            {scope.unitsVisible.length > 0
+              ? <strong>{scope.unitsVisible.join(", ")}</strong>
+              : <strong>no department</strong>}
+            {" "}only. Other departments are in these runs and are not shown
+            here, so the totals below are not the venue's.
+          </span>
+        </p>
+      )}
+
       {canWrite && (
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-2">

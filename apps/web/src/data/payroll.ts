@@ -23,6 +23,32 @@ export interface PayrollRun {
   reason: string | null;
 }
 
+/**
+ * Which departments the reader can see wages for.
+ *
+ * Read rather than inferred from the section store: the store holds what the
+ * UI was told, and this is the question the database actually answers when
+ * it filters the rows. A screen that says "you are seeing the kitchen" on
+ * one authority and shows rows filtered by another will eventually say both
+ * and mean neither.
+ */
+export interface PayScope {
+  seesWholeVenue: boolean;
+  unitsVisible: string[];
+}
+
+export async function fetchPayScope(): Promise<PayScope> {
+  const { data, error } = await requireSupabase()
+    .from("my_pay_scope")
+    .select("sees_whole_venue, units_visible")
+    .maybeSingle();
+  if (error) fail("fetchPayScope", error);
+  return {
+    seesWholeVenue: Boolean((data as any)?.sees_whole_venue),
+    unitsVisible: ((data as any)?.units_visible ?? []) as string[],
+  };
+}
+
 export interface PayrollLine {
   employeeNumber: string | null;
   employeeName: string | null;

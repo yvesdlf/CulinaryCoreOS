@@ -159,6 +159,27 @@ point of no return:
 `open_punches` and `corrections_applied` ride on each line so a short or
 unexpected wage explains itself on the file rather than over the phone.
 
+**Who sees which wages** (0116). A payroll line is read through the business
+unit of the employee it belongs to:
+
+- **Unscoped Pay** — the general manager, HR, finance — sees every line.
+- **Pay scoped to one unit** — a head of department — sees that unit's lines
+  and that unit's `pay_rates`, and nothing else.
+- A line whose employee is in **no** unit is seen only by unscoped holders.
+  Unassigned reads as nobody's, not everybody's; the other way round, one
+  unfiled employee would be visible to every head of department in the venue.
+
+A department is a business unit — `departments` is a view over
+`business_units` — so this needs no concept the section grid did not already
+have. `my_pay_scope` tells a screen which departments the reader can see, so
+a partial view is legible as one: a head of department signing off a total
+they believe is the venue's is the failure that hiding rows alone does not
+prevent.
+
+**Building and exporting a run still need Pay across the venue.** A run
+covers every employee, including those a head of department cannot read, and
+somebody who cannot see the whole file must not be the one who sends it.
+
 ### `unit_labour_against_revenue`
 
 ```

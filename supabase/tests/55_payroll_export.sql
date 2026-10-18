@@ -221,7 +221,9 @@ select t.expect_refused(
   'select public.build_payroll_run(' || quote_literal(:'demo') ||
   '::uuid, current_date - 60, current_date - 50)',
   'somebody with no Pay access builds nothing',
-  'edit access to Pay');
+  -- 0116 made the message name the scope, because the commonest reason to
+  -- hit it is now a head of department who holds Pay on one unit.
+  'Pay access across the venue');
 select t.expect_value($$
   select count(*)::text from payroll_lines$$,
   'nor reads anybody''s wages', '0');
