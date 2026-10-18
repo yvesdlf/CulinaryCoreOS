@@ -97,6 +97,9 @@ const TAB_PANELS = [
   { page: "suppliers", path: "/suppliers", heading: "Suppliers", tab: "Price history" },
   { page: "suppliers", path: "/suppliers", heading: "Suppliers", tab: "Scorecard" },
   { page: "sales", path: "/sales", heading: "Sales", tab: "Forecast" },
+  // The page is headed "Human Resources", not "People" — the route and the
+  // heading differ, and `ready()` waits on the heading.
+  { page: "people", path: "/people", heading: "Human Resources", tab: "Payroll" },
 ];
 
 for (const p of TAB_PANELS) {

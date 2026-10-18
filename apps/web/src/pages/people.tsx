@@ -20,8 +20,9 @@ import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Send, Wallet } from "lucide-react";
+import { Send, Wallet, FileSpreadsheet } from "lucide-react";
 import { PayTab } from "@/components/people/pay-tab";
+import { PayrollPanel } from "@/components/people/payroll-panel";
 import { useCanReadSection, useCanWriteSection } from "@/stores/access-store";
 import { StaffCommsTab } from "@/components/people/staff-comms-tab";
 import { PageHeader } from "@/components/layout/page-header";
@@ -285,6 +286,11 @@ export function PeoplePage() {
               <Wallet className="size-4" />Pay
             </TabsTrigger>
           )}
+          {canSeePay && (
+            <TabsTrigger value="payroll" className="justify-start">
+              <FileSpreadsheet className="size-4" />Payroll
+            </TabsTrigger>
+          )}
 
           <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
             Communication
@@ -297,6 +303,12 @@ export function PeoplePage() {
         {canSeePay && (
           <TabsContent value="pay" className="mt-4">
             <PayTab employees={employees} canWrite={canSetPay} />
+          </TabsContent>
+        )}
+
+        {canSeePay && (
+          <TabsContent value="payroll" className="mt-4">
+            <PayrollPanel canWrite={canSetPay} />
           </TabsContent>
         )}
 

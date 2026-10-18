@@ -9,7 +9,7 @@ can mean different things without anybody noticing.
 disagree the view is the bug, not this file — but say so rather than
 quietly editing one to match the other.
 
-Written 2026-10-18 against migrations 0001–0113.
+Written 2026-10-18 against migrations 0001–0114.
 
 ---
 
@@ -121,13 +121,43 @@ spend_per_cover  = net_amount ÷ covers        (null where covers is 0)
 ### `labour_cost_daily`
 
 ```
-hours = (clock_out − clock_in − break_minutes), from approved time entries
+hours = (clock_out − clock_in − break_minutes), from `time_entries_effective`
 cost  = hours × the rate in force on that date   (pay_rate_on)
 ```
+
+`time_entries_effective` applies the latest **approved** time correction, and
+it exists because the logic used to live in two places. `attendance` applied
+corrections and `labour_cost_daily` did not, so somebody whose four-hour punch
+was corrected to eight showed eight hours worked and was costed for four.
+Fixed in 0114.
+
+An **open punch has null hours, never zero**: somebody clocked in, and a zero
+would say they worked a shift of no length. `labour_cost_daily.open_punches`
+carries the count so a short day explains itself.
 
 The rate is the one that applied **on the day worked**, not today's — the
 same principle as the exchange rates in §6. `refuse_backdated_pay_change`
 stops a rate being altered behind an approved timesheet.
+
+### Payroll — `payroll_runs`, `payroll_lines` (0114)
+
+A run is built as a draft and exported as a separate act. The export is the
+point of no return:
+
+- **An exported period cannot be exported again**, and an overlapping period
+  is refused by name and date. Paying a fortnight twice costs the venue the
+  fortnight and is very hard to claw back.
+- **A re-run supersedes the earlier one explicitly, with a reason**, and the
+  earlier run is marked rather than deleted — a file was sent to a bureau, and
+  no tidying up here unsends it.
+- **Lines are stored, not recomputed.** This is what was paid; a
+  recomputation in March against a since-corrected rate would disagree with
+  the bank.
+- Employee name and number are **copied onto the line**, because a file is a
+  record of what was sent and somebody renamed afterwards does not change it.
+
+`open_punches` and `corrections_applied` ride on each line so a short or
+unexpected wage explains itself on the file rather than over the phone.
 
 ### `unit_labour_against_revenue`
 

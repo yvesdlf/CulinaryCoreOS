@@ -313,7 +313,8 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > | 20 | Landed cost | **built** — 0109 |
 > | 21 | Supplier scorecard | **built** — 0110 |
 > | 18–19 | Labels and barcodes | **built** — 0113 |
-> | 24–25 | payroll export, i18n | outstanding |
+> | 24 | Payroll export | **built** — 0114 |
+> | 25 | i18n and Bahasa Indonesia | outstanding |
 >
 > Three things the work changed about this document's own conclusions:
 > `units.ts` is about business units and has nothing to do with measurement,
