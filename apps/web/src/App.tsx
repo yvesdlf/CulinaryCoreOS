@@ -44,6 +44,7 @@ const InventoryPage = lazy(() => import("@/pages/inventory").then((x) => ({ defa
 const DuplicatesPage = lazy(() => import("@/pages/duplicates").then((x) => ({ default: x.DuplicatesPage })));
 const CollectionsPage = lazy(() => import("@/pages/collections").then((x) => ({ default: x.CollectionsPage })));
 const CollectionPrintPage = lazy(() => import("@/pages/collection-print-page").then((x) => ({ default: x.CollectionPrintPage })));
+const LabelPrintPage = lazy(() => import("@/pages/label-print-page").then((x) => ({ default: x.LabelPrintPage })));
 const RecipePrintPage = lazy(() => import("@/pages/recipes/recipe-print-page").then((x) => ({ default: x.RecipePrintPage })));
 const SubRecipePrintPage = lazy(() => import("@/pages/sub-recipes/sub-recipe-print-page").then((x) => ({ default: x.SubRecipePrintPage })));
 const ProductDetailPage = lazy(() => import("@/pages/products/product-detail-page").then((x) => ({ default: x.ProductDetailPage })));
@@ -161,6 +162,9 @@ export function App() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/stocktake" element={<StocktakePage />} />
         <Route path="/sales" element={<SalesPage />} />
+        {/* A label is a physical sticker, so it gets its own print view: the
+            browser dialog is the only thing here that reaches a printer. */}
+        <Route path="/production/:id/label" element={<LabelPrintPage />} />
         <Route path="/food-cost" element={<FoodCostPage />} />
         <Route path="/production" element={<ProductionPage />} />
         <Route path="/menus" element={<MenusPage />} />

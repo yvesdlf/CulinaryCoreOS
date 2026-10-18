@@ -27,8 +27,51 @@ select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 
 select '── starting data: the list is rows, not a function body ─────────';
 
-select t.expect_value($$select count(*)::text from organization_seeders$$,
-  'eighteen seeders are registered', '18');
+/*
+ * Not a count.
+ *
+ * This used to assert a literal number, which meant every migration adding a
+ * seeder had to come back and edit it — six times in one week — and an edit
+ * made by reflex is not a check, it is a toll. Worse, the number says
+ * nothing about the failure it is meant to catch: a registry of eighteen
+ * with the wrong eighteen in it passes.
+ *
+ * What AGENTS.md §6 is actually about is a seeder that exists and is not
+ * registered, because that one runs for nobody. So the rule is stated both
+ * ways — nothing registered that does not exist (below), and nothing that
+ * exists and is not registered (here) — and neither needs maintaining.
+ *
+ * Seeders are recognised by shape: `seed_*`, taking one uuid, in public.
+ *
+ * "Wired in" is broader than "registered", and this check found out why the
+ * first time it ran: `seed_business_units` is in no registry and is perfectly
+ * reachable, because two registered seeders call it themselves — 0058 says so
+ * in as many words, and the reason is that it refused to rewrite
+ * `seed_organization_defaults` to add a line. So a seeder another registered
+ * seeder calls counts as wired in.
+ *
+ * That reachability is textual and one level deep. It would miss a helper
+ * called only by another helper, which is a gap worth knowing about and not
+ * worth a recursive walk through function bodies to close: the thing this is
+ * guarding against is somebody writing a seeder and forgetting the registry
+ * entry, and that seeder has nothing calling it at all.
+ */
+select t.expect_value($$
+  select coalesce(string_agg(p.proname, ', ' order by p.proname), '')
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname like 'seed\_%'
+     and p.pronargs = 1
+     and p.proargtypes[0] = 'uuid'::regtype
+     and p.proname <> 'seed_organization_defaults'
+     and not exists (select 1 from organization_seeders s
+                      where s.function_name = p.proname)
+     and not exists (
+       select 1 from organization_seeders s
+         join pg_proc caller on caller.proname = s.function_name
+        where caller.prosrc like '%' || p.proname || '%')$$,
+  'every per-venue seeder in the schema is wired in somewhere', '');
 
 /*
  * Asked as `authenticated`, not as the suite's own connection.
@@ -66,8 +109,9 @@ reset role;
  * afterwards is the assertion that matters — the second false pass in
  * _harness.sql, which is a trigger silently correcting rather than refusing.
  */
-select t.expect_value($$select count(*)::text from organization_seeders$$,
-  'the list is the same length afterwards', '18');
+select t.expect_value($$
+  select (count(*) >= 18)::text from organization_seeders$$,
+  'the list is no shorter afterwards', 'true');
 select t.expect_value($$
   select function_name from organization_seeders where ordinal = 80$$,
   'and the media seeder is still the eightieth', 'seed_media_defaults');

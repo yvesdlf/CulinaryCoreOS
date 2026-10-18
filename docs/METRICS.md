@@ -9,7 +9,7 @@ can mean different things without anybody noticing.
 disagree the view is the bug, not this file — but say so rather than
 quietly editing one to match the other.
 
-Written 2026-10-18 against migrations 0001–0112.
+Written 2026-10-18 against migrations 0001–0113.
 
 ---
 
@@ -451,8 +451,37 @@ drift inside it does not need modelling.
 
 ---
 
-## 11. What is deliberately not here
-- **Landed cost.** Not built, so `unit_cost` on a receipt excludes freight
-  and duty.
+## 11. The label
+
+`prep_label` (0113) assembles what goes on a tub of a prepared item.
+
+```
+use_by      = made_on + PREP_USE_BY_DAYS        (default 3)
+expiry_kind = USE_BY, always
+allergens   = every allergen on every product consumed, exploded through
+              nested preparations (via production_usage_theoretical)
+allergens_need_review = any of those products has allergens_need_review
+```
+
+It is a **use-by** and not a best-before: 1169/2011 draws that line at food
+which becomes unsafe rather than merely worse, and a kitchen preparation is on
+the unsafe side.
+
+**There is no "contains no allergens" column, and there never will be.** The
+view can say what was found in what the catalogue knows; a free-from claim is
+something a person makes after reading a label. The print view words it "No
+allergens found — in the ingredients recorded for this item".
+
+`allergens_need_review` prints **on the sticker**, not just on the screen. A
+caveat shown in a toast is one somebody dismissed before they pressed print,
+and a printed label is the most confident surface in a building (AGENTS.md §8).
+
+`label_prints` copies the allergens onto the row at print time rather than
+looking them up later: the catalogue can change and the tub in the walk-in
+cannot, and a recall needs to know what the sticker said (178/2002 Art 18).
+
+---
+
+## 12. What is deliberately not here
 - **Rooms cleaned per attendant hour** lives in `housekeeping_workload` and
   is hotel-module only.

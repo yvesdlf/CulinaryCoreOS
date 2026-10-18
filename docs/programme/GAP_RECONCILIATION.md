@@ -116,8 +116,8 @@ absent on quality.
 | § | Capability | Verdict | Evidence |
 |---|---|---|---|
 | 6.1 | Stocktake sessions | **PARTIAL — and this is the biggest single gap** | A `COUNT` movement kind exists, and `apps/web/src/engine/count-sheet.ts` is a thoughtful piece of work (it deliberately omits the expected quantity from the printed sheet, because a counter who sees "expected 4" writes 4). But there is **no `stocktakes` session table and no `stocktake_lines`** — so no `snapshot_at` freeze, no open→counting→submitted→approved→posted status, no variance report, and no approval. Counts post as individual movements. Everything the brief asks for sits on top of work already done. |
-| 6.2 | Barcode scanning | **ABSENT** | No `barcodes` table, no scanning library in the tree. |
-| 6.3 | Labels | **ABSENT** | No label templates, no ZPL. `stock_lots.expires_on`/`expiry_kind` and `production_records` would supply the data, and migration `0061_use_by_is_refused` shows the use-by rule is already enforced — but nothing prints. |
+| 6.2 | Barcode scanning | **BUILT — 0113** | `product_barcodes` (several per product: the case and the unit are different numbers), `product_for_barcode()`, and GS1 modulo-10 check-digit validation for EAN-13, EAN-8 and UPC-A. Kinds with no check digit of their own are taken as given, stated rather than assumed. **No scanning library yet** — a hardware scanner types into the field, which covers the common case; a camera scanner is a separate task. |
+| 6.3 | Labels | **BUILT — 0113** | View `prep_label` assembles what goes on the tub from the batch that exists rather than from the recipe, with the use-by from `PREP_USE_BY_DAYS` and allergens exploded through every nested preparation. `label_prints` records what was printed and what was on it. `/production/:id/label` is a print view sized for a 70 × 50 mm sticker. **No ZPL**: this prints through the browser, which reaches any printer the machine has. The allergen caveat travels onto the sticker — see §8 below. |
 | 6.4 | Recipe import | **BUILT, except the URL path** | `apps/web/src/engine/recipe-import.ts`, `price-import.ts`, `haccp-import.ts`, all preview-then-commit per `AGENTS.md` §10. **Photo import is built**: `recipeParseRequest(source, images?)` and `parseRecipeResponse()` in `engine/ai/tasks.ts`, against a vision-capable provider. No schema.org/JSON-LD URL import. No `pg_trgm` for the ingredient match, so matching is exact or manual. |
 | 6.5 | Global search | **PARTIAL** | A search control is in the UI. `pg_trgm` is **not** enabled, so typo and partial matching as specified is not possible today. |
 
@@ -312,7 +312,8 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > | 13 | Sales forecast, known events, accuracy | **built** — 0107/0108 |
 > | 20 | Landed cost | **built** — 0109 |
 > | 21 | Supplier scorecard | **built** — 0110 |
-> | 18–19, 24–25 | labels, barcodes, payroll export, i18n | outstanding |
+> | 18–19 | Labels and barcodes | **built** — 0113 |
+> | 24–25 | payroll export, i18n | outstanding |
 >
 > Three things the work changed about this document's own conclusions:
 > `units.ts` is about business units and has nothing to do with measurement,

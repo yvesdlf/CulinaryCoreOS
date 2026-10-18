@@ -21,6 +21,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Factory, Printer, Search, TriangleAlert, X,
   ChefHat, PackageOpen, ClipboardCheck, Scale, PencilLine,
 } from "lucide-react";
@@ -734,6 +735,17 @@ function MadeToday({
                   {r.note ?? "—"}
                 </TableCell>
                 <TableCell>
+                  {/* The tub needs a sticker before it goes in the walk-in,
+                      and until now nothing in this app printed one. */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    nativeButton={false}
+                    render={<Link to={`/production/${r.id}/label`} />}
+                  >
+                    <Printer className="size-4" />
+                    Label
+                  </Button>
                   <PermissionGate>
                     <Button size="sm" variant="ghost" onClick={() => onCorrect(r)}>
                       <PencilLine className="size-4" />
