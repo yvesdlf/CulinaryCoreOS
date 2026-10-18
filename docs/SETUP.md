@@ -18,6 +18,13 @@
    pnpm install
    ```
 
+> **Where this repository lives.** `~/Developer/culinarycoreos`, and
+> deliberately not under `~/Documents`. With Desktop & Documents sync turned
+> on, `~/Documents` *is* the iCloud container: the file provider evicts files
+> it thinks are cold, and an evicted file keeps its size and reads as empty —
+> which showed up here as dependencies that existed, had the right byte count,
+> and imported as `undefined`. Keep it on a path iCloud does not manage.
+
 3. **Supabase** — requires Docker Desktop running
 
    ```bash

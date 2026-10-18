@@ -73,6 +73,52 @@ export function AiSettingsCard() {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/*
+          * Whose key, asked first, because every field below it means
+          * something different depending on the answer.
+          *
+          * Own key is named first and described first. It costs the venue
+          * less, nothing about it passes through us, and we impose no limit
+          * on it — so it is the honest recommendation even though the other
+          * one is the one we bill for.
+          */}
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Which key the assistant uses</legend>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="ai-key-source"
+              className="mt-1"
+              checked={s.keySource === "OWN_KEY"}
+              onChange={() => s.set({ keySource: "OWN_KEY" })}
+            />
+            <span>
+              <span className="font-medium">Your own key</span>
+              <span className="block text-muted-foreground">
+                Goes straight from this browser to the provider. You pay them
+                directly, nothing passes through us, and we impose no limit.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="ai-key-source"
+              className="mt-1"
+              checked={s.keySource === "PLATFORM"}
+              onChange={() => s.set({ keySource: "PLATFORM" })}
+            />
+            <span>
+              <span className="font-medium">The shared key</span>
+              <span className="block text-muted-foreground">
+                For a venue with no provider account. It is metered and stops
+                at a monthly allowance, and it has to be switched on for your
+                venue first — the assistant will say so if it is not.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

@@ -42,6 +42,19 @@ export interface AiSettings {
   /** For OpenAI-compatible providers: Groq, OpenRouter, or a local Ollama. */
   baseUrl: string;
   enabled: boolean;
+  /**
+   * Whose key, and therefore whose bill.
+   *
+   * Own key is the default and stays the default: it costs the venue less,
+   * exposes nothing centrally, and has no limit we impose. The shared key
+   * exists for the venue with no provider account, which is most of them —
+   * it goes through an edge function, is metered, and stops at an allowance.
+   *
+   * The choice lives beside the key rather than in the database because it
+   * is a property of how this browser makes the call, and because a venue
+   * switching to their own key should not need anybody's permission.
+   */
+  keySource: "OWN_KEY" | "PLATFORM";
 }
 
 const DEFAULTS: AiSettings = {
@@ -50,6 +63,11 @@ const DEFAULTS: AiSettings = {
   model: "gemini-2.0-flash",
   baseUrl: "",
   enabled: true,
+  // Own key by default. A venue that has not chosen is not quietly put on
+  // the platform's bill, and the shared key refuses anybody not set up for
+  // it anyway (0115) — so the default that does nothing surprising is also
+  // the one that works.
+  keySource: "OWN_KEY",
 };
 
 function load(): AiSettings {
@@ -63,6 +81,11 @@ function load(): AiSettings {
       model: typeof parsed?.model === "string" && parsed.model ? parsed.model : DEFAULTS.model,
       baseUrl: typeof parsed?.baseUrl === "string" ? parsed.baseUrl : "",
       enabled: parsed?.enabled !== false,
+      // Anything other than the two known values reads as own key. A
+      // settings blob from an older build has no `keySource` at all, and the
+      // safe reading of "unknown" is the one that spends nobody else's
+      // money.
+      keySource: parsed?.keySource === "PLATFORM" ? "PLATFORM" : "OWN_KEY",
     };
   } catch {
     // A corrupt blob must not take the whole app down on boot.
