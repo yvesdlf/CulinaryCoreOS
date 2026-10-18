@@ -49,6 +49,8 @@ import {
   type MyShift, type MyLeave, type MyCarriedLeave, type ExamResult,
 } from "@/data/repository";
 import type { LeaveType } from "@/engine/people";
+import { LanguagePicker } from "@/components/shared/language-picker";
+import { useT } from "@/stores/locale-store";
 import { PortalHome } from "@/components/portal/home";
 import { ReportTab, ChecksTab, RoomsTab } from "@/components/portal/floor";
 import { useAuthStore } from "@/stores/auth-store";
@@ -80,6 +82,7 @@ function currentPosition(): Promise<
 }
 
 export function StaffPortalPage({ profile }: { profile: MyProfile }) {
+  const t = useT();
   const signOut = useAuthStore((s) => s.signOut);
   const [documents, setDocuments] = useState<MyDocument[]>([]);
   const [training, setTraining] = useState<MyTraining[]>([]);
@@ -168,11 +171,15 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
           </h1>
           <p className="text-sm text-muted-foreground">
             {[profile.jobTitle, profile.department].filter(Boolean).join(" · ")}
-            {profile.managerName && ` · reports to ${profile.managerName}`}
+            {profile.managerName &&
+              ` · ${t("portal.reportsTo", { name: profile.managerName })}`}
           </p>
         </div>
+        {/* Beside Sign out, which is where somebody who opened the portal in
+            the wrong language looks first. */}
+        <LanguagePicker className="ml-auto" />
         <Button variant="ghost" onClick={() => void signOut()}>
-          <LogOut aria-hidden="true" /> Sign out
+          <LogOut aria-hidden="true" /> {t("portal.signOut")}
         </Button>
       </header>
 
@@ -215,21 +222,21 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
             difference is visible, not theoretical. */}
         <TabsList className="grid w-full grid-cols-4 gap-1 group-data-horizontal/tabs:h-auto sm:flex sm:w-fit max-sm:items-stretch [&>*]:min-h-9 [&_svg]:hidden sm:[&_svg]:block [&_[data-slot=tabs-trigger]]:h-auto [&_[data-slot=tabs-trigger]]:py-1 [&_[data-slot=tabs-trigger]]:text-center [&_[data-slot=tabs-trigger]]:whitespace-normal sm:[&_[data-slot=tabs-trigger]]:whitespace-nowrap">
           <TabsTrigger value="home">
-            <House aria-hidden="true" /> Home
+            <House aria-hidden="true" /> {t("portal.tab.home")}
           </TabsTrigger>
           <TabsTrigger value="inbox">
-            <Inbox aria-hidden="true" /> Inbox ({documents.length})
+            <Inbox aria-hidden="true" /> {t("portal.tab.inbox")} ({documents.length})
           </TabsTrigger>
           <TabsTrigger value="training">
-            <GraduationCap aria-hidden="true" /> Training ({training.length})
+            <GraduationCap aria-hidden="true" /> {t("portal.tab.training")} ({training.length})
           </TabsTrigger>
           <TabsTrigger value="rota">
-            <CalendarDays aria-hidden="true" /> My rota
+            <CalendarDays aria-hidden="true" /> {t("portal.tab.rota")}
           </TabsTrigger>
-          <TabsTrigger value="leave">Leave ({leave.length})</TabsTrigger>
-          <TabsTrigger value="report">Report</TabsTrigger>
-          <TabsTrigger value="checks">Checks</TabsTrigger>
-          <TabsTrigger value="rooms">Rooms</TabsTrigger>
+          <TabsTrigger value="leave">{t("portal.tab.leave")} ({leave.length})</TabsTrigger>
+          <TabsTrigger value="report">{t("portal.tab.report")}</TabsTrigger>
+          <TabsTrigger value="checks">{t("portal.tab.checks")}</TabsTrigger>
+          <TabsTrigger value="rooms">{t("portal.tab.rooms")}</TabsTrigger>
         </TabsList>
 
         {/* The floor's own jobs (0084): each tab loads its own data, so a

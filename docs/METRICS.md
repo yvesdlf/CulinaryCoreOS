@@ -512,6 +512,32 @@ cannot, and a recall needs to know what the sticker said (178/2002 Art 18).
 
 ---
 
-## 12. What is deliberately not here
+## 12. Language
+
+Not a metric, but the same discipline, and it belongs beside them.
+
+`lib/i18n/core.ts` resolves a phrase in the active language, falls back to
+English, and picks the plural form **by language**: English has two forms and
+Indonesian has none. Writing "1 shift(s)" to avoid the problem is a decision
+to look broken in both.
+
+- **A missing phrase shows English, and warns in development only.** Showing
+  the key on a tablet somebody is using is worse than English; staying silent
+  while building is how a screen ships half-translated.
+- **Interpolation never concatenates.** Word order is the first thing that
+  differs, and a sentence assembled from fragments cannot be reordered by
+  whoever translates it.
+- **Locale is per browser, not per account.** A portal tablet on a kitchen
+  wall is used by fifteen people who do not sign in between shifts.
+- A venue's own words — leave type names, unit names — are **not** translated.
+  They are configuration, and translating them is how a label stops matching
+  the form it appears on.
+
+> **Scope.** The staff portal is translated; the management app is not. That
+> is the order, not the progress. `i18n/coverage.test.ts` holds the line.
+
+---
+
+## 13. What is deliberately not here
 - **Rooms cleaned per attendant hour** lives in `housekeeping_workload` and
   is hotel-module only.

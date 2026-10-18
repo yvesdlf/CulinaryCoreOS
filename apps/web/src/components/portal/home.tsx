@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { leaveBalances, headlineBalance } from "@/engine/leave-balance";
+import { useT, useLocaleStore } from "@/stores/locale-store";
 import type { LeaveType } from "@/engine/people";
 import type {
   MyProfile, MyDocument, MyTraining, MyShift, MyLeave,
@@ -81,6 +82,10 @@ export interface HomeProps {
 }
 
 export function PortalHome(p: HomeProps) {
+  const t = useT();
+  // The date formatter wants the active locale too — a month name in English
+  // inside an Indonesian sentence is the half-translated look this is for.
+  const locale = useLocaleStore((s) => s.locale);
   const now = useMemo(() => new Date(), []);
   const today = dayKey(now);
   const [announcementsTab, setAnnouncementsTab] = useState<"announcements" | "tasks">(
@@ -328,17 +333,23 @@ export function PortalHome(p: HomeProps) {
           {headline && (
             <Card>
               <CardContent className="pt-4">
+                {/* The leave type's own name stays as the venue wrote it:
+                    it is a thing somebody configured, not a phrase we own,
+                    and translating a venue's own words is how a label stops
+                    matching the form it appears on. */}
                 <p className="text-xs text-muted-foreground">{headline.type.name}</p>
                 <p className="text-3xl font-semibold tabular-nums">
                   {headline.remaining}
                   <span className="ml-1 text-sm font-normal text-muted-foreground">
-                    days left
+                    {t("portal.leave.daysLeft")}
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {headline.taken} taken
-                  {headline.pending > 0 && `, ${headline.pending} awaiting a decision`}
-                  {headline.allowance !== null && ` of ${headline.allowance}`}
+                  {t("portal.leave.taken", { count: headline.taken })}
+                  {headline.pending > 0 &&
+                    `, ${t("portal.leave.pending", { count: headline.pending })}`}
+                  {headline.allowance !== null &&
+                    ` ${t("portal.leave.ofAllowance", { allowance: headline.allowance })}`}
                 </p>
                 {/*
                   * Carried days are shown with their expiry or not at all.
@@ -348,22 +359,26 @@ export function PortalHome(p: HomeProps) {
                   */}
                 {headline.carriedIn > 0 && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    includes {headline.carriedIn} carried from last year
-                    {headline.carryExpiresOn && (
-                      <>, until{" "}
-                        {new Date(`${headline.carryExpiresOn}T00:00:00`)
-                          .toLocaleDateString(undefined, {
-                            day: "numeric", month: "long",
-                          })}
-                      </>
-                    )}
+                    {/* One sentence, not a fragment plus a date appended:
+                        word order is the first thing that differs between
+                        languages, and a sentence assembled from pieces
+                        cannot be rearranged by whoever translates it. */}
+                    {headline.carryExpiresOn
+                      ? t("portal.leave.carriedUntil", {
+                          days: headline.carriedIn,
+                          date: new Date(`${headline.carryExpiresOn}T00:00:00`)
+                            .toLocaleDateString(locale, {
+                              day: "numeric", month: "long",
+                            }),
+                        })
+                      : t("portal.leave.carried", { days: headline.carriedIn })}
                   </p>
                 )}
                 {balances
                   .filter((b) => b.entitlement === null && b.taken > 0)
                   .map((b) => (
                     <p key={b.type.id} className="mt-2 text-xs text-muted-foreground">
-                      {b.type.name}: {b.taken} days used
+                      {t("portal.leave.used", { name: b.type.name, count: b.taken })}
                     </p>
                   ))}
                 <Button
