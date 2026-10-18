@@ -72,6 +72,8 @@ export interface HomeProps {
   /** Things waiting on this person as a manager. Empty for most people. */
   toApprove: { id: string; label: string; detail: string }[];
   onPunch: () => void;
+  /** Days brought forward, already capped and with expiry applied (0112). */
+  carried: { leaveTypeId: string; days: number; expiresOn: string | null }[];
   onOpenTab: (tab: string) => void;
   onRequestLeave: () => void;
   onNewRequest: () => void;
@@ -95,8 +97,9 @@ export function PortalHome(p: HomeProps) {
         })),
         new Date(now.getFullYear(), 0, 1),
         new Date(now.getFullYear(), 11, 31),
+        p.carried,
       ),
-    [p.leaveTypes, p.leave, now],
+    [p.leaveTypes, p.leave, p.carried, now],
   );
   const headline = headlineBalance(balances);
 
@@ -335,8 +338,27 @@ export function PortalHome(p: HomeProps) {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {headline.taken} taken
                   {headline.pending > 0 && `, ${headline.pending} awaiting a decision`}
-                  {headline.entitlement !== null && ` of ${headline.entitlement}`}
+                  {headline.allowance !== null && ` of ${headline.allowance}`}
                 </p>
+                {/*
+                  * Carried days are shown with their expiry or not at all.
+                  * A figure that says "25 days" without saying five of them
+                  * lapse on 1 April is one somebody plans a December holiday
+                  * around and loses.
+                  */}
+                {headline.carriedIn > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    includes {headline.carriedIn} carried from last year
+                    {headline.carryExpiresOn && (
+                      <>, until{" "}
+                        {new Date(`${headline.carryExpiresOn}T00:00:00`)
+                          .toLocaleDateString(undefined, {
+                            day: "numeric", month: "long",
+                          })}
+                      </>
+                    )}
+                  </p>
+                )}
                 {balances
                   .filter((b) => b.entitlement === null && b.taken > 0)
                   .map((b) => (

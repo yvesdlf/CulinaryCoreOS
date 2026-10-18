@@ -9,7 +9,7 @@ can mean different things without anybody noticing.
 disagree the view is the bug, not this file — but say so rather than
 quietly editing one to match the other.
 
-Written 2026-10-18 against migrations 0001–0110.
+Written 2026-10-18 against migrations 0001–0112.
 
 ---
 
@@ -54,11 +54,13 @@ for each sales line:
 so each of the sauce's own lines contributes two fifths of its quantity —
 and if the sauce uses a stock, the same again, to a depth of ten.
 
-> **Known limitation.** `production_usage_theoretical`, which predates this
-> (0060), expands only **one** level and silently drops a nested
-> sub-recipe. Production figures for any preparation built on another
-> preparation are therefore understated. Recorded in
-> `GAP_RECONCILIATION.md`; not yet fixed.
+`production_usage_theoretical` does the same walk for a production run
+(0111). It expanded only **one** level until then and silently dropped
+nested preparations — so `production_variance()`, which reads the gap
+between theoretical and actual as waste, showed a kitchen making a
+demi-glace from a veal stock throwing away the entire stock, every batch.
+`production_expansion_gaps` names the records whose walk had to stop at a
+preparation with no batch yield, since those are still short.
 
 ### Actual consumption — `stocktake_variance`, `food_cost_variance`
 
@@ -167,6 +169,7 @@ looks identical in a total and means the opposite.
 | `in_base_currency(...)` | No exchange rate is known for that date | The amount really is zero |
 | `menu_item_pricing.price` | Neither the menu item nor the recipe is priced | The dish is free |
 | `checklist_answers.passed` | Not yet answered | — |
+| `leave_carryover.carried_days` on a type with no allowance | — | (no row is written at all — "carried sick days" reads as an allowance to spend) |
 | `sales_forecasts.covers` | No trading history for that weekday — **no row is written at all** | — |
 | `forecast_accuracy.covers_error_percent` | What happened has not been recorded | The forecast was exactly right |
 | `receipt_line_landed_cost.landed_unit_cost` | Nobody recorded a price for the line, or the whole line went back | — |
@@ -368,8 +371,31 @@ for fifteen has five to plan with, not twenty. Leave with no annual
 entitlement — sick, unpaid, parental — reports days **used** and never a
 remainder, because "sick days remaining" reads as an allowance to spend.
 
-> **Not built:** carry-over between periods. `leave_types.max_carryover_days`
-> exists and nothing persists a closing balance.
+### Carry-over — `leave_carryover`, `leave_entitlement_now` (0112)
+
+```
+unused   = entitlement + carried_in − taken        (floored at 0)
+carried  = least(unused, coalesce(max_carryover_days, 0))
+allowance next year = annual_entitlement_days + carried_in_now
+```
+
+**A null `max_carryover_days` carries nothing, not everything.** The strict
+reading is recoverable — a venue sets a number and closes again; the generous
+one is not, because by then people have booked against days they do not have.
+
+**Stored, not recomputed.** The cap was applied on the day the year closed,
+under a policy that may since have changed, and the figure ends up in pay when
+somebody leaves (AGENTS.md §4).
+
+**A year with an undecided request cannot be closed.** Closing around one
+either loses the days or carries them as though they were never going to be
+taken, and either way it is found in December.
+
+Carried days expire `CARRYOVER_EXPIRES_MONTHS` into the new year (default 3).
+`leave_entitlement_now.carried_in_now` is zero once they have lapsed, while
+`carried_days` stays visible — the row is the record of what was decided, and
+a balance that silently stopped existing leaves nothing to explain why
+somebody's figure dropped.
 
 ### Availability — `is_available(employee, from, to)`
 

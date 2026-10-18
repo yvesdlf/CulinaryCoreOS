@@ -42,11 +42,11 @@ import {
 import {
   fetchMyDocuments, markDocumentRead, fetchMyTraining,
   fetchMyExam, submitExam, fetchMyShifts, fetchMyOpenPunch, clockIn, clockOut,
-  fetchMyLeave, fetchLeaveTypes, requestLeave, signedFileUrl,
+  fetchMyLeave, fetchLeaveTypes, fetchMyCarriedLeave, requestLeave, signedFileUrl,
   fetchCalendar, fetchMyRequests, fetchBoardPosts,
   type CalendarEntry, type StaffRequest, type BoardPost,
   type MyProfile, type MyDocument, type MyTraining, type MyExamQuestion,
-  type MyShift, type MyLeave, type ExamResult,
+  type MyShift, type MyLeave, type MyCarriedLeave, type ExamResult,
 } from "@/data/repository";
 import type { LeaveType } from "@/engine/people";
 import { PortalHome } from "@/components/portal/home";
@@ -86,6 +86,7 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
   const [shifts, setShifts] = useState<MyShift[]>([]);
   const [leave, setLeave] = useState<MyLeave[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [carried, setCarried] = useState<MyCarriedLeave[]>([]);
   const [openPunch, setOpenPunch] = useState<{ id: string; clockInAt: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
@@ -100,12 +101,15 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
   async function load() {
     setLoading(true);
     try {
-      const [d, t, s, l, lt, p] = await Promise.all([
+      const [d, t, s, l, lt, p, cy] = await Promise.all([
         fetchMyDocuments(), fetchMyTraining(), fetchMyShifts(),
         fetchMyLeave(), fetchLeaveTypes(), fetchMyOpenPunch(),
+        // Tolerated as empty: a venue that has never closed a leave year has
+        // no carry-over, which is not an error and must not blank the page.
+        fetchMyCarriedLeave().catch(() => []),
       ]);
       setDocuments(d); setTraining(t); setShifts(s);
-      setLeave(l); setLeaveTypes(lt); setOpenPunch(p);
+      setLeave(l); setLeaveTypes(lt); setOpenPunch(p); setCarried(cy);
 
       /*
        * The home screen's own data, fetched separately and allowed to fail.
@@ -242,6 +246,7 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
             shifts={shifts}
             leave={leave}
             leaveTypes={leaveTypes}
+            carried={carried}
             calendar={calendar}
             requests={requests}
             board={board}

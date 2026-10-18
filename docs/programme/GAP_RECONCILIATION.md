@@ -319,10 +319,12 @@ Edge Functions. Pricing, security and the AI roadmap all hang off it.
 > so §3.1's "global conversion only" was wrong — there was **no** conversion
 > anywhere; `sales_lines.recipe_id` was `not null`, which made the briefs'
 > POS import impossible and had to be relaxed; and
-> `production_usage_theoretical` expands only one level of sub-recipe, so
-> the production figures it feeds are understated for any nested
-> preparation. That last one is a defect in existing code, not a gap, and is
-> not yet fixed.
+> `production_usage_theoretical` expanded only one level of sub-recipe, so
+> the production figures it feeds were understated for any nested
+> preparation. That last one was a defect in existing code rather than a gap,
+> and is **fixed in 0111** — with `production_expansion_gaps` naming the
+> records whose walk still has to stop at a preparation with no batch yield.
+> Leave carry-over, recorded as not built, is **built in 0112**.
 
 
 Tier 1 — unblocks the most, and the KPIs everyone wants depend on it.
