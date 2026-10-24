@@ -873,20 +873,33 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 
 ## Found by the stage 0.5 interface work
 
-- [ ] **`react-hooks/purity` does not catch what its config comment claims.**
+- [x] **`react-hooks/purity` does not catch what its config comment claims.**
       The rule was added on the strength of finding `Date.now()` inside a
-      `useMemo`, and `app-header.tsx` carries a workaround written in the
-      belief that it guards render bodies generally. It does not — it fires
-      inside hook callbacks only. Plain render bodies and `.map` callbacks sail
-      through: `development-tabs.tsx:144`, `rota-tabs.tsx:367`,
-      `menu-engineering.tsx:407`, `settings.tsx:296`,
-      `collection-print-page.tsx:81,122`,
-      `sub-recipe-print-page.tsx:62` all call `new Date()` during render.
+      `useMemo`, and it fires inside hook callbacks only — plain render bodies
+      and `.map` callbacks sail through. The one that mattered was
+      `development-tabs.tsx:144`, a late / not-late training badge computed
+      from "today" at render time, so a page left open across midnight showed
+      yesterday's judgement until something unrelated re-rendered it.
 
-      One of them matters rather than being tidy-up:
-      `development-tabs.tsx:144` computes a late / not-late badge from "today"
-      at render time, so a page left open across midnight shows yesterday's
-      judgement until something unrelated re-renders it.
+      That one, `rota-tabs.tsx`, `menu-engineering.tsx` and `settings.tsx`
+      were fixed earlier by `lib/today`. The three print pages were not:
+      `collection-print-page.tsx` (two calls), `sub-recipe-print-page.tsx` and
+      `recipe-print-page.tsx` — which was not on this list and had the same
+      shape. All now read the date once through `useNow()`.
+
+      Worth knowing: on the collection pack the two calls were on the same
+      sheet, so a pack printed at midnight could carry one date on its
+      contents page and a different one in its footer, and the footer date is
+      what "costs as at" means.
+
+      The three print pages also hardcoded `id-ID`, so they were the only
+      screens that stayed Indonesian whatever language the app was set to.
+      They use the reader's locale now.
+
+      The lint rule still does not catch this shape. Nothing was added to make
+      it — a rule that would flag every `new Date()` in a `useState`
+      initialiser as well would be noise, and the sweep that found these is
+      recorded here instead.
 
 - [ ] **The avatar is one tint rather than a colour per person.** The only
       colours that clear 4,5:1 against their own initials in both themes are

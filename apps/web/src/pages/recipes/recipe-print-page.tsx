@@ -11,8 +11,18 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RecipeSheet } from "@/components/recipes/recipe-sheet";
 import { useRecipeStore } from "@/stores/recipe-store";
+import { useNow } from "@/lib/today";
+import { useLocaleStore } from "@/stores/locale-store";
 
 export function RecipePrintPage() {
+  // Read once rather than during render, and in the reader's own language
+  // rather than always Indonesian. "Costs as at" is the line somebody reads
+  // off a filed sheet months later, so it should not depend on how many
+  // times React happened to render the page.
+  const printedOn = useNow();
+  const locale = useLocaleStore((s) => s.locale);
+  const printedOnText = printedOn.toLocaleDateString(locale);
+
   const { id } = useParams<{ id: string }>();
   const recipe = useRecipeStore((s) => (id ? s.getById(id) : undefined));
 
@@ -50,7 +60,7 @@ export function RecipePrintPage() {
       <footer className="mx-auto mt-8 max-w-3xl border-t pt-3 text-xs text-muted-foreground">
         {/* Printed sheets outlive the prices on them, so the sheet says when it
             was true rather than leaving someone to guess. */}
-        CulinaryCoreOS · costs as at {new Date().toLocaleDateString("id-ID")}
+        CulinaryCoreOS · costs as at {printedOnText}
       </footer>
     </div>
   );

@@ -20,9 +20,28 @@ import { useRecipeStore } from "@/stores/recipe-store";
 import { fetchCollections } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { useNow } from "@/lib/today";
+import { useLocaleStore } from "@/stores/locale-store";
 
 export function CollectionPrintPage() {
   const { id } = useParams<{ id: string }>();
+  /*
+   * Read once, and the same value in both places on the sheet.
+   *
+   * Two `new Date()` calls in the render body could disagree — React may
+   * render twice for one commit, and it does so deliberately in StrictMode —
+   * so a pack printed at midnight could carry one date on its contents page
+   * and another in its footer. On a document somebody files, that is not a
+   * cosmetic difference: the footer date is what "costs as at" means.
+   *
+   * The locale is the reader's rather than a hardcoded `id-ID`. This was the
+   * one screen that assumed Indonesian whatever language the app was set to,
+   * which since the i18n work is a visible inconsistency rather than a
+   * harmless default.
+   */
+  const printedOn = useNow();
+  const locale = useLocaleStore((s) => s.locale);
+  const printedOnText = printedOn.toLocaleDateString(locale);
   const recipes = useRecipeStore((s) => s.recipes);
   const [collection, setCollection] = useState<Collection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +97,7 @@ export function CollectionPrintPage() {
         <h1 className="text-3xl font-semibold">{collection.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {sheets.length} {sheets.length === 1 ? "recipe" : "recipes"} · printed{" "}
-          {new Date().toLocaleDateString("id-ID")}
+          {printedOnText}
         </p>
 
         {sheets.length === 0 ? (
@@ -119,7 +138,7 @@ export function CollectionPrintPage() {
 
       <footer className="mx-auto mt-8 max-w-3xl border-t pt-3 text-xs text-muted-foreground">
         CulinaryCoreOS · {collection.name} · costs as at{" "}
-        {new Date().toLocaleDateString("id-ID")}
+        {printedOnText}
       </footer>
     </div>
   );

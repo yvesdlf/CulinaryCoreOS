@@ -12,8 +12,18 @@ import { Button } from "@/components/ui/button";
 import { SubRecipeSheet } from "@/components/sub-recipes/sub-recipe-sheet";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { useCatalogueLoaded } from "@/hooks/use-catalogue-loaded";
+import { useNow } from "@/lib/today";
+import { useLocaleStore } from "@/stores/locale-store";
 
 export function SubRecipePrintPage() {
+  // Read once rather than during render, and in the reader's own language
+  // rather than always Indonesian. "Costs as at" is the line somebody reads
+  // off a filed sheet months later, so it should not depend on how many
+  // times React happened to render the page.
+  const printedOn = useNow();
+  const locale = useLocaleStore((s) => s.locale);
+  const printedOnText = printedOn.toLocaleDateString(locale);
+
   const { id } = useParams<{ id: string }>();
   const loaded = useCatalogueLoaded();
   const subRecipe = useSubRecipeStore((s) => (id ? s.getById(id) : undefined));
@@ -59,7 +69,7 @@ export function SubRecipePrintPage() {
       <SubRecipeSheet subRecipe={subRecipe} />
 
       <footer className="mx-auto mt-8 max-w-3xl border-t pt-3 text-xs text-muted-foreground">
-        CulinaryCoreOS · costs as at {new Date().toLocaleDateString("id-ID")}
+        CulinaryCoreOS · costs as at {printedOnText}
       </footer>
     </div>
   );
