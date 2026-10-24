@@ -18,6 +18,30 @@ set -uo pipefail
 DB="${1:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# The fixtures write a test venue and the teardown deletes recipes, products and
+# stock history by name pattern (`T-%`). Against a real venue that deletes its
+# "T-Bone Steak" and everything hanging off it. DEPLOY.md once told people to
+# run this against the hosted database, so the refusal lives here rather than
+# in the documentation. A staging project or a restored copy can opt in.
+host="$(printf '%s' "$DB" | sed -E 's#^[a-z]+://([^@/]*@)?(\[([^]]+)\]|([^:/?]+)).*#\3\4#')"
+# libpq also takes the host from the query string (`?host=`, `?hostaddr=`),
+# which overrides the authority part — so a URL that says localhost can still
+# point elsewhere. Such a URL is treated as remote.
+case "$DB" in
+  *[?\&]host=*|*[?\&]hostaddr=*) host="(set in the query string)" ;;
+esac
+case "$host" in
+  127.0.0.1|localhost|::1) ;;
+  *)
+    if [ "${CCOS_ALLOW_REMOTE_TESTS:-}" != "1" ]; then
+      echo "Refusing to run against $host: the suite writes and deletes rows."
+      echo "Only ever point it at a local stack, a staging project or a restored"
+      echo "copy — never production. For staging: CCOS_ALLOW_REMOTE_TESTS=1 $0 <url>"
+      exit 2
+    fi
+    ;;
+esac
+
 run() { psql "$DB" -X -q -t -A -f "$1" 2>&1; }
 
 echo "Database controls"
@@ -45,6 +69,15 @@ for f in "$HERE"/[0-9]*.sql; do
   if [ "$((n_pass + n_fail))" -eq 0 ]; then
     echo "FAIL  $(basename "$f") produced no assertions at all"
     printf '%s\n' "$out" | tail -3
+    failed=$((failed + 1))
+  # And a file that errored outside an assertion stopped part-way: inside its
+  # transaction every later statement is ignored, prints nothing, and the
+  # count simply comes out lower. Expected refusals are caught inside the
+  # t.expect_* functions and never reach psql, so any ERROR here is real.
+  # This is how 82 assertions once vanished behind "515 checks, all passing".
+  elif printf '%s\n' "$out" | grep -q 'ERROR:'; then
+    echo "FAIL  $(basename "$f") hit an error outside an assertion and stopped:"
+    printf '%s\n' "$out" | grep -m1 'ERROR:'
     failed=$((failed + 1))
   fi
   total=$((total + n_pass + n_fail))

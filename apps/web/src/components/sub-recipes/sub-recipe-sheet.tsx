@@ -23,6 +23,7 @@ import { resolveAllergens } from "@/lib/allergens";
 import { getDependents } from "@/engine/cascade";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { AllergenGlyph } from "@/components/shared/allergen-glyph";
 
 export function SubRecipeSheet({ subRecipe }: { subRecipe: SubRecipe }) {
   const products = useProductStore((s) => s.products);
@@ -90,7 +91,7 @@ export function SubRecipeSheet({ subRecipe }: { subRecipe: SubRecipe }) {
               >
                 {r.known ? (
                   <>
-                    <r.definition.icon className="size-4" aria-hidden="true" />
+                    <AllergenGlyph id={r.definition.id} className="size-4" />
                     <span>{r.definition.name}</span>
                     <span className="text-muted-foreground">({r.definition.code})</span>
                   </>

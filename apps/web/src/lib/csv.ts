@@ -18,6 +18,8 @@
 //     exports are for calculating.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
+
 /** One cell. Anything not a string or number becomes empty rather than "undefined". */
 export type Cell = string | number | null | undefined;
 
@@ -59,7 +61,7 @@ export function downloadCsv(filename: string, csv: string): void {
 
 /** `costings-2026-07-31.csv` — sortable, and says when it was true. */
 export function datedFilename(stem: string): string {
-  return `${stem}-${new Date().toISOString().slice(0, 10)}.csv`;
+  return `${stem}-${venueToday()}.csv`;
 }
 
 /**

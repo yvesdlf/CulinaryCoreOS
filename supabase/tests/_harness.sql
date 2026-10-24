@@ -56,6 +56,24 @@ exception when others then
   return 'pass  ' || p_label;
 end $$;
 
+/*
+ * A statement that must be refused *for the stated reason*. expect_fail
+ * passes on any error at all — a typo, a missing fixture, a foreign key —
+ * so a refusal check built on it can stay green after the rule it names is
+ * gone. This one also requires the error message to match.
+ */
+create or replace function t.expect_refused(p_sql text, p_label text, p_reason text)
+returns text language plpgsql as $$
+begin
+  execute p_sql;
+  return 'FAIL  ' || p_label || '  — it was allowed';
+exception when others then
+  if sqlerrm ~* p_reason then
+    return 'pass  ' || p_label;
+  end if;
+  return 'FAIL  ' || p_label || '  — refused for another reason: ' || sqlerrm;
+end $$;
+
 /* A statement that must be accepted. */
 create or replace function t.expect_ok(p_sql text, p_label text)
 returns text language plpgsql as $$
@@ -143,3 +161,11 @@ begin
   end if;
   return 'pass  ' || p_table || ' is guarded by ' || p_section;
 end $$;
+
+/*
+ * Explicit, because 0077 took away the default that used to make it
+ * unnecessary: every new function was executable by PUBLIC. The suite asks
+ * its questions as `authenticated`, and without this every file that does
+ * so stopped at its first `act_as` — 82 assertions that silently never ran.
+ */
+grant execute on all functions in schema t to authenticated;

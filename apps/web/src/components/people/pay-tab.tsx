@@ -38,10 +38,11 @@ import { fullName, isWorking, type Employee } from "@/engine/people";
 import {
   fetchPayRates, setPayRate, type PayRate, type PayBasis,
 } from "@/data/repository";
+import { venueToday } from "@/lib/today";
 
 /** Today, as the date input wants it. */
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return venueToday();
 }
 
 export function PayTab({

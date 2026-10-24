@@ -79,6 +79,9 @@ import {
   type Supplier,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { venueToday } from "@/lib/today";
+import { StockByPlace } from "@/components/inventory/stock-by-place";
+import { UnitConversionsPanel } from "@/components/inventory/unit-conversions-panel";
 
 const STATUS: Record<ParStatus, { label: string; tone: StatusTone }> = {
   out: { label: "Out of stock", tone: "danger" },
@@ -232,6 +235,11 @@ export function InventoryPage() {
             Stock count
           </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
+          {/* Both of these answer questions about quantities, which is what
+              this page is for; neither earns a sidebar entry of its own in a
+              sidebar the UI review already calls too flat. */}
+          <TabsTrigger value="places">By place</TabsTrigger>
+          <TabsTrigger value="units">Units</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stock" className="mt-4 space-y-4">
@@ -269,6 +277,14 @@ export function InventoryPage() {
 
         <TabsContent value="history" className="mt-4">
           <MovementHistory movements={movements} lines={lines} />
+        </TabsContent>
+
+        <TabsContent value="places" className="mt-4">
+          <StockByPlace />
+        </TabsContent>
+
+        <TabsContent value="units" className="mt-4">
+          <UnitConversionsPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -466,7 +482,7 @@ function MovementDialog({
           lotCode: lotCode.trim(),
           supplierId: supplierId || null,
           deliveryReference: deliveryRef.trim() || null,
-          receivedOn: new Date().toISOString().slice(0, 10),
+          receivedOn: venueToday(),
           expiresOn: expiresOn || null,
           expiryKind: expiryKind || null,
           receiptTemperatureC:

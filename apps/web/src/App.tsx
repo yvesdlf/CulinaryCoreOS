@@ -24,6 +24,10 @@ const AllergenMatrixPage = lazy(() => import("@/pages/allergen-matrix").then((x)
 const SuppliersPage = lazy(() => import("@/pages/suppliers").then((x) => ({ default: x.SuppliersPage })));
 const MessagesPage = lazy(() => import("@/pages/messages").then((x) => ({ default: x.MessagesPage })));
 const StaffPortalPage = lazy(() => import("@/pages/portal").then((x) => ({ default: x.StaffPortalPage })));
+const StocktakePage = lazy(() => import("@/pages/stocktake").then((x) => ({ default: x.StocktakePage })));
+const MenusPage = lazy(() => import("@/pages/menus").then((x) => ({ default: x.MenusPage })));
+const FoodCostPage = lazy(() => import("@/pages/food-cost").then((x) => ({ default: x.FoodCostPage })));
+const SalesPage = lazy(() => import("@/pages/sales").then((x) => ({ default: x.SalesPage })));
 const AdministrationPage = lazy(() => import("@/pages/administration").then((x) => ({ default: x.AdministrationPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
@@ -40,6 +44,7 @@ const InventoryPage = lazy(() => import("@/pages/inventory").then((x) => ({ defa
 const DuplicatesPage = lazy(() => import("@/pages/duplicates").then((x) => ({ default: x.DuplicatesPage })));
 const CollectionsPage = lazy(() => import("@/pages/collections").then((x) => ({ default: x.CollectionsPage })));
 const CollectionPrintPage = lazy(() => import("@/pages/collection-print-page").then((x) => ({ default: x.CollectionPrintPage })));
+const LabelPrintPage = lazy(() => import("@/pages/label-print-page").then((x) => ({ default: x.LabelPrintPage })));
 const RecipePrintPage = lazy(() => import("@/pages/recipes/recipe-print-page").then((x) => ({ default: x.RecipePrintPage })));
 const SubRecipePrintPage = lazy(() => import("@/pages/sub-recipes/sub-recipe-print-page").then((x) => ({ default: x.SubRecipePrintPage })));
 const ProductDetailPage = lazy(() => import("@/pages/products/product-detail-page").then((x) => ({ default: x.ProductDetailPage })));
@@ -155,7 +160,14 @@ export function App() {
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id/print" element={<CollectionPrintPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/stocktake" element={<StocktakePage />} />
+        <Route path="/sales" element={<SalesPage />} />
+        {/* A label is a physical sticker, so it gets its own print view: the
+            browser dialog is the only thing here that reaches a printer. */}
+        <Route path="/production/:id/label" element={<LabelPrintPage />} />
+        <Route path="/food-cost" element={<FoodCostPage />} />
         <Route path="/production" element={<ProductionPage />} />
+        <Route path="/menus" element={<MenusPage />} />
         <Route path="/menu-engineering" element={<MenuEngineeringPage />} />
         <Route path="/traceability" element={<TraceabilityPage />} />
         <Route path="/purchasing" element={<PurchasingPage />} />

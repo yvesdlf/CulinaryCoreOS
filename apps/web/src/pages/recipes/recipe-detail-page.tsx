@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { venue } from "@/lib/venue";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Printer } from "lucide-react";
@@ -30,7 +31,6 @@ import { useRecipeStore } from "@/stores/recipe-store";
 import {
   RECIPE_CATEGORIES,
   UNITS,
-  DEFAULT_CURRENCY,
   DEFAULT_RECIPE_WASTE_PERCENT,
   DEFAULT_RECIPE_INFLATION_PERCENT,
   DEFAULT_TAX_PERCENT,
@@ -203,7 +203,7 @@ function RecipeDetailForm() {
         grossProfit: grossProfit.toFixed(2),
         grossProfitPercent: grossProfitPercent.toDecimalPlaces(1).toNumber(),
         foodCostPercent: foodCostPercent.toDecimalPlaces(1).toNumber(),
-        currency: DEFAULT_CURRENCY,
+        currency: venue().currency,
       },
       wastePercent,
       inflationPercent,

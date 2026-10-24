@@ -19,7 +19,22 @@ import { ready, setTheme, openFirstRow } from "./helpers";
  * Row rendering is not left unguarded: the allergen badge and cost summary
  * shots below are deliberately unmasked, and the a11y and screen-reader suites
  * assert on the real content.
+ *
+ * Today's date is masked for the same reason, and it was a worse one: the
+ * header carries it on every screen, so each baseline could only match on the
+ * day it was taken. A suite that goes red at midnight is one nobody can keep
+ * green, and the evidence that nobody was is that it had been red for a while.
+ *
+ * The baselines are taken from the database `supabase/seed_local_demo.sh`
+ * builds, which exists because they used to be taken from whatever state the
+ * machine happened to be in. A snapshot test whose fixture cannot be rebuilt
+ * is not a test.
  */
+
+/** Everything in a shot that changes without the code changing. */
+function drifting(page: import("@playwright/test").Page) {
+  return [page.locator("tbody"), page.getByTestId("todays-date")];
+}
 
 const SCREENS = [
   { name: "recipes-list", path: "/recipes", heading: "Recipes" },
@@ -37,7 +52,7 @@ for (const screen of SCREENS) {
       await setTheme(page, theme);
       await expect(page).toHaveScreenshot(`${screen.name}-${theme}.png`, {
         fullPage: true,
-        mask: [page.locator("tbody")],
+        mask: drifting(page),
       });
     });
   }
@@ -51,6 +66,8 @@ test.describe("editors", () => {
     await expect(page.getByText("Cost Summary")).toBeVisible();
     await expect(page).toHaveScreenshot("recipe-editor-light.png", {
       fullPage: true,
+      // The header rides along on a full-page shot, date and all.
+      mask: drifting(page),
     });
   });
 
@@ -62,6 +79,8 @@ test.describe("editors", () => {
     await setTheme(page, "dark");
     await expect(page).toHaveScreenshot("recipe-editor-dark.png", {
       fullPage: true,
+      // The header rides along on a full-page shot, date and all.
+      mask: drifting(page),
     });
   });
 
@@ -72,6 +91,8 @@ test.describe("editors", () => {
     await expect(page.getByText("Batch Cost")).toBeVisible();
     await expect(page).toHaveScreenshot("sub-recipe-editor-light.png", {
       fullPage: true,
+      // The header rides along on a full-page shot, date and all.
+      mask: drifting(page),
     });
   });
 });

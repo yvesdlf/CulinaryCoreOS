@@ -39,6 +39,7 @@ import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { findUnverifiedAllergens } from "@/engine/allergen-review";
 import { EU14_ALLERGENS, resolveAllergens } from "@/lib/allergens";
 import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
+import { AllergenGlyph } from "@/components/shared/allergen-glyph";
 
 export function AllergenMatrixPage() {
   const recipes = useRecipeStore((s) => s.recipes);
@@ -174,7 +175,7 @@ export function AllergenMatrixPage() {
                       accessible name below carries the meaning, and Appendix G
                       forbids an icon standing alone. */}
                   <span className="flex flex-col items-center gap-0.5">
-                    <a.icon className="size-3.5" aria-hidden="true" />
+                    <AllergenGlyph id={a.id} className="size-3.5" />
                     <span aria-hidden="true">{a.code}</span>
                   </span>
                   <span className="sr-only">{a.name}</span>
@@ -216,10 +217,7 @@ export function AllergenMatrixPage() {
                         an empty cell from one it skipped.
                       */}
                       {present ? (
-                        <a.icon
-                          className="mx-auto size-4 text-status-danger"
-                          aria-hidden="true"
-                        />
+                        <AllergenGlyph id={a.id} className="mx-auto size-4 text-status-danger" />
                       ) : (
                         <span aria-hidden="true" className="text-muted-foreground">
                           –
@@ -260,7 +258,7 @@ export function AllergenMatrixPage() {
           {EU14_ALLERGENS.map((a) => (
             <div key={a.id} className="flex gap-2">
               <dt className="flex w-14 shrink-0 items-center gap-1.5 font-medium">
-                <a.icon className="size-3.5" aria-hidden="true" />
+                <AllergenGlyph id={a.id} className="size-3.5" />
                 {a.code}
               </dt>
               <dd className="text-muted-foreground">

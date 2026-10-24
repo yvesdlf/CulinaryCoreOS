@@ -35,7 +35,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { unitOptions } from "@/engine/units";
-import { useToday } from "@/lib/today";
+import { useToday, addDays } from "@/lib/today";
 import {
   fetchHandovers, fetchHandoverItems, startHandover, updateHandover,
   acknowledgeHandover, addHandoverItem, fetchBusinessUnits, fetchRequests,
@@ -55,9 +55,7 @@ const KIND_LABEL: Record<HandoverItemKind, string> = {
 
 /** A fortnight back, which is as far as anybody catches up from. */
 function since(today: string): string {
-  const d = new Date(today);
-  d.setDate(d.getDate() - 13);
-  return d.toISOString().slice(0, 10);
+  return addDays(today, -13);
 }
 
 export function HandoverPage() {

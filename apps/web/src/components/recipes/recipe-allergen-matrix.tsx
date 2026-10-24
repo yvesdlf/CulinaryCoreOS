@@ -26,6 +26,7 @@ import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { allergenBreakdown } from "@/engine/allergen-breakdown";
 import { EU14_ALLERGENS, resolveAllergens } from "@/lib/allergens";
+import { AllergenGlyph } from "@/components/shared/allergen-glyph";
 
 interface Props {
   /** A dish or a preparation — both are lists of ingredient lines. */
@@ -78,7 +79,7 @@ export function RecipeAllergenMatrix({ entity }: Props) {
               <TableHead key={a.id} className="text-center">
                 <abbr title={a.name} className="no-underline">
                   <span className="flex flex-col items-center gap-0.5">
-                    <a.icon className="size-3.5" aria-hidden="true" />
+                    <AllergenGlyph id={a.id} className="size-3.5" />
                     <span aria-hidden="true">{a.code}</span>
                   </span>
                   {/* The written name carries the meaning; the code and icon
@@ -112,10 +113,7 @@ export function RecipeAllergenMatrix({ entity }: Props) {
                 {columns.map((a) => (
                   <TableCell key={a.id} className="text-center">
                     {ids.has(a.id) ? (
-                      <a.icon
-                        className="mx-auto size-4 text-status-danger"
-                        aria-hidden="true"
-                      />
+                      <AllergenGlyph id={a.id} className="mx-auto size-4 text-status-danger" />
                     ) : (
                       <span aria-hidden="true" className="text-muted-foreground">
                         –

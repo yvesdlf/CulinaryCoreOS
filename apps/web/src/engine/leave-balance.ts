@@ -20,6 +20,13 @@
 //   Leave with no annual entitlement — sick, unpaid, parental — has no balance
 //   to run down. It is counted and reported as days used, never as a remainder,
 //   because a "sick days remaining" figure reads as an allowance to spend.
+//
+//   Days carried in from last year are part of the allowance and shown
+//   separately. They come from `leave_carryover` (0112), already capped and
+//   with expiry already applied — this never recomputes either. The cap was
+//   decided on the day the year closed, under a policy that may since have
+//   changed, and recomputing it here would quietly rewrite what somebody was
+//   told they had.
 // ---------------------------------------------------------------------------
 
 export interface LeaveTypeLike {
@@ -38,13 +45,33 @@ export interface LeaveRequestLike {
   startsOn: string;
 }
 
+/**
+ * Days brought forward, as the database decided them.
+ *
+ * `days` is what is still live: `leave_entitlement_now.carried_in_now`, which
+ * is zero once the balance has lapsed. `expiresOn` is carried so a screen can
+ * say "3 days, until 1 April" — a number with no date on it is one people
+ * assume they can use in December.
+ */
+export interface CarriedIn {
+  leaveTypeId: string;
+  days: number;
+  expiresOn: string | null;
+}
+
 export interface LeaveBalance {
   type: LeaveTypeLike;
-  /** Null where the type has no annual allowance. */
+  /** This year's allowance alone. Null where the type has none. */
   entitlement: number | null;
+  /** Brought forward from last year, already capped and not yet lapsed. */
+  carriedIn: number;
+  /** Entitlement plus carry-over: what there actually is to spend. */
+  allowance: number | null;
+  /** When the carried days lapse, where any are still live. */
+  carryExpiresOn: string | null;
   taken: number;
   pending: number;
-  /** Entitlement less taken and pending. Null where there is no entitlement. */
+  /** Allowance less taken and pending. Null where there is no entitlement. */
   remaining: number | null;
 }
 
@@ -62,6 +89,7 @@ export function leaveBalances(
   requests: LeaveRequestLike[],
   yearStart: Date,
   yearEnd: Date,
+  carried: CarriedIn[] = [],
 ): LeaveBalance[] {
   const from = yearStart.getTime();
   const to = yearEnd.getTime();
@@ -77,19 +105,39 @@ export function leaveBalances(
     const pending = round(sum(mine.filter((r) => COUNTS_AS_PENDING.includes(r.status))));
     const entitlement = type.annualEntitlementDays;
 
+    /*
+     * Taken as given. A type with no annual allowance gets none regardless of
+     * what arrives, because carried sick days are not a thing and a figure
+     * saying otherwise would read as an allowance to spend.
+     */
+    const brought = entitlement === null
+      ? 0
+      : round(sum2(carried.filter((c) => c.leaveTypeId === type.id)));
+    const expiry = brought > 0
+      ? (carried.find((c) => c.leaveTypeId === type.id && c.days > 0)?.expiresOn ?? null)
+      : null;
+    const allowance = entitlement === null ? null : round(entitlement + brought);
+
     return {
       type,
       entitlement,
+      carriedIn: brought,
+      allowance,
+      carryExpiresOn: expiry,
       taken,
       pending,
       // Never clamped at zero: somebody who has overrun their allowance needs
       // to see -2, not 0. Hiding it is how it reaches payroll unnoticed.
-      remaining: entitlement === null ? null : round(entitlement - taken - pending),
+      remaining: allowance === null ? null : round(allowance - taken - pending),
     };
   });
 }
 
 function sum(rows: LeaveRequestLike[]): number {
+  return rows.reduce((n, r) => n + (Number.isFinite(r.days) ? r.days : 0), 0);
+}
+
+function sum2(rows: CarriedIn[]): number {
   return rows.reduce((n, r) => n + (Number.isFinite(r.days) ? r.days : 0), 0);
 }
 

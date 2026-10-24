@@ -22,6 +22,21 @@
 -- so the file reads greener than the platform is.
 -- ---------------------------------------------------------------------------
 
+-- How much schema exists before this file adds anything: tables, views,
+-- functions, triggers and policies. The check at the bottom asks whether
+-- adding five departments created any of it — which is what "no migration
+-- was needed" actually claims. It first compared the migration count with a
+-- hard-coded `'0075'`, which went red the day 0076 existed; then with a count
+-- taken in the same session, which could never go red at all. This one fails
+-- if anything below runs DDL.
+select (select count(*) from pg_class where relnamespace = 'public'::regnamespace)
+     + (select count(*) from pg_proc where pronamespace = 'public'::regnamespace)
+     + (select count(*) from pg_trigger t join pg_class c on c.oid = t.tgrelid
+         where c.relnamespace = 'public'::regnamespace)
+     + (select count(*) from pg_policy p join pg_class c on c.oid = p.polrelid
+         where c.relnamespace = 'public'::regnamespace)
+  as schema_at_start \gset
+
 begin;
 select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 
@@ -327,9 +342,14 @@ select t.expect_rows($$
  * plus the fixtures' own — and the migration count did not move. That sentence
  * is the whole of Part C, and it is checked rather than asserted in prose.
  */
-select t.expect_value($$
-  select count(*)::text from supabase_migrations.schema_migrations
-   where version > '0075'$$,
-  'and no migration was needed for any of it', '0');
+select t.expect_value(format($$
+  select ((select count(*) from pg_class where relnamespace = 'public'::regnamespace)
+        + (select count(*) from pg_proc where pronamespace = 'public'::regnamespace)
+        + (select count(*) from pg_trigger t join pg_class c on c.oid = t.tgrelid
+            where c.relnamespace = 'public'::regnamespace)
+        + (select count(*) from pg_policy p join pg_class c on c.oid = p.polrelid
+            where c.relnamespace = 'public'::regnamespace)
+        - %s)::text$$, :schema_at_start),
+  'and no schema was created for any of it', '0');
 
 rollback;

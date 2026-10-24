@@ -13,7 +13,7 @@ import { PackageCheck, FileWarning, Wallet, TriangleAlert, Check,
   Receipt, ChartNoAxesCombined, FileSignature, Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useToday } from "@/lib/today";
+import { useToday, venueToday, addDays } from "@/lib/today";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -232,13 +232,22 @@ function ReceiveDialog({
           quantityRejected: Number(r.rejected) || 0,
           rejectionReason: r.rejectionReason.trim() || null,
           conditionNote: null,
+          /*
+           * Null on purpose: this screen receives against an order, so the
+           * ordered price is the right answer and the trigger supplies it.
+           * Asking somebody to retype it would invite a typo in the figure
+           * every recipe cost is built on. A delivery at a different price
+           * is a separate statement and not one this dialog makes yet.
+           */
+          unitPrice: null,
+          lineWeightKg: null,
           lot: r.lotCode.trim() && r.productId
             ? {
                 productId: r.productId,
                 lotCode: r.lotCode.trim(),
                 supplierId: order.supplierId,
                 deliveryReference: deliveryNote.trim() || reference,
-                receivedOn: new Date().toISOString().slice(0, 10),
+                receivedOn: venueToday(),
                 expiresOn: r.expiresOn || null,
                 expiryKind: r.expiryKind || null,
                 receiptTemperatureC: temperature.trim() === "" ? null : Number(temperature),
@@ -509,7 +518,7 @@ function EnterInvoiceDialog({
   );
   const [orderId, setOrderId] = useState(receivable[0]?.id ?? "");
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(venueToday());
   const [rows, setRows] = useState<Record<string, { qty: string; price: string }>>({});
   const [busy, setBusy] = useState(false);
 
@@ -561,9 +570,7 @@ function EnterInvoiceDialog({
 
   const dueDate = useMemo(() => {
     if (!supplier?.paymentTermsDays) return null;
-    const d = new Date(invoiceDate);
-    d.setDate(d.getDate() + supplier.paymentTermsDays);
-    return d.toISOString().slice(0, 10);
+    return addDays(invoiceDate, supplier.paymentTermsDays);
   }, [supplier, invoiceDate]);
 
   async function submit() {

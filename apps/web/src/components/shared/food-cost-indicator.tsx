@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { formatPercent, type Formattable } from "@/lib/format";
-import { TARGET_FOOD_COST_PERCENT, FOOD_COST_VARIANCE_PERCENT } from "@/lib/constants";
+import { useFoodCostTarget } from "@/stores/venue-store";
 
 interface FoodCostIndicatorProps {
   /** Accepts a Decimal from the cost engine or a plain number from stored data. */
@@ -12,7 +12,7 @@ interface FoodCostIndicatorProps {
  * Food cost against target, using semantic status tokens (Design Bible §3.1).
  *
  * Bands come from the venue's own thresholds rather than invented numbers:
- * target 25% with ±2% acceptable variance, so on-target is 23–27%, above
+ * the venue's target and tolerance (25% ±2% unless it has set its own), so on-target is 23–27%, above
  * variance is a warning, and well over is a danger.
  *
  * The percentage is always written out, so colour is supplementary — §4 and
@@ -22,7 +22,8 @@ interface FoodCostIndicatorProps {
 export function FoodCostIndicator({ value, className }: FoodCostIndicatorProps) {
   const pct = typeof value === "number" ? value : Number(value);
 
-  const upper = TARGET_FOOD_COST_PERCENT + FOOD_COST_VARIANCE_PERCENT;
+  const { target, tolerance } = useFoodCostTarget();
+  const upper = target + tolerance;
   const band =
     !Number.isFinite(pct) || pct <= upper
       ? "on-target"
@@ -38,8 +39,8 @@ export function FoodCostIndicator({ value, className }: FoodCostIndicatorProps) 
 
   const description = {
     "on-target": `On target (at or below ${upper}%)`,
-    over: `Above target of ${TARGET_FOOD_COST_PERCENT}%`,
-    "well-over": `Well above target of ${TARGET_FOOD_COST_PERCENT}%`,
+    over: `Above target of ${target}%`,
+    "well-over": `Well above target of ${target}%`,
   } as const;
 
   return (

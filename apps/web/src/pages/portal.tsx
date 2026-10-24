@@ -42,14 +42,17 @@ import {
 import {
   fetchMyDocuments, markDocumentRead, fetchMyTraining,
   fetchMyExam, submitExam, fetchMyShifts, fetchMyOpenPunch, clockIn, clockOut,
-  fetchMyLeave, fetchLeaveTypes, requestLeave, signedFileUrl,
+  fetchMyLeave, fetchLeaveTypes, fetchMyCarriedLeave, requestLeave, signedFileUrl,
   fetchCalendar, fetchMyRequests, fetchBoardPosts,
   type CalendarEntry, type StaffRequest, type BoardPost,
   type MyProfile, type MyDocument, type MyTraining, type MyExamQuestion,
-  type MyShift, type MyLeave, type ExamResult,
+  type MyShift, type MyLeave, type MyCarriedLeave, type ExamResult,
 } from "@/data/repository";
 import type { LeaveType } from "@/engine/people";
+import { LanguagePicker } from "@/components/shared/language-picker";
+import { useT } from "@/stores/locale-store";
 import { PortalHome } from "@/components/portal/home";
+import { ReportTab, ChecksTab, RoomsTab } from "@/components/portal/floor";
 import { useAuthStore } from "@/stores/auth-store";
 
 const KIND_LABEL: Record<string, string> = {
@@ -79,12 +82,14 @@ function currentPosition(): Promise<
 }
 
 export function StaffPortalPage({ profile }: { profile: MyProfile }) {
+  const t = useT();
   const signOut = useAuthStore((s) => s.signOut);
   const [documents, setDocuments] = useState<MyDocument[]>([]);
   const [training, setTraining] = useState<MyTraining[]>([]);
   const [shifts, setShifts] = useState<MyShift[]>([]);
   const [leave, setLeave] = useState<MyLeave[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [carried, setCarried] = useState<MyCarriedLeave[]>([]);
   const [openPunch, setOpenPunch] = useState<{ id: string; clockInAt: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
@@ -99,12 +104,15 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
   async function load() {
     setLoading(true);
     try {
-      const [d, t, s, l, lt, p] = await Promise.all([
+      const [d, t, s, l, lt, p, cy] = await Promise.all([
         fetchMyDocuments(), fetchMyTraining(), fetchMyShifts(),
         fetchMyLeave(), fetchLeaveTypes(), fetchMyOpenPunch(),
+        // Tolerated as empty: a venue that has never closed a leave year has
+        // no carry-over, which is not an error and must not blank the page.
+        fetchMyCarriedLeave().catch(() => []),
       ]);
       setDocuments(d); setTraining(t); setShifts(s);
-      setLeave(l); setLeaveTypes(lt); setOpenPunch(p);
+      setLeave(l); setLeaveTypes(lt); setOpenPunch(p); setCarried(cy);
 
       /*
        * The home screen's own data, fetched separately and allowed to fail.
@@ -163,11 +171,15 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
           </h1>
           <p className="text-sm text-muted-foreground">
             {[profile.jobTitle, profile.department].filter(Boolean).join(" · ")}
-            {profile.managerName && ` · reports to ${profile.managerName}`}
+            {profile.managerName &&
+              ` · ${t("portal.reportsTo", { name: profile.managerName })}`}
           </p>
         </div>
+        {/* Beside Sign out, which is where somebody who opened the portal in
+            the wrong language looks first. */}
+        <LanguagePicker className="ml-auto" />
         <Button variant="ghost" onClick={() => void signOut()}>
-          <LogOut aria-hidden="true" /> Sign out
+          <LogOut aria-hidden="true" /> {t("portal.signOut")}
         </Button>
       </header>
 
@@ -176,21 +188,62 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
 
 
       <Tabs value={tab} onValueChange={(v) => setTab(v ?? "home")} className="mt-6">
-        <TabsList>
+        {/* A grid on a phone rather than one row: the row ran past the right
+            edge and hid the floor's three tabs, and a tab you cannot see is
+            not a feature. From tablet width up it is the usual single row.
+
+            The icons come off below `sm`, and that is the grid's own doing.
+            Tailwind's `grid-cols-4` is `minmax(0, 1fr)`, so each cell is
+            exactly a quarter and cannot grow; `TabsTrigger` is
+            `whitespace-nowrap` with no `min-w-0`, so a label too wide for its
+            quarter is not wrapped, shrunk or clipped — it is painted straight
+            over the neighbouring tab. Measured: at 390px "Training (0)" needs
+            91px of an 85px cell, and at 320px "Inbox (0)", "Training (0)" and
+            "My rota" overflow by 8, 16 and 3 pixels. The graduation cap sat on
+            top of "Inbox (0)".
+
+            An icon is `size-4` plus a `gap-1.5`, so dropping it returns 22px
+            and costs nothing that is read: every one is `aria-hidden`, and the
+            label beside it already says the same word. Truncating instead
+            would have eaten the counts, which are the only part of "Inbox (0)"
+            a porter is checking.
+
+            That is not enough on its own. "Training (0)" wants 92px with no
+            icon at all, and the cell is 85px at 390px and 68px at 320px, so
+            the labels also wrap below `sm`. Wrapping rather than shaving the
+            padding down until this one English word fits, because that is a
+            fix that breaks the first time somebody translates this screen —
+            and this is the screen written for the floor, which is the likeliest
+            part of the product to be read in another language.
+
+            `items-stretch` because `h-auto` stops the triggers filling their
+            grid row, and a 36px tab sitting beside a 50px one in the same row
+            reads as a mistake: the active tab is drawn as a filled box, so the
+            difference is visible, not theoretical. */}
+        <TabsList className="grid w-full grid-cols-4 gap-1 group-data-horizontal/tabs:h-auto sm:flex sm:w-fit max-sm:items-stretch [&>*]:min-h-9 [&_svg]:hidden sm:[&_svg]:block [&_[data-slot=tabs-trigger]]:h-auto [&_[data-slot=tabs-trigger]]:py-1 [&_[data-slot=tabs-trigger]]:text-center [&_[data-slot=tabs-trigger]]:whitespace-normal sm:[&_[data-slot=tabs-trigger]]:whitespace-nowrap">
           <TabsTrigger value="home">
-            <House aria-hidden="true" /> Home
+            <House aria-hidden="true" /> {t("portal.tab.home")}
           </TabsTrigger>
           <TabsTrigger value="inbox">
-            <Inbox aria-hidden="true" /> Inbox ({documents.length})
+            <Inbox aria-hidden="true" /> {t("portal.tab.inbox")} ({documents.length})
           </TabsTrigger>
           <TabsTrigger value="training">
-            <GraduationCap aria-hidden="true" /> Training ({training.length})
+            <GraduationCap aria-hidden="true" /> {t("portal.tab.training")} ({training.length})
           </TabsTrigger>
           <TabsTrigger value="rota">
-            <CalendarDays aria-hidden="true" /> My rota
+            <CalendarDays aria-hidden="true" /> {t("portal.tab.rota")}
           </TabsTrigger>
-          <TabsTrigger value="leave">Leave ({leave.length})</TabsTrigger>
+          <TabsTrigger value="leave">{t("portal.tab.leave")} ({leave.length})</TabsTrigger>
+          <TabsTrigger value="report">{t("portal.tab.report")}</TabsTrigger>
+          <TabsTrigger value="checks">{t("portal.tab.checks")}</TabsTrigger>
+          <TabsTrigger value="rooms">{t("portal.tab.rooms")}</TabsTrigger>
         </TabsList>
+
+        {/* The floor's own jobs (0084): each tab loads its own data, so a
+            venue without rooms or forms still gets a working portal. */}
+        <TabsContent value="report" className="mt-4"><ReportTab /></TabsContent>
+        <TabsContent value="checks" className="mt-4"><ChecksTab /></TabsContent>
+        <TabsContent value="rooms" className="mt-4"><RoomsTab /></TabsContent>
 
         <TabsContent value="home" className="mt-4">
           <PortalHome
@@ -200,6 +253,7 @@ export function StaffPortalPage({ profile }: { profile: MyProfile }) {
             shifts={shifts}
             leave={leave}
             leaveTypes={leaveTypes}
+            carried={carried}
             calendar={calendar}
             requests={requests}
             board={board}

@@ -8,7 +8,7 @@ import {
   calculateTotalCog,
   calculateSubRecipeCostPerUnit,
 } from "@/engine/cost-engine";
-import { DEFAULT_CURRENCY } from "@/lib/constants";
+import { venue } from "@/lib/venue";
 import { formatPercent, formatWeight } from "@/lib/format";
 import { Calculator } from "lucide-react";
 
@@ -27,7 +27,7 @@ export function BatchCostPanel({
   batchYieldUnit,
   wastePercent,
   inflationPercent,
-  currency = DEFAULT_CURRENCY,
+  currency = venue().currency,
 }: BatchCostPanelProps) {
   const summary = useMemo(() => {
     // Stored strings go straight to the engine, which parses exact decimals.

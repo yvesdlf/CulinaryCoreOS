@@ -15,6 +15,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { hydrateFromSupabase } from "@/stores/persistence";
 import { useAccessStore } from "@/stores/access-store";
+import { useVenueStore } from "@/stores/venue-store";
 
 export type OrgRole = "OWNER" | "ADMIN" | "CHEF" | "VIEWER";
 
@@ -125,6 +126,7 @@ async function applySession(
   if (!session) {
     set({ session: null, organizations: [], activeOrg: null, loading: false });
     useAccessStore.getState().clear();
+    useVenueStore.getState().clear();
     return;
   }
   try {
@@ -149,7 +151,11 @@ async function applySession(
       error: null,
     });
     // Only now can RLS return rows, so this is the right moment to load data.
-    await Promise.all([hydrateFromSupabase(), useAccessStore.getState().load()]);
+    await Promise.all([
+      hydrateFromSupabase(),
+      useAccessStore.getState().load(),
+      useVenueStore.getState().load(),
+    ]);
   } catch (err) {
     set({
       session,

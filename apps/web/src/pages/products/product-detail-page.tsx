@@ -26,6 +26,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BarcodePanel } from "@/components/products/barcode-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useProductStore } from "@/stores/product-store";
@@ -393,6 +394,9 @@ function ProductDetailForm() {
           <TabsTrigger value="cost-yield">Cost & Yield</TabsTrigger>
           <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
+          {/* A barcode is a fact about the product, like its pack size, so it
+              lives here rather than on a screen of its own. */}
+          <TabsTrigger value="barcodes">Barcodes</TabsTrigger>
         </TabsList>
 
         {/* ── General tab ─────────────────────────────────────────────────── */}
@@ -1050,6 +1054,20 @@ function ProductDetailForm() {
             </CardContent>
           </Card>
         </TabsContent>
+      
+        <TabsContent value="barcodes" className="mt-4">
+          {/* Only once the product exists. A barcode is a row pointing at a
+              product, and there is nothing yet for it to point at. */}
+          {existing ? (
+            <BarcodePanel productId={existing.id} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Save the product first, then its barcodes can be recorded
+              against it.
+            </p>
+          )}
+        </TabsContent>
+
       </Tabs>
 
       {/* Only for a saved product: a price that does not exist yet cannot

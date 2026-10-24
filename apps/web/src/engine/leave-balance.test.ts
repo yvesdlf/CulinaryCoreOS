@@ -132,3 +132,79 @@ describe("headlineBalance", () => {
     expect(headlineBalance(all)).toBeNull();
   });
 });
+
+describe("days carried in from last year", () => {
+  const annual: LeaveTypeLike = {
+    id: "lt-annual",
+    code: "ANNUAL",
+    name: "Annual leave",
+    paid: true,
+    annualEntitlementDays: 20,
+  };
+  const sick: LeaveTypeLike = {
+    id: "lt-sick",
+    code: "SICK",
+    name: "Sick leave",
+    paid: true,
+    annualEntitlementDays: null,
+  };
+  const start = new Date("2026-01-01");
+  const end = new Date("2026-12-31");
+
+  it("adds carried days to the allowance, and keeps them separable", () => {
+    const [b] = leaveBalances([annual], [], start, end, [
+      { leaveTypeId: "lt-annual", days: 5, expiresOn: "2026-04-01" },
+    ]);
+    expect(b.entitlement).toBe(20);
+    expect(b.carriedIn).toBe(5);
+    expect(b.allowance).toBe(25);
+    expect(b.remaining).toBe(25);
+  });
+
+  it("carries the expiry date, because a number with no date on it gets spent in December", () => {
+    const [b] = leaveBalances([annual], [], start, end, [
+      { leaveTypeId: "lt-annual", days: 5, expiresOn: "2026-04-01" },
+    ]);
+    expect(b.carryExpiresOn).toBe("2026-04-01");
+  });
+
+  it("takes zero as zero: a lapsed balance is not a balance", () => {
+    // The database has already applied expiry — `carried_in_now` is 0 once the
+    // date has passed. The engine does not re-decide it.
+    const [b] = leaveBalances([annual], [], start, end, [
+      { leaveTypeId: "lt-annual", days: 0, expiresOn: "2026-04-01" },
+    ]);
+    expect(b.carriedIn).toBe(0);
+    expect(b.allowance).toBe(20);
+    expect(b.carryExpiresOn).toBeNull();
+  });
+
+  it("gives no carried days to a type with no allowance to run down", () => {
+    // Nothing should ever send this, but "carried sick days" reads as an
+    // allowance to spend and the engine refuses to produce the phrase.
+    const [b] = leaveBalances([sick], [], start, end, [
+      { leaveTypeId: "lt-sick", days: 4, expiresOn: null },
+    ]);
+    expect(b.carriedIn).toBe(0);
+    expect(b.allowance).toBeNull();
+    expect(b.remaining).toBeNull();
+  });
+
+  it("counts pending requests against the carried days too", () => {
+    const [b] = leaveBalances(
+      [annual],
+      [{ leaveTypeId: "lt-annual", days: 22, status: "REQUESTED", startsOn: "2026-03-01" }],
+      start, end,
+      [{ leaveTypeId: "lt-annual", days: 5, expiresOn: "2026-04-01" }],
+    );
+    expect(b.pending).toBe(22);
+    expect(b.remaining).toBe(3);
+  });
+
+  it("is unchanged when nothing carried in", () => {
+    const [b] = leaveBalances([annual], [], start, end);
+    expect(b.carriedIn).toBe(0);
+    expect(b.allowance).toBe(20);
+    expect(b.remaining).toBe(20);
+  });
+});

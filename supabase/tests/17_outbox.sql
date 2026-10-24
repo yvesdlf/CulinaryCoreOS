@@ -26,10 +26,23 @@ select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
  * The channels seeded by `seed_tax_and_channels` are updated rather than added
  * to, for the same reason.
  */
+/*
+ * The local stack is not an approved provider (0078), and a real request is
+ * the point of this file, so it is approved here, inside the transaction. The
+ * key goes where 0078 put keys: not in `config`.
+ */
+select t.fixture($$
+  insert into message_endpoint_origins (origin, note)
+  values ('http://127.0.0.1:54321', 'T-local stack, for the outbox tests') $$);
 select t.fixture($$
   update message_channels set name='T-configured', enabled=true,
-         config='{"endpoint":"http://127.0.0.1:54321/rest/v1/","auth_header":"Bearer t-not-a-real-key","default_recipient":"ops@test.local"}'::jsonb,
+         config='{"endpoint":"http://127.0.0.1:54321/rest/v1/","default_recipient":"ops@test.local"}'::jsonb,
          quiet_from=null, quiet_to=null
+   where kind='EMAIL'
+     and org_id=(select id from organizations where name='Demo Kitchen') $$);
+select t.fixture($$
+  insert into message_channel_secrets (channel_id, org_id, auth_header)
+  select id, org_id, 'Bearer t-not-a-real-key' from message_channels
    where kind='EMAIL'
      and org_id=(select id from organizations where name='Demo Kitchen') $$);
 select t.fixture($$

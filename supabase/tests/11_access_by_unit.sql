@@ -44,13 +44,21 @@ select t.expect_rows($$
 select '── access by unit: which sections can be scoped ─────────────────';
 
 /*
- * Derived from the guards actually attached, not from a list. Four sections
- * guard tables that carry a unit.
+ * Derived from the guards actually attached, not from a list.
+ *
+ * PAY joined in 0116, when `payroll_lines` gained a business unit and both
+ * of Pay's wage-bearing tables began consulting it — so a head of department
+ * can hold Pay on their own department and nothing else.
+ *
+ * This list is still written out rather than derived in the assertion, and
+ * it should be: a check that recomputes the thing it is checking passes
+ * whatever the schema says. The cost is that a migration widening the list
+ * has to come back here, which is the point — widening it is a decision.
  */
 select t.expect_value($$
   select string_agg(code, ',' order by code) from app_sections where scopes_by_unit$$,
   'the scopable sections come from the catalogue',
-  'HANDOVER,MAINTENANCE,PARAMETERS,PEOPLE,PURCHASING,REVENUE');
+  'HANDOVER,MAINTENANCE,PARAMETERS,PAY,PEOPLE,PURCHASING,REVENUE');
 
 /*
  * Administration is not on that list, and the reason is worth its own

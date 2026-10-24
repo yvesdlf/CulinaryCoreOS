@@ -100,7 +100,21 @@ test.describe("keyboard operability", () => {
     await openFirstRow(page);
 
     const add = page.getByRole("button", { name: /Add ingredient/i });
+    /*
+     * Reached by keyboard, not by `.focus()` alone.
+     *
+     * The ring is `focus-visible`, which is the right rule — a mouse click
+     * should not light a button up. Chromium applies `:focus-visible` to a
+     * programmatically focused form control, which is why the select test
+     * below gets away with it, but not to a plain button: focus has to have
+     * arrived from the keyboard. So this stepped off and back on, and the
+     * assertion is now about the button's styling rather than about how
+     * Playwright moved the caret.
+     */
     await add.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(add).toBeFocused();
     expect((await focused(page)).visible).toBe(true);
 
     await page.keyboard.press("Enter");

@@ -18,6 +18,13 @@
    pnpm install
    ```
 
+> **Where this repository lives.** `~/Developer/culinarycoreos`, and
+> deliberately not under `~/Documents`. With Desktop & Documents sync turned
+> on, `~/Documents` *is* the iCloud container: the file provider evicts files
+> it thinks are cold, and an evicted file keeps its size and reads as empty —
+> which showed up here as dependencies that existed, had the right byte count,
+> and imported as `undefined`. Keep it on a path iCloud does not manage.
+
 3. **Supabase** — requires Docker Desktop running
 
    ```bash
@@ -47,6 +54,24 @@
    ```
 
 ### Seed data
+
+**For the full demo venue — the catalogue, suppliers, stock, staff, sales and
+takings — run the script rather than the files:**
+
+```bash
+supabase/seed_local_demo.sh
+```
+
+It resets, applies the seven extra seed files in dependency order, and then
+costs the catalogue. That last step is not optional: the seed ships every
+recipe with a zero cost and an empty allergen list, and `pnpm recost` is what
+fills them in. Skipping it leaves 115 recipes costing nothing and a blank
+allergen matrix, which looks like a data problem and is a missing step.
+
+The script exists because this used to be done by hand in whatever order the
+person remembered — and the visual regression baselines are screenshots *of
+that database*. They are now taken from the state this script builds, so
+`pnpm --filter web test:visual` means something.
 
 `supabase/seed.sql` is generated from the mock catalogue in
 `apps/web/src/data/`, so the two never drift:

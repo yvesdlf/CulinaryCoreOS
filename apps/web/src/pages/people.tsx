@@ -13,14 +13,16 @@
 // has no business reaching a colleague's bank account by widening a select.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
 import { useEffect, useMemo, useState } from "react";
 import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert,
   UserPlus, CalendarRange, Clock, GraduationCap, Target, ClipboardCheck, Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Send, Wallet } from "lucide-react";
+import { Send, Wallet, FileSpreadsheet } from "lucide-react";
 import { PayTab } from "@/components/people/pay-tab";
+import { PayrollPanel } from "@/components/people/payroll-panel";
 import { useCanReadSection, useCanWriteSection } from "@/stores/access-store";
 import { StaffCommsTab } from "@/components/people/staff-comms-tab";
 import { PageHeader } from "@/components/layout/page-header";
@@ -284,6 +286,11 @@ export function PeoplePage() {
               <Wallet className="size-4" />Pay
             </TabsTrigger>
           )}
+          {canSeePay && (
+            <TabsTrigger value="payroll" className="justify-start">
+              <FileSpreadsheet className="size-4" />Payroll
+            </TabsTrigger>
+          )}
 
           <div aria-hidden="true" className="px-2 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
             Communication
@@ -296,6 +303,12 @@ export function PeoplePage() {
         {canSeePay && (
           <TabsContent value="pay" className="mt-4">
             <PayTab employees={employees} canWrite={canSetPay} />
+          </TabsContent>
+        )}
+
+        {canSeePay && (
+          <TabsContent value="payroll" className="mt-4">
+            <PayrollPanel canWrite={canSetPay} />
           </TabsContent>
         )}
 
@@ -626,7 +639,7 @@ function AddEmployeeDialog({ businessUnits, roles, employees, onClose, onDone }:
     firstName: "", lastName: "", workEmail: "",
     businessUnitId: liveUnits[0]?.id ?? "", jobRoleId: "", managerId: "",
     employmentStatus: "PROBATION", employmentType: "FULL_TIME",
-    startedOn: new Date().toISOString().slice(0, 10), hours: "40",
+    startedOn: venueToday(), hours: "40",
   });
   const [busy, setBusy] = useState(false);
   const valid = form.firstName.trim() && form.lastName.trim() && form.employeeNumber.trim();

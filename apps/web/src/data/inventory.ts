@@ -305,3 +305,147 @@ export async function setLotStatus(
     .eq("id", id);
   if (error) fail("setLotStatus", error);
 }
+
+// ── Where stock physically is, and moving it (0096) ─────────────────────────
+
+export interface StockPlace {
+  id: string;
+  name: string;
+  kind: string | null;
+}
+
+export interface StockAtPlace {
+  productId: string;
+  productName: string;
+  locationId: string | null;
+  locationName: string | null;
+  onHand: number;
+}
+
+/** The places food is kept, as opposed to floors and guest rooms. */
+export async function fetchStockPlaces(): Promise<StockPlace[]> {
+  const { data, error } = await requireSupabase()
+    .from("locations")
+    .select("id, name, kind")
+    .eq("active", true)
+    .in("kind", ["STORE_ROOM", "CHILLER", "FREEZER", "DRY_STORE", "BAR_STORE"])
+    .order("name");
+  if (error) fail("fetchStockPlaces", error);
+  return (data ?? []).map((r: any) => ({ id: r.id, name: r.name, kind: r.kind }));
+}
+
+export async function fetchStockByPlace(): Promise<StockAtPlace[]> {
+  const rows = await fetchAllPages<any>(
+    (from, to) =>
+      requireSupabase().from("product_stock_by_location").select("*").range(from, to),
+    "fetchStockByPlace",
+  );
+  return rows.map((r) => ({
+    productId: r.product_id,
+    productName: r.product_name,
+    locationId: r.location_id,
+    locationName: r.location_name,
+    onHand: Number(r.on_hand ?? 0),
+  }));
+}
+
+/** Both legs in one statement. Returns the transfer id. */
+export async function transferStock(input: {
+  productId: string;
+  fromId: string;
+  toId: string;
+  quantity: number;
+  unit: string;
+  note: string | null;
+}): Promise<string> {
+  const { data, error } = await requireSupabase().rpc("transfer_stock", {
+    p_product: input.productId,
+    p_from: input.fromId,
+    p_to: input.toId,
+    p_quantity: input.quantity,
+    p_unit: input.unit,
+    p_note: input.note,
+  });
+  if (error) fail("transferStock", error);
+  return String(data);
+}
+
+// ── Per-product unit conversions (0090) ─────────────────────────────────────
+
+export interface UnitConversionRow {
+  id: string;
+  productId: string;
+  fromUnit: string;
+  toUnit: string;
+  factor: number;
+  note: string | null;
+}
+
+export interface LineNeedingConversion {
+  recipeId: string;
+  recipeName: string;
+  recipeLineId: string;
+  productId: string;
+  productName: string;
+  lineUnit: string | null;
+  productUnit: string | null;
+}
+
+export async function fetchUnitConversions(): Promise<UnitConversionRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("product_unit_conversions")
+    .select("*")
+    .order("from_unit");
+  if (error) fail("fetchUnitConversions", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    productId: r.product_id,
+    fromUnit: r.from_unit,
+    toUnit: r.to_unit,
+    factor: Number(r.factor),
+    note: r.note,
+  }));
+}
+
+/** The lines nothing can cost. The brief's missing-conversions report. */
+export async function fetchLinesNeedingConversion(): Promise<LineNeedingConversion[]> {
+  const { data, error } = await requireSupabase()
+    .from("recipe_lines_needing_conversion")
+    .select("*")
+    .order("recipe_name");
+  if (error) fail("fetchLinesNeedingConversion", error);
+  return (data ?? []).map((r: any) => ({
+    recipeId: r.recipe_id,
+    recipeName: r.recipe_name,
+    recipeLineId: r.recipe_line_id,
+    productId: r.product_id,
+    productName: r.product_name,
+    lineUnit: r.line_unit,
+    productUnit: r.product_unit,
+  }));
+}
+
+export async function addUnitConversion(input: {
+  productId: string;
+  fromUnit: string;
+  toUnit: string;
+  factor: number;
+  note: string | null;
+}): Promise<void> {
+  const { error } = await requireSupabase().from("product_unit_conversions").insert({
+    product_id: input.productId,
+    from_unit: input.fromUnit,
+    to_unit: input.toUnit,
+    factor: input.factor,
+    note: input.note,
+  });
+  if (error) fail("addUnitConversion", error);
+}
+
+export async function removeUnitConversion(id: string): Promise<void> {
+  const { error } = await requireSupabase()
+    .from("product_unit_conversions")
+    .delete()
+    .eq("id", id);
+  if (error) fail("removeUnitConversion", error);
+}

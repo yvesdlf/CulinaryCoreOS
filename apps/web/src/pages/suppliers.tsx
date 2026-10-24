@@ -30,6 +30,9 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { useProductStore } from "@/stores/product-store";
 import { toDecimal } from "@/engine/cost-engine";
 import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PriceHistoryPanel } from "@/components/suppliers/price-history-panel";
+import { ScorecardPanel } from "@/components/suppliers/scorecard-panel";
 
 interface Supplier {
   name: string;
@@ -120,96 +123,121 @@ export function SuppliersPage() {
         </Button>
       </PageHeader>
 
-      {duplicates.length > 0 && (
-        <div
-          role="alert"
-          className="mb-4 rounded-lg border border-status-warning/40 bg-status-warning-soft p-4"
-        >
-          <p className="flex items-center gap-2 text-sm font-medium text-status-warning">
-            <TriangleAlert className="size-4" aria-hidden="true" />
-            {duplicates.length}{" "}
-            {duplicates.length === 1 ? "supplier appears" : "suppliers appear"}{" "}
-            under more than one spelling
-          </p>
-          <p className="mt-1 text-xs text-foreground/80">
-            These are counted separately everywhere, so their ingredients and
-            totals are split between them. Correcting the spelling on the
-            products merges them.
-          </p>
-          <ul className="mt-2 space-y-1 text-xs text-foreground/80">
-            {duplicates.map((names) => (
-              <li key={names.join("|")}>{names.join("  ·  ")}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Tabs rather than a second sidebar entry. Who sells what and what
+          they have charged over time are different questions about the same
+          supplier, and the sidebar is already twenty-six items. */}
+      <Tabs defaultValue="suppliers">
+        <TabsList>
+          <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
+          <TabsTrigger value="prices">Price history</TabsTrigger>
+          {/* Beside the prices, because "they are dearer" and "they are late"
+              are the same conversation with a supplier. */}
+          <TabsTrigger value="scorecard">Scorecard</TabsTrigger>
+        </TabsList>
 
-      <div className="mb-4 max-w-xs">
-        <Input
-          placeholder="Search suppliers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search suppliers"
-        />
-      </div>
+        <TabsContent value="suppliers" className="mt-4">
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Supplier</TableHead>
-            <TableHead className="text-right">Ingredients</TableHead>
-            <TableHead className="text-right">Total unit cost</TableHead>
-            <TableHead className="text-right">Allergens to verify</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                No suppliers match.
-              </TableCell>
-            </TableRow>
-          ) : (
-            filtered.map((s) => (
-              <TableRow key={s.name}>
-                <TableCell className="font-medium">
-                  {/* Straight to that supplier's ingredients, which is what
-                      you want open when their price list arrives. */}
-                  <Link
-                    to={`/products?search=${encodeURIComponent(s.name)}`}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {s.name}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{s.items}</TableCell>
-                <TableCell className="text-right">
-                  {/* Summed unit costs, not spend: without volumes there is no
-                      honest way to say what is paid, and a number labelled
-                      "spend" would be believed. */}
-                  <CurrencyDisplay value={s.totalUnitCost} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {s.needingReview > 0 ? (
-                    <span className="text-status-warning">{s.needingReview}</span>
-                  ) : (
-                    <span className="text-muted-foreground">--</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
+          {duplicates.length > 0 && (
+            <div
+              role="alert"
+              className="mb-4 rounded-lg border border-status-warning/40 bg-status-warning-soft p-4"
+            >
+              <p className="flex items-center gap-2 text-sm font-medium text-status-warning">
+                <TriangleAlert className="size-4" aria-hidden="true" />
+                {duplicates.length}{" "}
+                {duplicates.length === 1 ? "supplier appears" : "suppliers appear"}{" "}
+                under more than one spelling
+              </p>
+              <p className="mt-1 text-xs text-foreground/80">
+                These are counted separately everywhere, so their ingredients and
+                totals are split between them. Correcting the spelling on the
+                products merges them.
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-foreground/80">
+                {duplicates.map((names) => (
+                  <li key={names.join("|")}>{names.join("  ·  ")}</li>
+                ))}
+              </ul>
+            </div>
           )}
-        </TableBody>
-      </Table>
 
-      {unassigned > 0 && (
-        <p className="mt-4 text-sm text-muted-foreground">
-          {unassigned} ingredients have no supplier recorded.{" "}
-          <Link to="/products" className="underline underline-offset-4">
-            See products
-          </Link>
-        </p>
-      )}
+          <div className="mb-4 max-w-xs">
+            <Input
+              placeholder="Search suppliers..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search suppliers"
+            />
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Supplier</TableHead>
+                <TableHead className="text-right">Ingredients</TableHead>
+                <TableHead className="text-right">Total unit cost</TableHead>
+                <TableHead className="text-right">Allergens to verify</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    No suppliers match.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((s) => (
+                  <TableRow key={s.name}>
+                    <TableCell className="font-medium">
+                      {/* Straight to that supplier's ingredients, which is what
+                          you want open when their price list arrives. */}
+                      <Link
+                        to={`/products?search=${encodeURIComponent(s.name)}`}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {s.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{s.items}</TableCell>
+                    <TableCell className="text-right">
+                      {/* Summed unit costs, not spend: without volumes there is no
+                          honest way to say what is paid, and a number labelled
+                          "spend" would be believed. */}
+                      <CurrencyDisplay value={s.totalUnitCost} />
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {s.needingReview > 0 ? (
+                        <span className="text-status-warning">{s.needingReview}</span>
+                      ) : (
+                        <span className="text-muted-foreground">--</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+
+          {unassigned > 0 && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              {unassigned} ingredients have no supplier recorded.{" "}
+              <Link to="/products" className="underline underline-offset-4">
+                See products
+              </Link>
+            </p>
+          )}
+
+        </TabsContent>
+
+        <TabsContent value="prices" className="mt-4">
+          <PriceHistoryPanel />
+        </TabsContent>
+
+        <TabsContent value="scorecard" className="mt-4">
+          <ScorecardPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

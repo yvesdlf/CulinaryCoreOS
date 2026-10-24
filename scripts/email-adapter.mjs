@@ -16,7 +16,8 @@
 // similar shape can be used by changing EMAIL_API_URL and the body builder.
 //
 //   EMAIL_API_KEY=...              provider key
-//   EMAIL_FROM=kitchen@venue.com   must be a verified sender
+//   EMAIL_FROM=noreply@your-domain   the platform's verified sender; every venue
+//                                  sends from it, under its own display name
 //   SUPABASE_URL=...
 //   SUPABASE_SERVICE_ROLE_KEY=...
 //
@@ -75,6 +76,31 @@ async function loadContext(delivery) {
   return { notification: n[0], config: c[0]?.config ?? {} };
 }
 
+/**
+ * Take one delivery for this process, or learn that another one has it.
+ *
+ * Reading PENDING rows is not a claim: two adapters running at once — or one
+ * restarted mid-pass — read the same rows and both send. The PATCH only
+ * matches a row nobody has claimed in the last ten minutes, and PostgREST
+ * returns the rows it changed, so an empty answer means somebody else won.
+ * The ten minutes let a row claimed by a process that died be picked up again,
+ * and are also how long a failed send waits before its next attempt.
+ */
+async function claim(id) {
+  const stale = new Date(Date.now() - 10 * 60_000).toISOString();
+  const res = await rest(
+    `message_deliveries?id=eq.${id}&status=eq.PENDING` +
+      `&or=(claimed_at.is.null,claimed_at.lt.${stale})`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ claimed_at: new Date().toISOString() }),
+    },
+  );
+  if (!res.ok) return false;
+  return (await res.json()).length === 1;
+}
+
 async function markDelivery(id, patch) {
   const res = await rest(`message_deliveries?id=eq.${id}`, {
     method: "PATCH",
@@ -90,9 +116,23 @@ const escapeHtml = (s) =>
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
   ));
 
+/**
+ * The sending address is always the platform's verified sender. One API key
+ * sends for every venue, so a `from` taken from a venue's channel config let
+ * any venue's administrator send as any address on the verified domain —
+ * another venue, or the platform itself. The venue chooses a display name
+ * at most, and anything that looks like an address in it is dropped.
+ */
+function senderFor(config) {
+  const address = process.env.EMAIL_FROM;
+  if (!address) throw new Error("EMAIL_FROM is not set: it must be the platform's verified sender");
+  const name = String(config.from ?? "").replace(/[<>"\\\r\n]/g, "").trim().slice(0, 64);
+  if (!name || name.includes("@")) return address;
+  return `"${name}" <${address}>`;
+}
+
 async function sendEmail(destination, notification, config) {
-  const from = config.from || process.env.EMAIL_FROM;
-  if (!from) throw new Error("no from address configured on the channel");
+  const from = senderFor(config);
 
   const res = await fetch(EMAIL_API_URL, {
     method: "POST",
@@ -113,7 +153,13 @@ async function sendEmail(destination, notification, config) {
     }),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`email ${res.status}: ${text}`);
+  if (!res.ok) {
+    // The status, never the body: the body can echo the address, and
+    // \`last_error\` is read by every member of the venue.
+    const err = new Error(`email provider refused it (HTTP ${res.status})`);
+    err.category = err.message;
+    throw err;
+  }
   let id = null;
   try { id = JSON.parse(text)?.id ?? null; } catch { /* keep null */ }
   return id;
@@ -125,6 +171,7 @@ async function pass() {
   console.log(`${pending.length} to send`);
 
   for (const d of pending) {
+    if (!DRY_RUN && !(await claim(d.id))) continue;
     const { notification, config } = await loadContext(d);
     if (!notification) {
       await markDelivery(d.id, { status: "FAILED", last_error: "notification missing" });
@@ -135,7 +182,7 @@ async function pass() {
       continue;
     }
     if (DRY_RUN) {
-      console.log(`  [dry run] → ${d.destination}: ${notification.subject}`);
+      console.log(`  [dry run] delivery ${d.id}: ${notification.subject}`);
       continue;
     }
     try {
@@ -144,14 +191,14 @@ async function pass() {
         status: "SENT", sent_at: new Date().toISOString(),
         external_id: externalId, attempts: d.attempts + 1, last_error: null,
       });
-      console.log(`  sent → ${d.destination}`);
+      console.log(`  sent delivery ${d.id}`);
     } catch (err) {
       const attempts = d.attempts + 1;
       await markDelivery(d.id, {
         status: attempts >= MAX_ATTEMPTS ? "FAILED" : "PENDING",
-        attempts, last_error: String(err.message ?? err),
+        attempts, last_error: err.category ?? "could not send",
       });
-      console.error(`  failed → ${d.destination}: ${err.message ?? err}`);
+      console.error(`  failed delivery ${d.id}: ${err.category ?? err.message ?? err}`);
     }
   }
   return pending.length;

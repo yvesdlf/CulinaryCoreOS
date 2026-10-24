@@ -21,6 +21,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Factory, Printer, Search, TriangleAlert, X,
   ChefHat, PackageOpen, ClipboardCheck, Scale, PencilLine,
 } from "lucide-react";
@@ -82,6 +83,7 @@ import {
   type ProductionRecordRow,
 } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { venueToday } from "@/lib/today";
 
 /** Covers survive a reload — a service plan is not worth retyping. */
 const STORAGE_KEY = "ccos-production-covers";
@@ -96,7 +98,7 @@ function loadCovers(): Record<string, number> {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return venueToday();
 }
 
 const VERDICT: Record<VarianceVerdict, { label: string; tone: StatusTone }> = {
@@ -733,6 +735,17 @@ function MadeToday({
                   {r.note ?? "—"}
                 </TableCell>
                 <TableCell>
+                  {/* The tub needs a sticker before it goes in the walk-in,
+                      and until now nothing in this app printed one. */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    nativeButton={false}
+                    render={<Link to={`/production/${r.id}/label`} />}
+                  >
+                    <Printer className="size-4" />
+                    Label
+                  </Button>
                   <PermissionGate>
                     <Button size="sm" variant="ghost" onClick={() => onCorrect(r)}>
                       <PencilLine className="size-4" />

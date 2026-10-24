@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 
 import type Decimal from "decimal.js";
-import { DEFAULT_CURRENCY, CURRENCY_LOCALE } from "./constants";
+import { CURRENCY_LOCALE } from "./constants";
+import { venue } from "./venue";
 
 /** Anything money-ish the UI might hold: Decimal, string field, or number. */
 export type Formattable = number | string | Decimal;
@@ -38,7 +39,7 @@ function defaultDecimalsFor(currency: string): number {
  */
 export function formatCurrency(
   value: Formattable,
-  currency: string = DEFAULT_CURRENCY,
+  currency: string = venue().currency,
   decimals?: number,
 ): string {
   const dp = decimals ?? defaultDecimalsFor(currency);

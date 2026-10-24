@@ -835,6 +835,54 @@ export async function fetchMyLeave(): Promise<MyLeave[]> {
   }));
 }
 
+/**
+ * Days carried in from last year, as the database decided them.
+ *
+ * Read through `leave_entitlement_now`, which has already applied the cap and
+ * the expiry (0112). Nothing here recomputes either: the cap was applied on
+ * the day the year closed under a policy that may since have changed, and a
+ * figure recomputed against today's policy would quietly contradict what
+ * somebody was told they had.
+ *
+ * The portal reaches it through the own-row policy, like every other door a
+ * staff account has: a commis chef is not a member of the venue, so without
+ * it they would read nothing — including their own carried days, which is
+ * the figure they most want.
+ */
+export interface MyCarriedLeave {
+  leaveTypeId: string;
+  days: number;
+  expiresOn: string | null;
+}
+
+export async function fetchMyCarriedLeave(): Promise<MyCarriedLeave[]> {
+  const { data, error } = await requireSupabase()
+    .from("leave_entitlement_now")
+    .select("leave_type_id, carried_in_now, expires_on")
+    .order("year_ends_on", { ascending: false });
+  if (error) fail("fetchMyCarriedLeave", error);
+
+  /*
+   * One row per closed year, newest first, and only the most recent one is
+   * live — closing a year rolls the previous balance into it rather than
+   * leaving two to add up. Summing them would hand somebody the same days
+   * twice for every year the venue has closed.
+   */
+  const seen = new Set<string>();
+  const latest: MyCarriedLeave[] = [];
+  for (const r of data ?? []) {
+    const id = (r as any).leave_type_id as string;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    latest.push({
+      leaveTypeId: id,
+      days: Number((r as any).carried_in_now ?? 0),
+      expiresOn: (r as any).expires_on ?? null,
+    });
+  }
+  return latest;
+}
+
 export interface MyTraining {
   assignmentId: string;
   courseId: string;

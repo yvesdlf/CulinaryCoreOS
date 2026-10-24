@@ -15,6 +15,20 @@
 begin;
 select t.act_as('a0000000-0000-0000-0000-000000000001', 'owner@test.local');
 
+/*
+ * An outlet of this file's own, which every figure below is scoped to.
+ *
+ * It used to use the venue's own Kitchen, which worked only while nothing
+ * else recorded takings there. A seed giving the demo venue ten weeks of
+ * trading made six assertions here red — including one that reported a gross
+ * profit of thirty-seven million against a hundred thousand of expected
+ * revenue, which is the shape of the problem: the figures were real, they
+ * were simply not this test's.
+ */
+insert into business_units (id, org_id, code, name)
+select 'b0000000-0000-4000-8000-00000020a001', id, 'T-PROFU', 'T-Profit outlet'
+  from organizations where name = 'Demo Kitchen';
+
 select '── profit: a movement belongs to a department, or to nobody ─────';
 
 select t.expect_value($$
@@ -38,7 +52,7 @@ select t.expect_rows($$
                                reason, business_unit_id, occurred_at)
   select o.id, (select id from products where name='T-flour'), 'USAGE', -2000, 'g', 10,
          'T-kitchen usage',
-         (select id from business_units where code='KITCHEN' and org_id=o.id),
+         'b0000000-0000-4000-8000-00000020a001',
          current_date - 1
     from organizations o where o.name='Demo Kitchen' limit 1$$,
   'the kitchen uses twenty thousand of flour', 1);
@@ -48,7 +62,7 @@ select t.expect_rows($$
                                reason, business_unit_id, occurred_at)
   select o.id, (select id from products where name='T-flour'), 'WASTE', -500, 'g', 10,
          'T-kitchen waste',
-         (select id from business_units where code='KITCHEN' and org_id=o.id),
+         'b0000000-0000-4000-8000-00000020a001',
          current_date - 1
     from organizations o where o.name='Demo Kitchen' limit 1$$,
   'and throws five thousand away', 1);
@@ -57,8 +71,7 @@ select t.expect_value($$
   select used_cost::text || '/' || wasted_cost::text || '/' || total_cost::text
     from cost_of_goods_daily
    where on_date = current_date - 1
-     and business_unit_id = (select id from business_units where code='KITCHEN'
-       and org_id=(select id from organizations where name='Demo Kitchen'))$$,
+     and business_unit_id = 'b0000000-0000-4000-8000-00000020a001'$$,
   'both count, and are told apart', '20000.00000/5000.00000/25000.00000');
 
 /*
@@ -70,22 +83,21 @@ select t.expect_rows($$
   insert into stock_movements (org_id, product_id, kind, quantity, unit, unit_cost,
                                reason, business_unit_id, occurred_at)
   select o.id, (select id from products where name='T-flour'), 'RETURN', -300, 'g', 10,
-         'T-sent back', (select id from business_units where code='KITCHEN' and org_id=o.id),
+         'T-sent back', 'b0000000-0000-4000-8000-00000020a001',
          current_date - 1
     from organizations o where o.name='Demo Kitchen' limit 1$$,
   'something is returned to the supplier', 1);
 select t.expect_value($$
   select total_cost::text from cost_of_goods_daily
    where on_date = current_date - 1
-     and business_unit_id = (select id from business_units where code='KITCHEN'
-       and org_id=(select id from organizations where name='Demo Kitchen'))$$,
+     and business_unit_id = 'b0000000-0000-4000-8000-00000020a001'$$,
   'and is not counted as something the venue consumed', '25000.00000');
 
 select '── profit: the four numbers in one line ─────────────────────────';
 
 select t.expect_rows($$
   insert into daily_takings (business_unit_id, channel_id, on_date, gross_amount, covers)
-  select (select id from business_units where code='KITCHEN' and org_id=o.id),
+  select 'b0000000-0000-4000-8000-00000020a001',
          (select id from revenue_channels where code='TILL' and org_id=o.id),
          current_date - 1, 100000, 40
     from organizations o where o.name='Demo Kitchen' limit 1$$,
@@ -104,8 +116,7 @@ select t.expect_rows($$
     from organizations o where o.name='Demo Kitchen' limit 1$$,
   'and works ten hours', 1);
 select t.expect_rows($$
-  update employees set business_unit_id=(select id from business_units where code='KITCHEN'
-    and org_id=(select id from organizations where name='Demo Kitchen'))
+  update employees set business_unit_id='b0000000-0000-4000-8000-00000020a001'
    where employee_number='T-1'$$,
   'in the kitchen', 1);
 
@@ -113,13 +124,13 @@ select t.expect_value($$
   select revenue_net::text || ' - ' || labour_cost::text || ' - ' || goods_cost::text
       || ' = ' || gross_profit::text
     from unit_profit_daily
-   where unit_code='KITCHEN' and on_date = current_date - 1$$,
+   where unit_code='T-PROFU' and on_date = current_date - 1$$,
   'a hundred thousand, less twenty thousand of labour, less twenty-five of goods',
   '100000.00000 - 20000.00 - 25000.00000 = 55000.00000');
 
 select t.expect_value($$
   select gross_profit_percent::text from unit_profit_daily
-   where unit_code='KITCHEN' and on_date = current_date - 1$$,
+   where unit_code='T-PROFU' and on_date = current_date - 1$$,
   'which is fifty-five per cent', '55.00');
 
 select '── profit: what could not be put to a department is shown ───────';
@@ -140,11 +151,11 @@ select t.expect_rows($$
 
 select t.expect_value($$
   select gross_profit::text from unit_profit_daily
-   where unit_code='KITCHEN' and on_date = current_date - 1$$,
+   where unit_code='T-PROFU' and on_date = current_date - 1$$,
   'the kitchen''s profit does not move', '55000.00000');
 select t.expect_value($$
   select unattributed_goods_cost::text from unit_profit_daily
-   where unit_code='KITCHEN' and on_date = current_date - 1$$,
+   where unit_code='T-PROFU' and on_date = current_date - 1$$,
   'and the figure beside it says how much is missing', '10000.00000');
 
 select '── profit: it needs Pay, and says nothing without it ────────────';
@@ -155,7 +166,8 @@ select t.expect_value($$select count(*)::text from unit_profit_daily$$,
   'without Pay there is no row, rather than a row with a blank in it', '0');
 select t.act_as('a0000000-0000-0000-0000-000000000001', 'owner@test.local');
 select t.expect_value($$
-  select count(*)::text from unit_profit_daily where on_date = current_date - 1$$,
+  select count(*)::text from unit_profit_daily where on_date = current_date - 1
+     and business_unit_id = 'b0000000-0000-4000-8000-00000020a001'$$,
   'and with it, the day is there', '1');
 reset role;
 
@@ -163,13 +175,15 @@ select '── profit: the export is lines, not a ledger ───────�
 
 select t.expect_value($$
   select string_agg(distinct account, ',' order by account) from accounting_export
-   where on_date = current_date - 1$$,
+   where on_date = current_date - 1
+     and unit_code in ('T-PROFU', 'UNALLOCATED')$$,
   'four kinds of line, and nothing that posts anything',
   'COST_OF_GOODS,LABOUR,REVENUE,WASTE');
 
 select t.expect_value($$
   select amount::text from accounting_export
-   where on_date = current_date - 1 and account='COST_OF_GOODS' and unit_code='UNALLOCATED'$$,
+   where on_date = current_date - 1 and account='COST_OF_GOODS'
+     and unit_code='UNALLOCATED'$$,
   'and the stock nobody attributed is its own line, not somebody else''s',
   '10000.00000');
 

@@ -10,6 +10,7 @@
 // all of it, so every caller imports exactly what it imported before.
 // ---------------------------------------------------------------------------
 
+import { venueToday } from "@/lib/today";
 import { requireSupabase } from "@/lib/supabase";
 import { fail, fetchAllPages } from "./_shared";
 import { createLot, recordMovements } from "./inventory";
@@ -612,7 +613,7 @@ export async function setPurchaseOrderStatus(
   status: PurchaseStatus,
 ): Promise<void> {
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-  if (status === "ORDERED") patch.ordered_on = new Date().toISOString().slice(0, 10);
+  if (status === "ORDERED") patch.ordered_on = venueToday();
   const { error } = await requireSupabase().from("purchase_orders").update(patch).eq("id", id);
   if (error) fail("setPurchaseOrderStatus", error);
 }
@@ -654,6 +655,18 @@ export interface GoodsReceiptLineInput {
   quantityRejected: number;
   rejectionReason: string | null;
   conditionNote: string | null;
+  /**
+   * What the line actually cost, per unit.
+   *
+   * Null means "the ordered price": a trigger fills it from the purchase
+   * order line, so the ordinary case needs no retyping and a delivery that
+   * came in dearer is a deliberate statement rather than a default. Null
+   * with no order behind it really is unknown, and the landed cost views
+   * say so rather than treating it as free.
+   */
+  unitPrice: number | null;
+  /** For a freight charge spread by weight. Null where nobody weighed it. */
+  lineWeightKg: number | null;
   /** Delivery details, when the line creates a traceable lot. */
   lot: NewLot | null;
 }
@@ -691,7 +704,16 @@ export async function recordGoodsReceipt(input: {
     .single();
   if (error) fail("recordGoodsReceipt", error);
 
-  const movements: NewMovement[] = [];
+  /*
+   * Movements are built alongside the lines but costed afterwards.
+   *
+   * The price may come from the purchase order line, and the rule for that
+   * lives in a trigger (0109) — so the only way to post a movement at the
+   * price the line ended up with is to read the line back. Resolving the
+   * fallback here as well would be a second copy of the rule, and the second
+   * copy is the one that drifts.
+   */
+  const pending: { lineNumber: number; movement: NewMovement }[] = [];
   const lineRows: Record<string, unknown>[] = [];
 
   for (const [i, l] of input.lines.entries()) {
@@ -706,6 +728,8 @@ export async function recordGoodsReceipt(input: {
       product_id: l.productId,
       quantity_received: l.quantityReceived,
       unit: l.unit,
+      unit_price: l.unitPrice,
+      line_weight_kg: l.lineWeightKg,
       lot_id: lotId,
       quantity_rejected: l.quantityRejected,
       rejection_reason: l.rejectionReason,
@@ -715,24 +739,51 @@ export async function recordGoodsReceipt(input: {
     // Only what was accepted becomes stock. Rejected goods went back on the van.
     const accepted = l.quantityReceived - l.quantityRejected;
     if (l.productId && accepted > 0) {
-      movements.push({
-        productId: l.productId,
-        kind: "RECEIPT",
-        quantity: accepted,
-        unit: l.unit,
-        unitCost: l.lot ? null : null,
-        reason: null,
-        note: `Receipt ${input.reference}`,
-        lotId,
+      pending.push({
+        lineNumber: i + 1,
+        movement: {
+          productId: l.productId,
+          kind: "RECEIPT",
+          quantity: accepted,
+          unit: l.unit,
+          // Filled in below from the line as it was actually written.
+          unitCost: null,
+          reason: null,
+          note: `Receipt ${input.reference}`,
+          lotId,
+        },
       });
     }
   }
 
-  const { error: lineError } = await db.from("goods_receipt_lines").insert(lineRows);
+  const { data: written, error: lineError } = await db
+    .from("goods_receipt_lines")
+    .insert(lineRows)
+    .select("line_number, unit_price");
   if (lineError) {
     await db.from("goods_receipts").delete().eq("id", data.id);
     fail("recordGoodsReceipt(lines)", lineError);
   }
+
+  /*
+   * Kept as the string PostgREST returns. `NewMovement.unitCost` is a string
+   * for the reason AGENTS.md §3 gives — money does not go through a float on
+   * its way to a ledger — and parsing it here only to print it again is the
+   * one place a rounding error could get in.
+   */
+  const priced = new Map<number, string | null>(
+    (written ?? []).map((r: any) => [
+      r.line_number as number,
+      r.unit_price === null || r.unit_price === undefined ? null : String(r.unit_price),
+    ]),
+  );
+  const movements = pending.map((p) => ({
+    ...p.movement,
+    // Null, not zero. Every receipt before this carried no cost at all, and
+    // `cost_of_goods_daily.movements_with_no_cost` counts them for exactly
+    // that reason — a zero would stop it counting and start lying.
+    unitCost: priced.get(p.lineNumber) ?? null,
+  }));
   if (movements.length > 0) await recordMovements(movements);
 }
 
@@ -1341,15 +1392,20 @@ export async function setCategoryTaxRate(
 export interface MessageChannel {
   id: string; kind: string; name: string; enabled: boolean;
   config: Record<string, unknown>;
+  /** Whether a provider key is stored. The key itself never leaves the database (0078). */
+  hasSecret: boolean;
 }
 
 export async function fetchMessageChannels(): Promise<MessageChannel[]> {
+  // Named columns rather than `*`: this used to ship the provider key to every
+  // member's browser, because it lived in `config` and `*` included it.
   const { data, error } = await requireSupabase()
-    .from("message_channels").select("*").order("kind");
+    .from("message_channels").select("id, kind, name, enabled, config, has_secret").order("kind");
   if (error) fail("fetchMessageChannels", error);
   return (data ?? []).map((r: any) => ({
     id: r.id, kind: r.kind, name: r.name,
     enabled: Boolean(r.enabled), config: r.config ?? {},
+    hasSecret: Boolean(r.has_secret),
   }));
 }
 
@@ -1550,4 +1606,152 @@ export async function recordTakings(input: {
       { onConflict: "business_unit_id,channel_id,on_date" },
     );
   if (error) fail("recordTakings", error);
+}
+
+// ── Returns and credit notes (0095) ─────────────────────────────────────────
+
+export interface SupplierReturn {
+  id: string;
+  reference: string | null;
+  supplierId: string;
+  supplierName: string | null;
+  status: string;
+  reason: string | null;
+  postedAt: string | null;
+  lines: number;
+}
+
+export interface SupplierReturnLine {
+  id: string;
+  productId: string;
+  productName: string | null;
+  quantity: number;
+  unit: string;
+  reason: string | null;
+  /** False for goods refused at the door, which never reached the shelf. */
+  fromStock: boolean;
+}
+
+export interface OutstandingCredit {
+  creditNoteId: string;
+  reference: string | null;
+  creditNumber: string | null;
+  supplierName: string | null;
+  status: string;
+  amount: number | null;
+  returnReference: string | null;
+  daysOutstanding: number | null;
+}
+
+export async function fetchSupplierReturns(): Promise<SupplierReturn[]> {
+  const db = requireSupabase();
+  const { data, error } = await db
+    .from("supplier_returns")
+    .select("*, suppliers(name)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) fail("fetchSupplierReturns", error);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const { data: lines, error: lineErr } = await db
+    .from("supplier_return_lines")
+    .select("return_id")
+    .in("return_id", rows.map((r: any) => r.id));
+  if (lineErr) fail("fetchSupplierReturns lines", lineErr);
+  const counts = new Map<string, number>();
+  for (const l of lines ?? []) {
+    counts.set((l as any).return_id, (counts.get((l as any).return_id) ?? 0) + 1);
+  }
+
+  return rows.map((r: any) => ({
+    id: r.id,
+    reference: r.reference,
+    supplierId: r.supplier_id,
+    supplierName: r.suppliers?.name ?? null,
+    status: r.status,
+    reason: r.reason,
+    postedAt: r.posted_at,
+    lines: counts.get(r.id) ?? 0,
+  }));
+}
+
+export async function fetchReturnLines(returnId: string): Promise<SupplierReturnLine[]> {
+  const { data, error } = await requireSupabase()
+    .from("supplier_return_lines")
+    .select("*, products(name)")
+    .eq("return_id", returnId)
+    .order("line_number");
+  if (error) fail("fetchReturnLines", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    productId: r.product_id,
+    productName: r.products?.name ?? null,
+    quantity: Number(r.quantity),
+    unit: r.unit,
+    reason: r.reason,
+    fromStock: Boolean(r.from_stock),
+  }));
+}
+
+export async function postSupplierReturn(returnId: string): Promise<number> {
+  const { data, error } = await requireSupabase().rpc("post_supplier_return", {
+    p_return: returnId,
+  });
+  if (error) fail("postSupplierReturn", error);
+  return Number(data ?? 0);
+}
+
+export async function fetchOutstandingCredits(): Promise<OutstandingCredit[]> {
+  const { data, error } = await requireSupabase()
+    .from("credit_notes_outstanding")
+    .select("*")
+    .order("days_outstanding", { ascending: false });
+  if (error) fail("fetchOutstandingCredits", error);
+  return (data ?? []).map((r: any) => ({
+    creditNoteId: r.credit_note_id,
+    reference: r.reference,
+    creditNumber: r.credit_number,
+    supplierName: r.supplier_name,
+    status: r.status,
+    amount: r.amount === null ? null : Number(r.amount),
+    returnReference: r.return_reference,
+    daysOutstanding: r.days_outstanding === null ? null : Number(r.days_outstanding),
+  }));
+}
+
+// ── Supplier price history (0094) ───────────────────────────────────────────
+
+export interface PriceHistoryRow {
+  priceId: string;
+  productSupplierId: string;
+  productName: string | null;
+  supplierName: string | null;
+  validFrom: string;
+  packPrice: number;
+  pricePerUnit: number | null;
+  source: string;
+  previousPerUnit: number | null;
+  movedPercent: number | null;
+}
+
+export async function fetchPriceHistory(): Promise<PriceHistoryRow[]> {
+  const { data, error } = await requireSupabase()
+    .from("supplier_price_history")
+    .select("*")
+    .order("valid_from", { ascending: false })
+    .limit(400);
+  if (error) fail("fetchPriceHistory", error);
+  return (data ?? []).map((r: any) => ({
+    priceId: r.price_id,
+    productSupplierId: r.product_supplier_id,
+    productName: r.product_name,
+    supplierName: r.supplier_name,
+    validFrom: r.valid_from,
+    packPrice: Number(r.pack_price),
+    pricePerUnit: r.price_per_unit === null ? null : Number(r.price_per_unit),
+    source: r.source,
+    previousPerUnit: r.previous_per_unit === null ? null : Number(r.previous_per_unit),
+    movedPercent: r.moved_percent === null ? null : Number(r.moved_percent),
+  }));
 }

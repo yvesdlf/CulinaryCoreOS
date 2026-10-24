@@ -15,7 +15,9 @@ import {
   calculateRecommendedPrice,
   roundToNearest,
 } from "@/engine/cost-engine";
-import { DEFAULT_CURRENCY, PRICE_ROUNDING_STEP } from "@/lib/constants";
+import { priceRoundingStep } from "@/lib/constants";
+import { venue } from "@/lib/venue";
+import { useFoodCostTarget } from "@/stores/venue-store";
 import { formatPercent } from "@/lib/format";
 import { Calculator } from "lucide-react";
 
@@ -35,8 +37,9 @@ export function CostSummaryPanel({
   wastePercent,
   inflationPercent,
   taxPercent,
-  currency = DEFAULT_CURRENCY,
+  currency = venue().currency,
 }: CostSummaryPanelProps) {
+  const { target } = useFoodCostTarget();
   const summary = useMemo(() => {
     // Pass the stored strings straight through — the engine parses them as
     // exact decimals, so nothing goes via float on the way in.
@@ -54,16 +57,18 @@ export function CostSummaryPanel({
       menuPrice,
       totalWithMargin,
     );
-    // Suggested prices are rounded to the nearest 1.000 IDR — they are a
-    // starting point for setting a menu price, and menus are quoted in round
-    // numbers. Everything else on this panel stays at its computed value.
+    // Suggested prices are rounded for the currency (to the thousand in
+    // rupiah, the half-unit otherwise) — they are a starting point for setting
+    // a menu price, and menus are quoted in round numbers. The first is at the
+    // venue's own target; 30% stays as the conventional ceiling to compare.
+    const step = priceRoundingStep(currency);
     const recommended25 = roundToNearest(
-      calculateRecommendedPrice(totalWithMargin, 25),
-      PRICE_ROUNDING_STEP,
+      calculateRecommendedPrice(totalWithMargin, target),
+      step,
     );
     const recommended30 = roundToNearest(
       calculateRecommendedPrice(totalWithMargin, 30),
-      PRICE_ROUNDING_STEP,
+      step,
     );
 
     return {
@@ -79,7 +84,7 @@ export function CostSummaryPanel({
       recommended25,
       recommended30,
     };
-  }, [lines, menuPrice, wastePercent, inflationPercent, taxPercent]);
+  }, [lines, menuPrice, wastePercent, inflationPercent, taxPercent, target, currency]);
 
   return (
     <Card size="sm">
@@ -123,7 +128,7 @@ export function CostSummaryPanel({
           />
         </Row>
         <Separator />
-        <Row label="Recommended @ 25% FC" subtle>
+        <Row label={`Recommended @ ${target}% FC`} subtle>
           <CurrencyDisplay
             value={summary.recommended25}
             currency={currency}

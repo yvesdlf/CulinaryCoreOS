@@ -19,6 +19,21 @@ export interface AiConfig {
   apiKey: string;
   model: string;
   baseUrl?: string;
+  /**
+   * Whose key, and therefore whose bill.
+   *
+   * "OWN_KEY" is the default and goes straight from this browser to the
+   * provider. "PLATFORM" goes through `supabase/functions/ai-proxy`, which
+   * is the only place the platform's key exists — a key the browser can read
+   * is a key the venue has been given.
+   */
+  keySource?: "OWN_KEY" | "PLATFORM";
+  /** Supplied for PLATFORM; the caller's session is what the allowance is on. */
+  platform?: {
+    functionUrl: string;
+    accessToken: string;
+    task?: string;
+  };
 }
 
 export interface GuardedResponse extends AiResponse {
@@ -30,6 +45,8 @@ export async function runAi(
   request: AiRequest,
   config: AiConfig,
 ): Promise<GuardedResponse> {
+  if (config.keySource === "PLATFORM") return runOnPlatformKey(request, config);
+
   if (!config.apiKey?.trim()) {
     throw new AiError(
       "no-key",
@@ -69,6 +86,71 @@ export async function runAi(
 
   const guarded = guardAnswer(raw.text);
   return { ...raw, text: guarded.text, substituted: guarded.substituted };
+}
+
+/**
+ * The same call, made by something the venue cannot read.
+ *
+ * The guard runs here too. It is applied in `runAi` for the own-key path and
+ * it has to be applied on this one as well — a guard that depends on which
+ * branch the call took is a guard that is missing on one of them, and this
+ * is the branch where the platform is paying for the answer.
+ *
+ * 402 is not retried and is not reported as a failure of the assistant. It
+ * means the allowance is spent, which is a thing the venue can do something
+ * about, so the message says what.
+ */
+async function runOnPlatformKey(
+  request: AiRequest,
+  config: AiConfig,
+): Promise<GuardedResponse> {
+  if (!config.platform) {
+    throw new AiError("no-key", "The assistant is not set up to use a shared key.");
+  }
+
+  const prompt = request.messages.map((m) => m.text).join("\n\n");
+  let res: Response;
+  try {
+    res = await fetch(config.platform.functionUrl, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${config.platform.accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        providerId: config.providerId,
+        model: config.model,
+        prompt,
+        task: config.platform.task ?? null,
+        maxTokens: request.maxTokens ?? 1024,
+      }),
+      signal: request.signal,
+    });
+  } catch {
+    throw new AiError("network", "Could not reach the assistant.");
+  }
+
+  const body = await res.json().catch(() => ({}));
+
+  if (res.status === 402 || res.status === 501) {
+    throw new AiError(
+      "quota",
+      body.error ??
+        "This venue's shared assistant allowance is used up for the month.",
+    );
+  }
+  if (!res.ok) {
+    throw new AiError("unknown", body.error ?? "The assistant could not answer.");
+  }
+
+  const guarded = guardAnswer(String(body.text ?? ""));
+  return {
+    text: guarded.text,
+    model: String(body.model ?? config.model),
+    inputTokens: body.inputTokens ?? null,
+    outputTokens: body.outputTokens ?? null,
+    substituted: guarded.substituted,
+  };
 }
 
 /**

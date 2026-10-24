@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from "react";
+import { useFoodCostTarget } from "@/stores/venue-store";
 import { Link } from "react-router-dom";
 import { TrendingUp } from "lucide-react";
 import type { Product } from "@ccos/shared";
@@ -29,8 +30,6 @@ import { useProductStore } from "@/stores/product-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import {
-  TARGET_FOOD_COST_PERCENT,
-  FOOD_COST_VARIANCE_PERCENT,
 } from "@/lib/constants";
 
 const PRESETS = [-10, -5, 5, 10, 25];
@@ -41,7 +40,8 @@ export function PriceImpact({ product }: { product: Product }) {
   const subRecipes = useSubRecipeStore((s) => s.subRecipes);
   const [percent, setPercent] = useState<number>(10);
 
-  const upper = TARGET_FOOD_COST_PERCENT + FOOD_COST_VARIANCE_PERCENT;
+  const { target, tolerance } = useFoodCostTarget();
+  const upper = target + tolerance;
 
   const impact = useMemo(() => {
     const factor = toDecimal(100 + percent).dividedBy(100);

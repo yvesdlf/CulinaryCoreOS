@@ -1,5 +1,9 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
+  Receipt,
+  Scale,
+  BookOpen,
+  ClipboardCheck,
   LayoutDashboard,
   Package,
   ChefHat,
@@ -77,6 +81,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Products", to: "/products", icon: Package },
       { title: "Collections", to: "/collections", icon: FolderOpen },
       { title: "Allergen Matrix", to: "/allergen-matrix", icon: ShieldAlert },
+      { title: "Menus", to: "/menus", icon: BookOpen },
       { title: "Menu Engineering", to: "/menu-engineering", icon: ChartNoAxesCombined },
     ],
   },
@@ -86,6 +91,9 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Purchasing", to: "/purchasing", icon: ShoppingCart },
       { title: "Suppliers", to: "/suppliers", icon: Truck },
       { title: "Inventory", to: "/inventory", icon: Warehouse },
+      { title: "Stocktake", to: "/stocktake", icon: ClipboardCheck },
+      { title: "Sales", to: "/sales", icon: Receipt },
+      { title: "Food Cost", to: "/food-cost", icon: Scale },
       { title: "Traceability", to: "/traceability", icon: ShieldCheck },
     ],
   },
