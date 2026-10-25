@@ -33,6 +33,13 @@ import { useProductStore } from "@/stores/product-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { createRecipe, saveRecipe } from "@/stores/persistence";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Sparkles } from "lucide-react";
+import { runAi } from "@/engine/ai/client";
+import { recipeParseRequest, parseRecipeResponse } from "@/engine/ai/tasks";
+import { parsedRecipeToRows, extractionConcerns } from "@/engine/ai/recipe-rows";
+import { useAiStore, platformCall } from "@/stores/ai-store";
 import {
   calculatePercentAmount,
   calculateTotalCog,
@@ -59,6 +66,22 @@ export function RecipeImportDialog() {
   const [filename, setFilename] = useState("");
   const [applying, setApplying] = useState(false);
 
+  /*
+   * The written-down route into the same planner.
+   *
+   * A recipe card, a paste from a website, a photograph of a page — the
+   * model turns it into the rows `planRecipeImport` already reads, so the
+   * preview below and the commit are produced by the same code as a CSV.
+   * Nothing about the catalogue rules is re-implemented for this path, which
+   * matters because the rule most at risk is the one a model is most likely
+   * to break: it will happily name an ingredient a kitchen has never bought.
+   */
+  const [writing, setWriting] = useState(false);
+  const [source, setSource] = useState("");
+  const [reading, setReading] = useState(false);
+  const [concerns, setConcerns] = useState<string[]>([]);
+  const ai = useAiStore();
+
   async function handleFile(file: File) {
     const text = await file.text();
     setFilename(file.name);
@@ -68,7 +91,43 @@ export function RecipeImportDialog() {
   function reset() {
     setPlan(null);
     setFilename("");
+    setConcerns([]);
     if (fileInput.current) fileInput.current.value = "";
+  }
+
+  async function readWritten() {
+    if (source.trim() === "") return;
+    setReading(true);
+    try {
+      const answer = await runAi(recipeParseRequest(source), {
+        providerId: ai.providerId,
+        apiKey: ai.apiKey,
+        model: ai.model,
+        baseUrl: ai.baseUrl,
+        keySource: ai.keySource,
+        platform: platformCall("recipe-import"),
+      });
+      const parsed = parseRecipeResponse(answer.text);
+      if (!parsed) {
+        toast.error("Nothing could be read from that", {
+          description:
+            "No recipe was found in the text. Nothing has been created.",
+        });
+        return;
+      }
+      // Through the same door as a spreadsheet.
+      setPlan(planRecipeImport(parsedRecipeToRows(parsed), {
+        products, subRecipes, recipes,
+      }));
+      setConcerns(extractionConcerns(parsed));
+      setFilename(`Read from text — ${parsed.name}`);
+    } catch (err) {
+      toast.error("Could not read it", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setReading(false);
+    }
   }
 
   async function apply() {
@@ -176,10 +235,64 @@ export function RecipeImportDialog() {
         }}
       />
 
-      <Button variant="outline" onClick={() => fileInput.current?.click()}>
-        <Upload className="mr-1 size-4" aria-hidden="true" />
-        Import recipes
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" onClick={() => fileInput.current?.click()}>
+          <Upload className="mr-1 size-4" aria-hidden="true" />
+          Import recipes
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setWriting((w) => !w)}
+          aria-expanded={writing}
+        >
+          <Sparkles className="mr-1 size-4" aria-hidden="true" />
+          Paste a recipe
+        </Button>
+      </div>
+
+      {writing && !plan && (
+        <div className="mt-3 space-y-2 rounded-lg border p-4">
+          <Label htmlFor="ai-recipe-source">
+            Paste the recipe, however it is written
+          </Label>
+          <Textarea
+            id="ai-recipe-source"
+            rows={8}
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder={"Tomato soup, serves 4\n500g tomatoes\n100ml cream\na splash of vinegar"}
+          />
+          <p className="text-xs text-muted-foreground">
+            It is read into the same preview a spreadsheet gets, and checked
+            against the same catalogue. An ingredient you do not stock is
+            reported, never created — a product invented here would arrive
+            with no price and make the dish look cheap rather than wrong.
+          </p>
+          <Button disabled={reading || source.trim() === ""} onClick={() => void readWritten()}>
+            {reading ? "Reading…" : "Read it"}
+          </Button>
+        </div>
+      )}
+
+      {/*
+        * The model's own admissions, kept apart from the importer's problems
+        * below. They have different authority: a problem is a fact about the
+        * catalogue, this is the model saying what it could not read, and a
+        * screen that stacked them together would invite somebody to trust
+        * both equally.
+        */}
+      {plan && concerns.length > 0 && (
+        <div className="mt-4 rounded-lg border border-status-warning/40 bg-status-warning/10 p-4">
+          <h3 className="text-sm font-medium">What the reading was unsure about</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+            {concerns.map((c) => <li key={c}>{c}</li>)}
+          </ul>
+          <p className="mt-2 text-xs text-muted-foreground">
+            These come from the model, not from your catalogue. Check them
+            against the original before importing.
+          </p>
+        </div>
+      )}
 
       {plan && (
         <div className="mt-4 rounded-lg border p-4">

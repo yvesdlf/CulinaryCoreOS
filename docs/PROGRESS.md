@@ -1202,11 +1202,30 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 - [ ] **US 9 allergen profile.** Verified: `lib/allergens.ts` is the EU 14 of
       Regulation 1169/2011. A venue under FDA rules needs the US set, which
       overlaps but is not a subset.
-- [ ] **AI recipe import.** Verified absent: `engine/ai/` has `client`,
-      `providers`, `safety`, `tasks` and `types`, and no importer. The
-      provider abstraction it needs exists, so this is a prompt, a preview
-      screen and the sheet importer's refusal-to-invent-products rule — not a
-      platform decision.
+- [x] **AI recipe import.** A bridge, not a second importer.
+      `recipeParseRequest` and `parseRecipeResponse` already existed;
+      `engine/ai/recipe-rows.ts` turns a `ParsedRecipe` into the rows
+      `planRecipeImport` has read since the sheet importer was written, so
+      the column matching, the cost arithmetic, the duplicate-dish detection
+      and the refusal to invent a product are all shared rather than written
+      twice.
+
+      That matters most for the refusal. A model will happily name an
+      ingredient a kitchen has never bought, and a silently created product
+      arrives with no price, costs the dish nothing, and makes the dish look
+      cheap rather than look wrong. Going through the same planner means the
+      unresolved line is dropped and reported, exactly as a CSV's would be.
+
+      A line with no quantity is kept and reported rather than dropped —
+      "a splash of vinegar" becomes a problem on screen, which is how
+      somebody learns to check the original — and a quantity with no unit is
+      never given one, because guessing grams is wrong by a thousand when it
+      is wrong.
+
+      The model's own admissions are shown apart from the importer's
+      problems. A problem is a fact about the catalogue; a note is the model
+      saying what it could not read, and a screen that stacked them together
+      would invite somebody to trust both equally.
 - [ ] **The assistant, WhatsApp and email have never made a real network
       call.** The guardrails are tested and the outbox drains correctly in dry
       run; what is unproved is the call itself, which needs keys and a Meta

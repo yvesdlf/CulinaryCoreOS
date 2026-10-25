@@ -32,6 +32,16 @@
 import { create } from "zustand";
 import type { AiProviderId } from "@/engine/ai/types";
 import { providerById } from "@/engine/ai/providers";
+import { useAuthStore } from "@/stores/auth-store";
+
+/**
+ * The session's bearer token, read from the auth store at the moment it is
+ * needed. Kept in this file so `platformCall` has one dependency rather than
+ * reaching across stores at every call site.
+ */
+function currentAccessToken(): string | null {
+  return useAuthStore.getState().session?.access_token ?? null;
+}
 
 const STORAGE_KEY = "ccos.ai.settings.v1";
 
@@ -153,4 +163,34 @@ export function maskKey(key: string): string {
   if (!key) return "";
   if (key.length <= 8) return "•".repeat(key.length);
   return `${key.slice(0, 4)}${"•".repeat(Math.min(24, key.length - 8))}${key.slice(-4)}`;
+}
+
+/**
+ * What a platform-key call needs to reach the proxy.
+ *
+ * Built here rather than at each call site so the function URL and the
+ * session token are derived once. Returns undefined when the venue is on its
+ * own key, which is the signal `runAi` uses to go straight to the provider.
+ *
+ * The token is read at call time rather than cached: a session that refreshed
+ * since the page loaded would otherwise send a stale bearer and the proxy
+ * would answer 401 to somebody who is perfectly well signed in.
+ */
+export function platformCall(task: string):
+  | { functionUrl: string; accessToken: string; task: string }
+  | undefined {
+  const s = useAiStore.getState();
+  if (s.keySource !== "PLATFORM") return undefined;
+
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  if (!url) return undefined;
+
+  const token = currentAccessToken();
+  if (!token) return undefined;
+
+  return {
+    functionUrl: `${url.replace(/\/$/, "")}/functions/v1/ai-proxy`,
+    accessToken: token,
+    task,
+  };
 }
