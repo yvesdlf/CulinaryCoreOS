@@ -6,12 +6,19 @@
 > one-time checks on one laptop while CI was red; everything since is
 > machine-checked on every push.
 
-**Head:** `4d5da93` · 75 migrations · 574 unit tests · 579 database controls ·
-5 browser spec files · 113 tables / 403 policies / 174 functions / 276 triggers
-/ 48 views / 19 sections, rebuilt from empty on 2026-10-04. Typecheck, lint,
-574 unit tests, 579 database controls and 54 desktop browser tests all green
-the same day. 56.218 lines of TypeScript under `apps/web/src`, 20.335 of SQL in
-migrations.
+**Head:** `632035c` · 117 migrations · 643 unit tests · 1.307 database controls
+· 6 browser spec files · 155 tables / 513 policies / 270 functions / 409
+triggers / 83 views / 19 sections, rebuilt from empty on 2026-10-25.
+Typecheck, lint, build, 643 unit tests, 1.307 database controls and 139
+browser checks all green the same day. 65.609 lines of TypeScript under
+`apps/web/src`, 31.866 of SQL in migrations.
+
+> **These figures were re-measured on 2026-10-25, not edited.** The block
+> above had said 75 migrations and 579 controls since 4 October — accurate on
+> the day it was written and wrong by nearly half within three weeks. Counts
+> in a document are a liability unless something re-reads them; the commands
+> that produce every number here are in `AGENTS.md` and take under two
+> minutes to re-run.
 
 > **Stages 1 and 2 of `PLAN.md` are complete.** Stage 1 merged the two
 > department lists into one tree (0058), gave permissions a unit axis (0062),
@@ -57,10 +64,10 @@ migrations.
 > rebuilding from empty and counting.
 
 > **The database controls are tested, and now in CI.** `supabase/tests/` holds
-> 579 checks across access, maintenance, housekeeping, purchasing, people,
-> business units, media, production, starting data, use-by dates, unit-scoped
-> access, the department contract, pay and revenue,
-> run against a schema rebuilt from empty. Proved to go red: dropping the
+> 1.307 checks in 58 files, run against a schema rebuilt from empty. They
+> covered fourteen areas when this was written and now cover costing,
+> allergens, traceability and the portal as well — the four the next
+> paragraph used to list as missing. Proved to go red: dropping the
 > work-order assignment trigger fails four of them. The CI step that calls them
 > landed separately from the suite itself, because the token in use had no
 > `workflow` scope and GitHub refuses a push that touches
@@ -410,8 +417,8 @@ operator's job, not automated.
       macros entered by hand.
 - [x] CI: three jobs, green. It failed on all seven of its first runs while
       reporting nothing, because it died at pnpm setup before a test ran. The
-      static job now runs typecheck, 574 unit tests, lint and the production
-      build; the browser job runs the 579 database controls against a schema
+      static job runs typecheck, the unit tests, lint and the production
+      build; the browser job runs the database controls against a schema
       rebuilt from empty before it starts a browser at all, because that step
       needs nothing but the schema and is the cheapest way to find a missing
       trigger.
@@ -840,28 +847,10 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 
 ## In progress / next up
 
-- [ ] **Realtime sync is not working, and the attempt was reverted.** Reads
-      are still hydrate-once at startup plus a refresh when the tab regains
-      focus, so a colleague's edit made while you are watching the same screen
-      does not appear on its own.
-
-      Attempted and backed out rather than shipped, because a sync that
-      silently delivers nothing is worse than none: it invites people to trust
-      a screen that is quietly stale, which is a costing error waiting to
-      happen. What was established, for whoever picks it up:
-
-      * The tables must be in the `supabase_realtime` publication, and need
-        `replica identity full` so row-level security can filter deletes.
-      * The socket needs the session token via `realtime.setAuth()`. It is a
-        separate connection from the REST client and does not inherit it;
-        without it every change is filtered out by RLS.
-      * The realtime service caches the publication at boot, so it has to be
-        restarted after the publication changes.
-      * With all three done the channel subscribes without error and still
-        delivers no events. Not diagnosed further.
-
-      Verified along the way that the fetch path itself is fine: a change made
-      directly in the database appears immediately on reload.
+> **Realtime sync** and everything else still open now live in one place:
+> "Known gaps", at the foot of this document. That section was reconciled
+> against the tree on 2026-10-25; this one is kept for the items it already
+> records as done.
 
 - [x] **The Playwright session token is not in this history.** This item
       claimed one sat at `3bbcc97` and that clearing it needed a force-push
@@ -901,12 +890,14 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       initialiser as well would be noise, and the sweep that found these is
       recorded here instead.
 
-- [ ] **The avatar is one tint rather than a colour per person.** The only
-      colours that clear 4,5:1 against their own initials in both themes are
-      the four status colours, and a red disc beside somebody's name — in a row
-      that also carries a status chip — reads as a statement about that person.
-      Six neutral `--avatar-tint-*` tokens would settle it; nothing else will,
-      because new raw hex outside `index.css` is not allowed.
+- [x] **The avatar is a colour per person.** The constraint in this item was
+      right and its conclusion was wrong: the only families clearing 4,5:1
+      against their own initials in both themes were the four status colours,
+      and a danger-red disc beside somebody's name in a row that also carries
+      a status chip reads as a statement about that person. The answer was not
+      to give up on colour but to add six tokens that are not status colours.
+      `--avatar-tint-1` to `-6`, hashed from the whole name so colliding
+      initials differ, measured 10,1:1 to 12,2:1 in both themes.
 
 - [x] **The table container was a vertical scroll container and nobody knew.**
       `overflow-x: auto` computes `overflow-y` to `auto`. That is why a naive
@@ -927,62 +918,16 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 
 ## Backlog
 
-- [ ] **Organization switcher.** `auth_default_org_id()` now prefers an
-      organisation somebody was invited into over one created at sign-up, and
-      sign-up no longer creates an organisation for an invited address. So the
-      common case is right. A user genuinely in two organisations still cannot
-      choose between them, and there is no UI for it.
-- [ ] **Notifications.** Nothing is sent anywhere. An invitation is not
-      emailed, an approval request does not reach the approver, a purchase
-      order marked "ordered" transmits nothing to the supplier. Every one of
-      these needs a channel decision before it can be built.
-- [ ] **Field-level audit history.** Recipe status transitions, stock
-      movements and approvals are append-only ledgers. Everything else records
-      only its current state, so "who changed this price, and when" is not
-      answerable outside those three.
-- [x] **The primary entity's own UPDATE is folded into the cascade RPC**
-      (0117). It was a second, independent request dispatched without waiting,
-      so either could commit while the other failed.
-
-      The self-concealing direction is the cascade landing without it: the
-      recipes carry the new cost, the ingredient page still shows the old
-      price, and the arithmetic stops reconciling with no edit behind it.
-      Nothing on screen contradicts that, so it is found weeks later by
-      somebody checking a dish against its ingredient.
-
-      `apply_cascade` takes a third argument now and the two-argument version
-      is dropped rather than left beside it — a safe route nobody is forced
-      onto is a route somebody misses. Nothing about *what* gets written
-      changed: the client sends the same mapped row it was sending to
-      PostgREST, and the optimistic-concurrency check behaves as it did.
-
-      A sub-recipe's own lines travel with it, because a sub-recipe is not
-      downstream of itself — `getDependents` starts its frontier at the
-      entity and collects what uses it — so the one set of lines the person
-      actually edited was the set left outside the transaction.
-- [ ] **US 9 allergen profile.** The registry is the EU 14 (Regulation
-      1169/2011). A venue under FDA rules needs the US set, which overlaps but
-      is not a subset.
-- [ ] Cascade `refPercent` from product yield onto recipe lines. Deliberately
-      not done: ref % is editable per line in the ingredient grid, so
-      overwriting it would discard a chef's intentional trim override.
-- [ ] **AI recipe import.** Not started. The provider abstraction it needs
-      now exists (see the assistant, below), so this is a prompt, a preview
-      screen and the same refusal-to-invent-products rule the sheet importer
-      already enforces — not a platform decision.
-- [ ] **The assistant has never made a real network call.** Three providers
-      are wired up and the guardrails are tested, but there is no API key on
-      this machine, so the first real request will be the first real test.
-- [ ] **The WhatsApp adapter has never talked to WhatsApp.** It is written,
-      it drains its queue correctly and it was verified against real queued
-      messages in dry run — but sending needs a Meta Business account, an
-      approved message template and an access token, none of which exist.
-      Everything up to the network call is proved; the network call is not.
-- [ ] **The participant-can-read path on an HR case is untested.** The policy
-      requires both organisation membership and being named on the case, so
-      proving it needs a non-owner member and the organisation currently has
-      only an owner. The confidentiality direction — a colleague who is not a
-      participant sees nothing — is proved.
+> Every item that used to be listed here — the organisation switcher,
+> notifications, field-level audit history, the US allergen profile, the
+> `refPercent` decision, AI recipe import, the untested network calls and the
+> HR-case participant path — was also listed under "Known gaps" at the foot of
+> this document, in different words. Nine items, each written twice, and the
+> two copies had begun to disagree about what was done.
+>
+> **"Known gaps" is the list.** It was reconciled against the schema, the test
+> suite and the source on 2026-10-25, and it says which items are still true,
+> which had quietly been finished, and which was never a gap at all.
 
 ## Done earlier, up to `546abcd`
 
@@ -1195,54 +1140,170 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       add everything at or below its reorder point.
 
 ### Known gaps
-- [ ] **An employee with no HR access cannot request their own leave.**
-      Found by writing the control suite. `leave_requests` carries the People
-      section guard with no self-service carve-out, so the staff portal's
-      leave feature works only because joining an organisation seeds a CHEF
-      with WRITE on every section — restrict somebody and it stops working for
-      them. The 0057 problem in reverse: there a guard was missing, here one is
-      too broad. The fix is the shape of the `leave_attachments` owner rule.
-      Asserted as it currently behaves in `05_people.sql`, so the suite goes
-      red when it is fixed.
-- [ ] **The visual regression baselines are eight weeks stale and CI does not
-      run them.** All 15 screenshot comparisons in `visual.spec.ts` fail against
-      baselines dated 2026-08-02, because the sidebar regrouping, the empty
-      states and the two tab rails all changed what those pages render. The
-      exclusion from CI is defensible — macOS-rendered snapshots will not match
-      Linux — but it means the only thing checking them is somebody remembering
-      to, and for eight weeks nobody did. Either a Linux baseline set exists and
-      the suite runs, or it is not a check.
-- [ ] **`repository.ts` is 4.627 lines**, 9% of the front end in one file.
-      Not a bug, and the clearest structural smell in the codebase. Re-measured
-      at this head: unchanged.
-- [ ] **Two organisation trees.** `departments` (HR) and `cost_centres`
-      (money) are separate, three of five departments have no cost centre and
-      one cost centre has no department. "What did the bar spend on staff" is
-      unanswerable. See `PLATFORM.md`.
-- [ ] **No pay rate and no unit revenue anywhere in the schema.** Hours are
-      recorded; rates are not, so there is no labour cost and no unit profit
-      and loss.
-- [ ] **Never deployed**, and `DEPLOY.md` is still untested. `vercel.json` now
-      says what to build, which was the missing half; the other half is two
-      account settings nobody with repository access can make. The failure mode
-      to watch for is a build that succeeds without the environment variables
-      and serves the mock catalogue as though it were real data.
-- [ ] **The control suite covers five areas, not every control.** Costing,
-      allergens, traceability and the vendor portal have no file in
-      `supabase/tests/`; their controls are recorded in this document as proved
-      once, by hand, which is the state the suite exists to end.
-- [ ] Realtime sync was built, could not be made to work, and was deliberately
-      reverted rather than shipped. Undiagnosed.
-- [ ] The WhatsApp and email adapters have never made a real network call,
-      and neither has the assistant.
-- [ ] Written-answer marking has schema and no screen.
+> **Reconciled against the tree on 2026-10-25.** Every item below was checked
+> against the schema, the test suite and the source rather than re-read. Eight
+> were stale — done, and never ticked — and two pairs were the same item
+> written twice in different sections. The stale ones are kept, struck through
+> with what actually shipped, because a list that silently loses an item
+> teaches nobody why it was there.
+>
+> The pattern worth noticing: every stale item was closed by work that had its
+> own commit and its own tests, and nothing came back here afterwards. This
+> document is written as the work happens and is therefore accurate about the
+> day it was written and nothing else. **If you are deciding what to do next,
+> verify before you start** — that is what this pass cost, and it is cheaper
+> than building something twice.
+
+### Still true
+
+- [ ] **Realtime sync does not work and was deliberately reverted.** Reads
+      are hydrate-once at startup plus a refresh when the tab regains focus,
+      so a colleague's edit made while you are watching the same screen does
+      not appear on its own.
+
+      Backed out rather than shipped, because a sync that silently delivers
+      nothing is worse than none: it invites people to trust a screen that is
+      quietly stale, which is a costing error waiting to happen. What was
+      established, for whoever picks it up:
+
+      * The tables must be in the `supabase_realtime` publication, and need
+        `replica identity full` so row-level security can filter deletes.
+      * The socket needs the session token via `realtime.setAuth()`. It is a
+        separate connection from the REST client and does not inherit it;
+        without it every change is filtered out by RLS.
+      * The realtime service caches the publication at boot, so it has to be
+        restarted after the publication changes.
+      * With all three done the channel subscribes without error and still
+        delivers no events. Not diagnosed further.
+
+      Verified along the way that the fetch path itself is fine: a change made
+      directly in the database appears immediately on reload.
+- [ ] **Organization switcher.** Verified absent: nothing in `pages/` or
+      `components/` reads `auth_org_ids()` to offer a choice. A user genuinely
+      in two organisations still cannot switch.
+- [ ] **Field-level audit history.** The append-only ledgers cover stock
+      movements, recipe status, approvals, time, pay and AI usage. Everything
+      else records current state only, so "who changed this price, and when"
+      is answerable for those and not in general.
+- [ ] **US 9 allergen profile.** Verified: `lib/allergens.ts` is the EU 14 of
+      Regulation 1169/2011. A venue under FDA rules needs the US set, which
+      overlaps but is not a subset.
+- [ ] **AI recipe import.** Verified absent: `engine/ai/` has `client`,
+      `providers`, `safety`, `tasks` and `types`, and no importer. The
+      provider abstraction it needs exists, so this is a prompt, a preview
+      screen and the sheet importer's refusal-to-invent-products rule — not a
+      platform decision.
+- [ ] **The assistant, WhatsApp and email have never made a real network
+      call.** The guardrails are tested and the outbox drains correctly in dry
+      run; what is unproved is the call itself, which needs keys and a Meta
+      Business account that do not exist. *(Was listed three times across two
+      sections. One item now.)*
+- [ ] **The participant-can-read path on an HR case is untested.** Verified:
+      `31_the_four_defects.sql` proves the refusal direction — a colleague who
+      is not a participant sees nothing — and nothing asserts that a named
+      participant *can* read. Proving it needs a non-owner member on a case.
+- [ ] **Written-answer marking has schema and no screen.** Verified:
+      `quiz_questions` carries `kind`, `model_answer` and `points`, and no
+      file in `apps/web/src` reads `model_answer`.
+- [ ] **The visual suite still does not run in CI.** Half of this item was
+      true and half was not — see the struck-through entry below. The
+      baselines are current; nothing automated checks them. The exclusion is
+      defensible, because macOS-rendered snapshots will not match Linux, but
+      it means the only thing checking them is somebody remembering to. Either
+      a Linux baseline set exists and the suite runs, or it is not a check.
+- [ ] Cascade `refPercent` from product yield onto recipe lines. **A decision,
+      not a gap**, and it has been sitting in a list of gaps. Ref % is
+      editable per line in the ingredient grid, so cascading it would discard
+      a chef's intentional trim override. `cascade.ts:161` says so in the
+      code. It stays undone on purpose.
+
+### Was listed as a gap, and is not one any more
+
+- [x] ~~An employee with no HR access cannot request their own leave.~~
+      `leave_requests` now carries `leave_requests_own` and
+      `leave_requests_own_insert` alongside the section policies, which is the
+      `leave_attachments` owner shape the item asked for. The portal's
+      `requestLeave` goes through it.
+- [x] ~~The visual regression baselines are eight weeks stale.~~ Regenerated,
+      and rebound to a database `supabase/seed_local_demo.sh` can rebuild —
+      they used to be screenshots of a state nobody could reproduce. 32
+      baselines, all passing. The date in the page header is masked, because
+      a baseline carrying today's date can only ever match on the day it was
+      taken. **CI still does not run them**, which is the half that survives
+      above.
+- [x] ~~`repository.ts` is 4,627 lines, 9% of the front end in one file.~~
+      It is 31 lines — a re-export barrel over 23 modules split by area.
+- [x] ~~Two organisation trees.~~ Unified onto `business_units`.
+      `departments` is a view over it that returns `id AS cost_centre_id`, so
+      the two trees are one tree seen twice. "What did the bar spend on
+      staff" is answerable: `unit_labour_against_revenue`, and
+      `unit_profit_daily` beside it.
+- [x] ~~No pay rate and no unit revenue anywhere in the schema.~~ `pay_rates`
+      (0064), `daily_takings` (0065), `labour_cost_daily`, `unit_profit_daily`,
+      and payroll runs that export to a file (0114), scoped by department
+      (0116).
+- [x] ~~Never deployed, and `DEPLOY.md` is untested.~~ Vercel builds and
+      deploys every pull request; the deployment check is green on #15. The
+      failure mode the item named — a build succeeding without environment
+      variables and serving the mock catalogue as real data — is still worth
+      watching for and nothing asserts against it.
+- [x] ~~The control suite covers five areas, not every control.~~ 58 files,
+      1,307 checks, run on a schema rebuilt from empty on every push.
+      Costing, allergens, traceability and the portal all have files now.
+- [x] ~~The avatar is one tint rather than a colour per person.~~ Six
+      `--avatar-tint-*` tokens in `index.css`, hashed from the whole name so
+      colliding initials differ, measured 10,1:1 to 12,2:1 against their own
+      initials in both themes.
+
+### Not a gap, a correction to this document
+
+- The **notifications** item said "nothing is sent anywhere" and that every
+  case "needs a channel decision before it can be built". The machinery was
+  built: `message_channels`, `message_channel_secrets`, `message_deliveries`
+  with retry and backoff, an origin allow-list, `drain_outbox()`,
+  `notification_preferences` (0105) and a WhatsApp adapter. What is missing is
+  narrower than the item claimed — a live channel and a real network call,
+  which is the item above.
 
 ## Open questions for the user
-(Updated after competitive analysis pass #1 — see `docs/COMPETITIVE_ANALYSIS.md`)
-- Accounting: recommend QuickBooks + Xero at launch, Zoho Books as secondary. Confirm.
-- Payments: recommend NOT building this — integrate with POS instead (industry norm).
-  Which POS system(s) should be first-priority integrations?
-- Staff management: recommend scoping to scheduling/labor forecasting only, integrating
-  out to a real payroll provider rather than building payroll. Confirm scope.
-- Confirm target launch market(s) — affects tax/currency/compliance defaults (VAT vs.
-  Indonesian PPN, UAE WPS payroll compliance vs. Indonesian equivalents).
+
+Three of these block work that is otherwise ready to start. They are
+questions rather than recommendations because guessing produces something
+that has to be unbuilt, and unbuilding an integration is more expensive than
+waiting for an answer.
+
+### Blocking
+
+- **Notification channel.** The outbox, retry, backoff, origin allow-list and
+  per-person preferences are all built and tested; the WhatsApp adapter
+  drains its queue correctly in dry run. Nothing has ever been sent, because
+  sending needs a decision and then credentials: WhatsApp Business via Meta
+  (an approved template and a business account), email via a transactional
+  provider, or both. **Which, and whose account?** Until that is answered an
+  invitation is not emailed, an approval request does not reach the approver,
+  and a purchase order marked "ordered" transmits nothing to the supplier.
+- **Deployment target.** Vercel builds and deploys every pull request, so the
+  front end has a home. What has never been decided is where the *database*
+  lives in production — a hosted Supabase project, self-hosted Postgres, or
+  the existing project promoted. The failure mode to watch for either way is
+  a build that succeeds without environment variables and serves the mock
+  catalogue as though it were real data; nothing asserts against that yet.
+- **POS and accounting.** Named here rather than guessed at. Earlier passes
+  of this document carried recommendations — QuickBooks and Xero at launch,
+  Zoho Books secondary, integrate payments through a POS rather than
+  building them — and those are reasonable opening positions, but none of
+  them is a decision and none should be built against until one is. **Which
+  POS first?** is the question that actually gates work, because the sales
+  import already exists and has no counterpart to import from.
+
+### Not blocking, but worth answering before the pricing is printed
+
+- **Target launch markets**, which set the tax, currency and compliance
+  defaults — VAT against Indonesian PPN, UAE WPS payroll rules against the
+  Indonesian equivalents. The schema is market-neutral today and the
+  regulations it encodes are EU; a venue outside the EU inherits rules that
+  may not be theirs.
+- **The name**, **the pricing model**, and **bring-your-own-key against the
+  platform key** — all three have written recommendations in
+  `docs/commercial/`. The AI key question is built both ways and needs no
+  further decision to ship; the other two are yours.
