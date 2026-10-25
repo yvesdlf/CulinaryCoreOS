@@ -940,10 +940,26 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       movements and approvals are append-only ledgers. Everything else records
       only its current state, so "who changed this price, and when" is not
       answerable outside those three.
-- [ ] **The primary entity's own UPDATE is still a separate request from the
-      cascade RPC.** The fan-out commits or does not; the row that triggered it
-      is written separately, leaving a small window where one succeeded and the
-      other did not.
+- [x] **The primary entity's own UPDATE is folded into the cascade RPC**
+      (0117). It was a second, independent request dispatched without waiting,
+      so either could commit while the other failed.
+
+      The self-concealing direction is the cascade landing without it: the
+      recipes carry the new cost, the ingredient page still shows the old
+      price, and the arithmetic stops reconciling with no edit behind it.
+      Nothing on screen contradicts that, so it is found weeks later by
+      somebody checking a dish against its ingredient.
+
+      `apply_cascade` takes a third argument now and the two-argument version
+      is dropped rather than left beside it — a safe route nobody is forced
+      onto is a route somebody misses. Nothing about *what* gets written
+      changed: the client sends the same mapped row it was sending to
+      PostgREST, and the optimistic-concurrency check behaves as it did.
+
+      A sub-recipe's own lines travel with it, because a sub-recipe is not
+      downstream of itself — `getDependents` starts its frontier at the
+      entity and collects what uses it — so the one set of lines the person
+      actually edited was the set left outside the transaction.
 - [ ] **US 9 allergen profile.** The registry is the EU 14 (Regulation
       1169/2011). A venue under FDA rules needs the US set, which overlaps but
       is not a subset.

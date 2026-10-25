@@ -321,13 +321,62 @@ function linesToJson(lines: Recipe["ingredientLines"]) {
  * reporting success. Optional fields make that class of mistake typecheck
  * cleanly, which is why the values below are read from required ones.
  */
+/*
+ * The row mappers, exposed so the persistence layer can build a cascade
+ * payload that writes exactly what the separate UPDATE used to write.
+ *
+ * Re-exported under names that say which direction they go, rather than
+ * opening `mappers` to the rest of the app: everything else in that module
+ * is about reading rows, and this is the one place that needs the inverse.
+ */
+export function productChangesToRow(changes: Partial<Product>): Record<string, unknown> {
+  return productToRow(changes) as Record<string, unknown>;
+}
+
+export function subRecipeChangesToRow(changes: Partial<SubRecipe>): Record<string, unknown> {
+  return subRecipeToRow(changes) as Record<string, unknown>;
+}
+
+export function ingredientLinesToJson(lines: SubRecipe["ingredientLines"]): unknown[] {
+  return linesToJson(lines);
+}
+
+/**
+ * The row whose edit started the cascade.
+ *
+ * It travels with the fan-out rather than beside it. Before 0117 it was a
+ * second, independent request and either could commit while the other
+ * failed — and the self-concealing direction is the cascade landing without
+ * it, because the recipes then carry a cost the ingredient does not show.
+ */
+export interface CascadePrimary {
+  entity: "product" | "sub_recipe";
+  id: string;
+  /** The same mapped row that used to go to PostgREST, unchanged. */
+  row: Record<string, unknown>;
+  /** Optimistic concurrency, where the editor loaded one. */
+  expectedVersion?: number;
+  /** A sub-recipe's own lines, which are not downstream of itself. */
+  lines?: unknown[];
+}
+
 export async function persistCascade(
   subRecipes: SubRecipe[],
   recipes: Recipe[],
+  primary?: CascadePrimary,
 ): Promise<void> {
-  if (subRecipes.length === 0 && recipes.length === 0) return;
+  if (subRecipes.length === 0 && recipes.length === 0 && !primary) return;
 
   const { error } = await requireSupabase().rpc("apply_cascade", {
+    p_primary: primary
+      ? {
+          entity: primary.entity,
+          id: primary.id,
+          row: primary.row,
+          expected_version: primary.expectedVersion ?? null,
+          ...(primary.lines ? { lines: primary.lines } : {}),
+        }
+      : null,
     p_sub_recipes: subRecipes.map((s) => ({
       id: s.id,
       total_cost: s.totalCost,
@@ -356,7 +405,17 @@ export async function persistCascade(
       lines: linesToJson(r.ingredientLines),
     })),
   });
-  if (error) fail("persistCascade", error);
+  if (error) {
+    // 40001 is what `apply_cascade` raises when the version predicate matched
+    // nothing: the row moved on under the editor, which the UI answers by
+    // offering a reload rather than by reporting a failure.
+    if ((error as { code?: string }).code === "40001") {
+      throw new ConflictError(
+        primary?.entity === "sub_recipe" ? "sub recipe" : "product",
+      );
+    }
+    fail("persistCascade", error);
+  }
 }
 
 // ── Merging duplicates ──────────────────────────────────────────────────────

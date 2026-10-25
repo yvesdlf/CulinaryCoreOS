@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import type { Product, SubRecipe, Recipe } from "@ccos/shared";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import * as repo from "@/data/repository";
-import { ConflictError } from "@/data/repository";
+import { ConflictError, type CascadePrimary } from "@/data/repository";
 import { cascadeFrom, type Dependents } from "@/engine/cascade";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
@@ -138,8 +138,19 @@ async function doHydrate(): Promise<void> {
 
 // ── Write-through actions ───────────────────────────────────────────────────
 
-/** Apply the cascade locally, then persist whatever it touched. */
-function applyAndPersistCascade(entityId: string): Dependents {
+/**
+ * Apply the cascade locally, then persist it — with the row that caused it.
+ *
+ * `primary` goes into the same RPC call rather than a second request. Before
+ * 0117 the two were dispatched independently and either could fail alone:
+ * the cascade landing without the product update is the self-concealing
+ * direction, because every recipe then carries a cost the ingredient page
+ * does not show, and the arithmetic stops reconciling with no edit behind it.
+ */
+function applyAndPersistCascade(
+  entityId: string,
+  primary?: CascadePrimary,
+): Dependents {
   const { subRecipes, recipes, affected } = cascadeFrom(entityId, {
     products: useProductStore.getState().products,
     subRecipes: useSubRecipeStore.getState().subRecipes,
@@ -153,16 +164,20 @@ function applyAndPersistCascade(entityId: string): Dependents {
     useRecipeStore.setState({ recipes });
   }
 
-  if (isSupabaseConfigured && (affected.subRecipeIds.length || affected.recipeIds.length)) {
+  if (isSupabaseConfigured) {
     const touchedSubs = subRecipes.filter((s) =>
       affected.subRecipeIds.includes(s.id),
     );
     const touchedRecipes = recipes.filter((r) =>
       affected.recipeIds.includes(r.id),
     );
-    void repo
-      .persistCascade(touchedSubs, touchedRecipes)
-      .catch((err) => reportWriteFailure("persistCascade", err));
+    // Sent even when nothing is downstream: the primary row still has to be
+    // written, and it is now this call that writes it.
+    if (primary || touchedSubs.length || touchedRecipes.length) {
+      void repo
+        .persistCascade(touchedSubs, touchedRecipes, primary)
+        .catch((err) => reportWriteFailure("persistCascade", err));
+    }
   }
 
   return affected;
@@ -181,14 +196,13 @@ export async function createProduct(
 
 export function saveProduct(id: string, changes: Partial<Product>): Dependents {
   useProductStore.getState().update(id, changes);
-  const affected = applyAndPersistCascade(id);
-
-  if (isSupabaseConfigured) {
-    void repo
-      .updateProduct(id, changes)
-      .catch((err) => reportWriteFailure("updateProduct", err));
-  }
-  return affected;
+  // One request. The product's own row is part of the cascade payload, so it
+  // commits with everything it re-costs or not at all.
+  return applyAndPersistCascade(id, {
+    entity: "product",
+    id,
+    row: repo.productChangesToRow(changes),
+  });
 }
 
 export async function createSubRecipe(
@@ -237,14 +251,21 @@ export function saveSubRecipe(
   expectedVersion?: number,
 ): Dependents {
   useSubRecipeStore.getState().update(id, changes);
-  const affected = applyAndPersistCascade(id);
-
-  if (isSupabaseConfigured) {
-    void repo
-      .updateSubRecipe(id, changes, expectedVersion)
-      .catch((err) => reportWriteFailure("updateSubRecipe", err));
-  }
-  return affected;
+  /*
+   * The lines go with it. A sub-recipe is not downstream of itself —
+   * `getDependents` starts its frontier at the entity and collects what uses
+   * it — so the one set of lines the person actually edited is the set the
+   * cascade would otherwise leave out.
+   */
+  return applyAndPersistCascade(id, {
+    entity: "sub_recipe",
+    id,
+    row: repo.subRecipeChangesToRow(changes),
+    expectedVersion,
+    ...(changes.ingredientLines
+      ? { lines: repo.ingredientLinesToJson(changes.ingredientLines) }
+      : {}),
+  });
 }
 
 // ── Removal ─────────────────────────────────────────────────────────────────
