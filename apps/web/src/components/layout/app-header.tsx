@@ -16,6 +16,7 @@ import { CommandPalette } from "./command-palette";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth-store";
 import { currentTheme, setTheme } from "@/lib/theme";
+import { VenuePicker } from "@/components/layout/venue-picker";
 
 const routeLabels: Record<string, string> = {
   "": "Dashboard",
@@ -164,6 +165,9 @@ export function AppHeader() {
         </p>
 
         <div className="flex items-center gap-1">
+          {/* Only appears for somebody who belongs to more than one. */}
+          <VenuePicker />
+
           {/* Which kitchen's data is on screen — RLS makes this the boundary
               of everything visible, so it is worth showing explicitly. */}
           {activeOrg && (

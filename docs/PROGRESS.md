@@ -1178,9 +1178,23 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 
       Verified along the way that the fetch path itself is fine: a change made
       directly in the database appears immediately on reload.
-- [ ] **Organization switcher.** Verified absent: nothing in `pages/` or
-      `components/` reads `auth_org_ids()` to offer a choice. A user genuinely
-      in two organisations still cannot switch.
+- [x] **Organization switcher** (0118). `member_preferences.active_org_id`,
+      read by `auth_default_org_id()` — which is the point. That function is
+      what `set_org_id()` stamps new rows with, so a switcher built in the
+      client would have filtered the screen and left every write landing in
+      the venue the database picked. The test writes a row after switching
+      and checks which venue it went to; without the database half, it lands
+      in the wrong one.
+
+      The preference is checked against membership every time it is read,
+      not only when it is set. Somebody removed from a venue they had
+      selected would otherwise keep writing into it, with no cleanup job and
+      a window as long as the row lives. A preference naming a venue they
+      have left falls back to the existing order rather than failing — being
+      shown the venue you still work at beats an application that refuses to
+      load.
+
+      The picker appears only for somebody who belongs to more than one.
 - [ ] **Field-level audit history.** The append-only ledgers cover stock
       movements, recipe status, approvals, time, pay and AI usage. Everything
       else records current state only, so "who changed this price, and when"

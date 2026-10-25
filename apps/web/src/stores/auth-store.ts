@@ -35,6 +35,15 @@ interface AuthState {
   error: string | null;
 
   initialize: () => Promise<void>;
+  /**
+   * Work in a different venue.
+   *
+   * The choice is stored in the database rather than here, because
+   * `auth_default_org_id()` is what `set_org_id()` stamps new rows with — a
+   * switcher that only changed this store would leave every write landing in
+   * the venue the database picked, and nothing on screen would say so.
+   */
+  switchVenue: (orgId: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, orgName?: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -63,12 +72,42 @@ async function loadOrganizations(): Promise<Organization[]> {
     }));
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   organizations: [],
   activeOrg: null,
   loading: true,
   error: null,
+
+  switchVenue: async (orgId) => {
+    if (!isSupabaseConfigured) return;
+    const { organizations, activeOrg } = get();
+    if (activeOrg?.id === orgId) return;
+
+    // The database decides, and returns what is now in force — which is not
+    // always what was asked for, since it refuses a venue you have left.
+    const { data: nowActive, error } = await supabase!.rpc("set_active_org", {
+      p_org: orgId,
+    });
+    if (error) throw new Error(error.message);
+
+    set({
+      activeOrg:
+        organizations.find((o) => o.id === nowActive) ?? get().activeOrg,
+    });
+
+    /*
+     * Everything on screen belongs to the venue that was active a moment
+     * ago. Re-read it all rather than clearing selectively: row-level
+     * security scopes every table, so there is no part of the catalogue,
+     * the access grid or the venue settings that survives a switch.
+     */
+    await Promise.all([
+      hydrateFromSupabase(),
+      useAccessStore.getState().load(),
+      useVenueStore.getState().load(),
+    ]);
+  },
 
   initialize: async () => {
     if (!isSupabaseConfigured) {
