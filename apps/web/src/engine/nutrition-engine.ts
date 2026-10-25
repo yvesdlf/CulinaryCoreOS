@@ -210,7 +210,7 @@ export function deriveSubRecipeNutrition(
  * Resolution goes through the EU14 registry rather than matching literal
  * strings. This previously tested for "gluten" and "dairy", which are aliases
  * and not what anything actually stores: the real catalogue carries
- * EU14_GLUTEN_CEREALS and EU14_MILK, so every imported dish claimed to be
+ * GLUTEN_CEREALS and MILK, so every imported dish claimed to be
  * gluten-free and dairy-free no matter what was in it.
  *
  * An allergen we cannot map fails every claim closed. "Free from" is an
@@ -233,13 +233,13 @@ export function deriveDietaryFlags(allergens: string[]): {
     !anyUnknown && !of.some((id) => ids.has(id));
 
   return {
-    glutenFree: free("EU14_GLUTEN_CEREALS"),
-    dairyFree: free("EU14_MILK"),
+    glutenFree: free("GLUTEN_CEREALS"),
+    dairyFree: free("MILK"),
     // Legally distinct allergens, but one colloquial claim: "nut free" is
     // untrue if either is present.
-    nutsFree: free("EU14_TREE_NUTS", "EU14_PEANUTS"),
-    soyFree: free("EU14_SOYBEANS"),
-    sulfitesFree: free("EU14_SULPHITES"),
+    nutsFree: free("TREE_NUTS", "PEANUTS"),
+    soyFree: free("SOYBEANS"),
+    sulfitesFree: free("SULPHITES"),
   };
 }
 
@@ -250,7 +250,7 @@ export function deriveDietaryFlags(allergens: string[]): {
  * so does everything built on it.
  *
  * Values are canonicalised to registry ids on the way through, so a product
- * declaring "dairy" and one declaring "EU14_MILK" collapse to one entry instead
+ * declaring "dairy" and one declaring "MILK" collapse to one entry instead
  * of showing the same allergen twice. Anything unmappable is kept verbatim —
  * dropping a declaration we do not understand is a safety failure.
  */

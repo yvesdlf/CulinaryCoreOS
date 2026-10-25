@@ -176,11 +176,20 @@ export interface NutritionProposal {
   note: string | null;
 }
 
+/*
+ * The substances a model may name, matching `allergen_substances` (0119).
+ *
+ * `WHEAT` sits beside `GLUTEN_CEREALS` deliberately: a label that says wheat
+ * is more specific than one that says a gluten cereal, and the United States
+ * declares the first while the EU declares the second. A model that can read
+ * "wheat flour" off a packet should be able to say so rather than being
+ * forced up to the family.
+ */
 const ALLERGEN_IDS = [
-  "EU14_CELERY", "EU14_GLUTEN_CEREALS", "EU14_CRUSTACEANS", "EU14_EGGS",
-  "EU14_FISH", "EU14_LUPIN", "EU14_MILK", "EU14_MOLLUSCS", "EU14_MUSTARD",
-  "EU14_PEANUTS", "EU14_SESAME", "EU14_SOYBEANS", "EU14_SULPHITES",
-  "EU14_TREE_NUTS",
+  "CELERY", "GLUTEN_CEREALS", "WHEAT", "CRUSTACEANS", "EGGS",
+  "FISH", "LUPIN", "MILK", "MOLLUSCS", "MUSTARD",
+  "PEANUTS", "SESAME", "SOYBEANS", "SULPHITES",
+  "TREE_NUTS",
 ];
 
 export function nutritionRequest(productName: string, images?: string[]): AiRequest {

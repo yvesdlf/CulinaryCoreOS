@@ -34,10 +34,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { allergenNames } from "@/lib/allergens";
 import {
   fetchPrepLabel, recordLabelPrint, type PrepLabel,
 } from "@/data/labels";
+import {
+  fetchVenueProfile, allergensUnderProfile, type DeclaredAllergen,
+} from "@/data/allergen-profiles";
 
 function said(err: unknown): string {
   const text = err instanceof Error ? err.message : String(err);
@@ -53,13 +55,24 @@ function longDate(iso: string): string {
 export function LabelPrintPage() {
   const { id } = useParams<{ id: string }>();
   const [label, setLabel] = useState<PrepLabel | null>(null);
+  const [declared, setDeclared] = useState<DeclaredAllergen[]>([]);
   const [loading, setLoading] = useState(true);
   const [copies, setCopies] = useState("1");
 
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      setLabel(await fetchPrepLabel(id));
+      const found = await fetchPrepLabel(id);
+      setLabel(found);
+      if (found) {
+        /*
+         * The venue's profile decides the wording, not this file. A US venue
+         * prints "Crustacean shellfish" where an EU one prints
+         * "Crustaceans", and the written name is the legally meaningful text.
+         */
+        const profile = await fetchVenueProfile();
+        setDeclared(await allergensUnderProfile(profile, found.allergens));
+      }
     } catch (err) {
       toast.error("Could not load the label", { description: said(err) });
     } finally {
@@ -92,6 +105,20 @@ export function LabelPrintPage() {
 
   const count = Math.max(1, Math.min(50, Number(copies) || 1));
 
+  /*
+   * Falls back to the raw list if the profile could not be read, so a label
+   * never prints fewer allergens than the record holds because a lookup
+   * failed.
+   */
+  const mustDeclare = declared.length > 0
+    ? declared.filter((d) => d.declared)
+    : label.allergens.map((a) => ({
+        substanceId: a, substanceName: a, declared: true,
+        declaredAs: null, overInclusive: false,
+        overInclusiveNote: null, recognised: false,
+      }) as DeclaredAllergen);
+  const alsoPresent = declared.filter((d) => !d.declared);
+
   async function print() {
     if (!label) return;
     try {
@@ -102,7 +129,12 @@ export function LabelPrintPage() {
         productionRecordId: label.productionRecordId,
         copies: count,
         useBy: label.useBy,
-        allergensShown: label.allergens,
+        // What the sticker said, in the words it said them — not the
+        // substance ids. A recall needs to know what somebody read.
+        allergensShown: [
+          ...mustDeclare.map((d) => d.declaredAs ?? d.substanceName),
+          ...alsoPresent.map((d) => d.substanceName),
+        ],
         allergensWereUnverified: label.allergensNeedReview,
       });
     } catch (err) {
@@ -176,12 +208,35 @@ export function LabelPrintPage() {
             {/*
               * The written name, never a code or an icon on its own — that is
               * the rule in AGENTS.md §8 and it comes from 1169/2011.
+              *
+              * Declared and present-but-not-declarable are two different
+              * lines, because they are two different statements. Celery is
+              * not a regulated allergen in the United States and is still in
+              * the food; printing it among the declarations would overstate
+              * the law, and leaving it off the sticker entirely would be the
+              * silence §8 forbids.
               */}
             <p className="text-xs font-semibold">
-              {label.allergens.length === 0
+              {mustDeclare.length === 0
                 ? "No allergens found"
-                : `Allergens: ${allergenNames(label.allergens).join(", ")}`}
+                : `Allergens: ${mustDeclare
+                    .map((d) => d.declaredAs ?? d.substanceName)
+                    .join(", ")}`}
             </p>
+            {alsoPresent.length > 0 && (
+              <p className="text-[10px] leading-tight">
+                Also contains:{" "}
+                {alsoPresent.map((d) => d.substanceName).join(", ")}
+              </p>
+            )}
+            {mustDeclare.some((d) => d.overInclusive) && (
+              // The record says a cereal containing gluten and this profile
+              // declares wheat. Over-declaring is the safe direction, and the
+              // sticker says it is a precaution rather than a reading.
+              <p className="text-[10px] leading-tight">
+                Declared as a precaution — the record does not say which cereal.
+              </p>
+            )}
             {label.allergens.length === 0 && (
               // Not "contains no allergens". Silence in a catalogue is not a
               // free-from claim, and the difference is the whole of §8.

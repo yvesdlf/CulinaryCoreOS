@@ -37,7 +37,7 @@ import { useRecipeStore } from "@/stores/recipe-store";
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { findUnverifiedAllergens } from "@/engine/allergen-review";
-import { EU14_ALLERGENS, resolveAllergens } from "@/lib/allergens";
+import { ALLERGEN_SUBSTANCES, resolveAllergens } from "@/lib/allergens";
 import { toCsv, downloadCsv, datedFilename } from "@/lib/csv";
 import { AllergenGlyph } from "@/components/shared/allergen-glyph";
 
@@ -53,7 +53,7 @@ export function AllergenMatrixPage() {
       .filter((r) => !q || r.name.toLowerCase().includes(q) || r.category.toLowerCase().includes(q))
       .map((recipe) => {
         // Resolved rather than compared raw: a product declaring "dairy" and
-        // one declaring EU14_MILK must land in the same column.
+        // one declaring MILK must land in the same column.
         const resolved = resolveAllergens(recipe.allergens);
         return {
           recipe,
@@ -89,12 +89,12 @@ export function AllergenMatrixPage() {
     downloadCsv(
       datedFilename("ccos-allergen-matrix"),
       toCsv(
-        ["Dish", "Category", ...EU14_ALLERGENS.map((a) => a.name),
+        ["Dish", "Category", ...ALLERGEN_SUBSTANCES.map((a) => a.name),
          "Also declared", "Ingredients to verify"],
         rows.map(({ recipe, ids, unmapped, unverified }) => [
           recipe.name,
           recipe.category,
-          ...EU14_ALLERGENS.map((a) => (ids.has(a.id) ? "Yes" : "")),
+          ...ALLERGEN_SUBSTANCES.map((a) => (ids.has(a.id) ? "Yes" : "")),
           unmapped.join("; "),
           unverified,
         ]),
@@ -162,7 +162,7 @@ export function AllergenMatrixPage() {
           <TableRow>
             <TableHead className="min-w-[14rem]">Dish</TableHead>
             <TableHead>Category</TableHead>
-            {EU14_ALLERGENS.map((a) => (
+            {ALLERGEN_SUBSTANCES.map((a) => (
               <TableHead key={a.id} className="text-center">
                 {/*
                   The code is what fits; the name is what counts. Visible text
@@ -187,7 +187,7 @@ export function AllergenMatrixPage() {
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
-            <TableCell colSpan={EU14_ALLERGENS.length + 3} className="h-24 text-center text-muted-foreground">
+            <TableCell colSpan={ALLERGEN_SUBSTANCES.length + 3} className="h-24 text-center text-muted-foreground">
               No dishes match.
             </TableCell>
           ) : (
@@ -205,7 +205,7 @@ export function AllergenMatrixPage() {
                   {recipe.category}
                 </TableCell>
 
-                {EU14_ALLERGENS.map((a) => {
+                {ALLERGEN_SUBSTANCES.map((a) => {
                   const present = ids.has(a.id);
                   return (
                     <TableCell key={a.id} className="text-center">
@@ -255,7 +255,7 @@ export function AllergenMatrixPage() {
           Key
         </h2>
         <dl className="grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2 lg:grid-cols-3">
-          {EU14_ALLERGENS.map((a) => (
+          {ALLERGEN_SUBSTANCES.map((a) => (
             <div key={a.id} className="flex gap-2">
               <dt className="flex w-14 shrink-0 items-center gap-1.5 font-medium">
                 <AllergenGlyph id={a.id} className="size-3.5" />

@@ -48,17 +48,17 @@ const line = (l: { productId?: string; subRecipeId?: string }) => ({
 
 describe("attribution", () => {
   const products = [
-    product("flour", ["EU14_GLUTEN_CEREALS"]),
+    product("flour", ["GLUTEN_CEREALS"]),
     product("butter", ["dairy"]),
     product("salt", []),
   ];
-  const subRecipes = [sub("Roux", ["EU14_GLUTEN_CEREALS", "EU14_MILK"], [{ productId: "flour" }, { productId: "butter" }])];
+  const subRecipes = [sub("Roux", ["GLUTEN_CEREALS", "MILK"], [{ productId: "flour" }, { productId: "butter" }])];
 
   it("credits an allergen to the ingredient that carries it", () => {
     const out = allergenBreakdown([line({ productId: "flour" })], { products, subRecipes });
     expect(out).toHaveLength(1);
     expect(out[0].name).toBe("flour");
-    expect(out[0].allergens).toEqual(["EU14_GLUTEN_CEREALS"]);
+    expect(out[0].allergens).toEqual(["GLUTEN_CEREALS"]);
   });
 
   it("names what inside a preparation brings it", () => {
@@ -70,7 +70,7 @@ describe("attribution", () => {
 
   it("canonicalises, so an alias does not read as a separate allergen", () => {
     const out = allergenBreakdown([line({ productId: "butter" })], { products, subRecipes });
-    expect(out[0].allergens).toEqual(["EU14_MILK"]);
+    expect(out[0].allergens).toEqual(["MILK"]);
   });
 
   it("omits lines that carry nothing, so the ones that matter stay visible", () => {

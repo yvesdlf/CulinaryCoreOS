@@ -60,7 +60,7 @@ describe("suggestForProduct", () => {
     expect(s).not.toBeNull();
     expect(s!.source).toBe("Butter");
     expect(s!.nutrition.kcal).toBe(717);
-    expect(s!.allergens).toEqual(["EU14_MILK"]);
+    expect(s!.allergens).toEqual(["MILK"]);
   });
 
   it("always marks an allergen suggestion as needing review", () => {
@@ -95,16 +95,16 @@ describe("suggestForProduct", () => {
     // Brewed soy sauce is wheat-based, which is the classic allergen that gets
     // missed because the name does not say so.
     const s = suggestForProduct("Soy Sauce");
-    expect(s!.allergens).toContain("EU14_SOYBEANS");
-    expect(s!.allergens).toContain("EU14_GLUTEN_CEREALS");
+    expect(s!.allergens).toContain("SOYBEANS");
+    expect(s!.allergens).toContain("GLUTEN_CEREALS");
   });
 
   it("gives a copy, so accepting one product cannot mutate the table", () => {
     const a = suggestForProduct("Butter")!;
-    a.allergens.push("EU14_PEANUTS");
+    a.allergens.push("PEANUTS");
     a.nutrition.kcal = 1;
     const b = suggestForProduct("Butter")!;
-    expect(b.allergens).toEqual(["EU14_MILK"]);
+    expect(b.allergens).toEqual(["MILK"]);
     expect(b.nutrition.kcal).toBe(717);
   });
 });
@@ -114,10 +114,10 @@ describe("the reference table itself", () => {
     // A typo here would silently drop an allergen from every product that
     // takes its suggestion.
     const known = new Set([
-      "EU14_CELERY", "EU14_GLUTEN_CEREALS", "EU14_CRUSTACEANS", "EU14_EGGS",
-      "EU14_FISH", "EU14_LUPIN", "EU14_MILK", "EU14_MOLLUSCS", "EU14_MUSTARD",
-      "EU14_PEANUTS", "EU14_SESAME", "EU14_SOYBEANS", "EU14_SULPHITES",
-      "EU14_TREE_NUTS",
+      "CELERY", "GLUTEN_CEREALS", "CRUSTACEANS", "EGGS",
+      "FISH", "LUPIN", "MILK", "MOLLUSCS", "MUSTARD",
+      "PEANUTS", "SESAME", "SOYBEANS", "SULPHITES",
+      "TREE_NUTS",
     ]);
     for (const food of REFERENCE_FOODS) {
       for (const a of food.allergens) {
@@ -128,7 +128,7 @@ describe("the reference table itself", () => {
 
   it("declares milk on every dairy entry", () => {
     for (const food of REFERENCE_FOODS.filter((f) => f.group === "Dairy")) {
-      expect(food.allergens, food.name).toContain("EU14_MILK");
+      expect(food.allergens, food.name).toContain("MILK");
     }
   });
 

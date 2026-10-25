@@ -192,7 +192,7 @@ describe("cascade re-costing", () => {
   it("carries an allergen up through nesting to the dish", () => {
     // The seeded catalogue had allergens on 352 products and on nothing built
     // from them, because derivation only ran when a human saved a detail page.
-    const products = [{ ...product("flour", "10"), allergens: ["EU14_GLUTEN_CEREALS"] }];
+    const products = [{ ...product("flour", "10"), allergens: ["GLUTEN_CEREALS"] }];
     const subRecipes = [
       sub("dough", [line({ productId: "flour" })], 100),
       sub("base", [line({ subRecipeId: "dough" })], 100),
@@ -200,9 +200,9 @@ describe("cascade re-costing", () => {
     const recipes = [recipe("pizza", [line({ subRecipeId: "base" })])];
 
     const out = cascadeFrom("flour", { products, subRecipes, recipes });
-    expect(out.subRecipes.find((s) => s.id === "dough")!.allergens).toEqual(["EU14_GLUTEN_CEREALS"]);
-    expect(out.subRecipes.find((s) => s.id === "base")!.allergens).toEqual(["EU14_GLUTEN_CEREALS"]);
-    expect(out.recipes[0].allergens).toEqual(["EU14_GLUTEN_CEREALS"]);
+    expect(out.subRecipes.find((s) => s.id === "dough")!.allergens).toEqual(["GLUTEN_CEREALS"]);
+    expect(out.subRecipes.find((s) => s.id === "base")!.allergens).toEqual(["GLUTEN_CEREALS"]);
+    expect(out.recipes[0].allergens).toEqual(["GLUTEN_CEREALS"]);
   });
 
   it("withdraws a free-from claim when an allergen appears upstream", () => {
@@ -215,7 +215,7 @@ describe("cascade re-costing", () => {
     expect(clean.recipes[0].dietaryFlags.glutenFree).toBe(true);
 
     const contaminated = cascadeFrom("flour", {
-      products: [{ ...product("flour", "10"), allergens: ["EU14_GLUTEN_CEREALS"] }],
+      products: [{ ...product("flour", "10"), allergens: ["GLUTEN_CEREALS"] }],
       subRecipes, recipes,
     });
     expect(contaminated.recipes[0].dietaryFlags.glutenFree).toBe(false);

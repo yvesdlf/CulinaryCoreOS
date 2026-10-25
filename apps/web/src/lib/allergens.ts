@@ -1,5 +1,17 @@
 // ---------------------------------------------------------------------------
-// Regulated allergen registry — EU/UK 14 profile
+// Allergen substances, and the names they are declared under
+// ---------------------------------------------------------------------------
+// The ids used to carry a jurisdiction — `CELERY` — which was accurate
+// while this was the only profile and wrong the moment a second one existed.
+// They are the substance now, named neutrally, and they match
+// `allergen_substances` in the database exactly (0119). Which of them a venue
+// must *declare*, and under what words, is `allergen_declarations` — the EU
+// says "crustaceans" where the United States says "crustacean shellfish", and
+// the written name is the legally meaningful text.
+//
+// This list stays ordered as the EU 14 because a matrix should read the same
+// way every time, and because every venue sees every substance regardless of
+// profile. A profile decides what must be declared, never what is hidden.
 // ---------------------------------------------------------------------------
 // Codes and canonical identifiers per the CulinaryCoreOS Platform
 // Standards Manual, Appendix G (based on Annex II of EU FIC 1169/2011 and UK
@@ -36,20 +48,20 @@ export interface AllergenDefinition {
   aliases: string[];
 }
 
-export const EU14_ALLERGENS: AllergenDefinition[] = [
+export const ALLERGEN_SUBSTANCES: AllergenDefinition[] = [
   {
-    id: "EU14_CELERY", name: "Celery", code: "CEL",
+    id: "CELERY", name: "Celery", code: "CEL",
     assetKey: "allergen-celery",
     note: "Includes celeriac and celery seed.",
     aliases: ["celery", "celeriac"],
   },
   {
-    id: "EU14_GLUTEN_CEREALS", name: "Cereals containing gluten", code: "GLU", assetKey: "allergen-gluten-cereals",
+    id: "GLUTEN_CEREALS", name: "Cereals containing gluten", code: "GLU", assetKey: "allergen-gluten-cereals",
     note: "Wheat, rye, barley, oats and specified hybrids.",
     aliases: ["gluten", "wheat", "rye", "barley", "oats", "cereals"],
   },
   {
-    id: "EU14_CRUSTACEANS", name: "Crustaceans", code: "CRU",
+    id: "CRUSTACEANS", name: "Crustaceans", code: "CRU",
     assetKey: "allergen-crustaceans",
     note: "E.g. prawn, crab, lobster, crayfish.",
     // "shellfish" is ambiguous between crustaceans and molluscs. It maps here
@@ -58,54 +70,54 @@ export const EU14_ALLERGENS: AllergenDefinition[] = [
     aliases: ["crustaceans", "shellfish", "prawn", "prawns", "shrimp", "crab", "lobster"],
   },
   {
-    id: "EU14_EGGS", name: "Eggs", code: "EGG",
+    id: "EGGS", name: "Eggs", code: "EGG",
     assetKey: "allergen-eggs", aliases: ["egg", "eggs"],
   },
   {
-    id: "EU14_FISH", name: "Fish", code: "FSH",
+    id: "FISH", name: "Fish", code: "FSH",
     assetKey: "allergen-fish", aliases: ["fish"],
   },
   {
-    id: "EU14_LUPIN", name: "Lupin", code: "LUP",
+    id: "LUPIN", name: "Lupin", code: "LUP",
     assetKey: "allergen-lupin", aliases: ["lupin"],
   },
   {
-    id: "EU14_MILK", name: "Milk", code: "MLK",
+    id: "MILK", name: "Milk", code: "MLK",
     assetKey: "allergen-milk",
     note: "Includes milk products; lactose alone is not equivalent.",
     aliases: ["milk", "dairy", "lactose", "cheese", "butter", "cream"],
   },
   {
-    id: "EU14_MOLLUSCS", name: "Molluscs", code: "MOL",
+    id: "MOLLUSCS", name: "Molluscs", code: "MOL",
     assetKey: "allergen-molluscs",
     note: "E.g. mussels, oysters, squid, snails.",
     aliases: ["molluscs", "mollusks", "squid", "octopus", "mussel", "oyster", "clam"],
   },
   {
-    id: "EU14_MUSTARD", name: "Mustard", code: "MUS",
+    id: "MUSTARD", name: "Mustard", code: "MUS",
     assetKey: "allergen-mustard", aliases: ["mustard"],
   },
   {
-    id: "EU14_PEANUTS", name: "Peanuts", code: "PNT",
+    id: "PEANUTS", name: "Peanuts", code: "PNT",
     assetKey: "allergen-peanuts",
     note: "Peanut/groundnut. Not combined with tree nuts.",
     aliases: ["peanut", "peanuts", "groundnut"],
   },
   {
-    id: "EU14_SESAME", name: "Sesame", code: "SES",
+    id: "SESAME", name: "Sesame", code: "SES",
     assetKey: "allergen-sesame", aliases: ["sesame"],
   },
   {
-    id: "EU14_SOYBEANS", name: "Soybeans", code: "SOY",
+    id: "SOYBEANS", name: "Soybeans", code: "SOY",
     assetKey: "allergen-soybeans", aliases: ["soy", "soya", "soybean", "soybeans"],
   },
   {
-    id: "EU14_SULPHITES", name: "Sulphur dioxide and sulphites", code: "SUL", assetKey: "allergen-sulphites",
+    id: "SULPHITES", name: "Sulphur dioxide and sulphites", code: "SUL", assetKey: "allergen-sulphites",
     note: "Declarable above 10 mg/kg or 10 mg/l expressed as SO₂.",
     aliases: ["sulphites", "sulfites", "sulphur dioxide", "sulfur dioxide", "so2"],
   },
   {
-    id: "EU14_TREE_NUTS", name: "Tree nuts", code: "NUT",
+    id: "TREE_NUTS", name: "Tree nuts", code: "NUT",
     assetKey: "allergen-tree-nuts",
     note: "Almond, hazelnut, walnut, cashew, pecan, Brazil, pistachio, macadamia. Excludes peanuts.",
     aliases: ["nuts", "tree nuts", "treenuts", "almond", "hazelnut", "walnut",
@@ -114,7 +126,12 @@ export const EU14_ALLERGENS: AllergenDefinition[] = [
 ];
 
 const BY_ALIAS = new Map<string, AllergenDefinition>();
-for (const a of EU14_ALLERGENS) {
+for (const a of ALLERGEN_SUBSTANCES) {
+  // Underscores as spaces too, so `GLUTEN_CEREALS` and `TREE_NUTS` resolve.
+  // Without it those two were the only stored ids the client could not read,
+  // and they would have rendered as unrecognised allergens on every screen —
+  // visible, which is the right failure, and still wrong.
+  BY_ALIAS.set(a.id.toLowerCase().replace(/_/g, " "), a);
   BY_ALIAS.set(a.id.toLowerCase(), a);
   BY_ALIAS.set(a.code.toLowerCase(), a);
   BY_ALIAS.set(a.name.toLowerCase(), a);
@@ -154,7 +171,7 @@ export function resolveAllergens(values: string[]): ResolvedAllergen[] {
   }
 
   return [
-    ...EU14_ALLERGENS.filter((a) => known.has(a.id)).map(
+    ...ALLERGEN_SUBSTANCES.filter((a) => known.has(a.id)).map(
       (definition) => ({ known: true, definition }) as const,
     ),
     ...unknown.map((raw) => ({ known: false, raw }) as const),

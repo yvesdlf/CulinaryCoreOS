@@ -20,46 +20,46 @@ describe("allergen safety", () => {
   it("never returns fewer allergens than it was given", () => {
     // DOC5 §6.1: the AI may add a warning and may never remove one.
     const merged = mergeAllergenProposal(
-      ["EU14_TREE_NUTS", "EU14_MILK"],
-      { suggested: ["EU14_MILK"], reasoning: {} },
+      ["TREE_NUTS", "MILK"],
+      { suggested: ["MILK"], reasoning: {} },
     );
-    expect(merged.allergens).toContain("EU14_TREE_NUTS");
-    expect(merged.allergens).toContain("EU14_MILK");
+    expect(merged.allergens).toContain("TREE_NUTS");
+    expect(merged.allergens).toContain("MILK");
     expect(merged.allergens).toHaveLength(2);
   });
 
   it("reports what the model omitted rather than acting on it", () => {
     const merged = mergeAllergenProposal(
-      ["EU14_TREE_NUTS"],
-      { suggested: ["EU14_MILK"], reasoning: {} },
+      ["TREE_NUTS"],
+      { suggested: ["MILK"], reasoning: {} },
     );
-    expect(merged.omittedButKept).toEqual(["EU14_TREE_NUTS"]);
-    expect(merged.added).toEqual(["EU14_MILK"]);
+    expect(merged.omittedButKept).toEqual(["TREE_NUTS"]);
+    expect(merged.added).toEqual(["MILK"]);
   });
 
   it("cannot be made to drop an allergen by any input", () => {
     // An empty suggestion is the shape a confidently wrong model produces.
-    for (const suggestion of [[], ["EU14_MILK"], ["", "  "]]) {
+    for (const suggestion of [[], ["MILK"], ["", "  "]]) {
       const merged = mergeAllergenProposal(
-        ["EU14_PEANUTS"],
+        ["PEANUTS"],
         { suggested: suggestion, reasoning: {} },
       );
-      expect(merged.allergens).toContain("EU14_PEANUTS");
+      expect(merged.allergens).toContain("PEANUTS");
     }
   });
 
   it("always marks the result unverified", () => {
-    const merged = mergeAllergenProposal([], { suggested: ["EU14_FISH"], reasoning: {} });
+    const merged = mergeAllergenProposal([], { suggested: ["FISH"], reasoning: {} });
     expect(merged.needsReview).toBe(true);
   });
 
   it("does not duplicate an allergen the recipe already carries", () => {
     const merged = mergeAllergenProposal(
-      ["EU14_MILK"],
-      { suggested: ["EU14_MILK", "EU14_EGGS"], reasoning: {} },
+      ["MILK"],
+      { suggested: ["MILK", "EGGS"], reasoning: {} },
     );
-    expect(merged.allergens).toEqual(["EU14_MILK", "EU14_EGGS"]);
-    expect(merged.added).toEqual(["EU14_EGGS"]);
+    expect(merged.allergens).toEqual(["MILK", "EGGS"]);
+    expect(merged.added).toEqual(["EGGS"]);
   });
 });
 
@@ -208,16 +208,18 @@ describe("nutrition parsing", () => {
     // allergen, which is the failure mode this whole layer exists to avoid.
     const parsed = parseNutritionResponse(JSON.stringify({
       kcal: 717,
-      allergens: ["EU14_MILK", "EU14_HONEY", "dairy"],
-      allergenReasoning: { EU14_MILK: "Butter is a dairy product." },
+      allergens: ["MILK", "HONEY", "dairy"],
+      allergenReasoning: { MILK: "Butter is a dairy product." },
     }));
-    expect(parsed!.allergens).toEqual(["EU14_MILK"]);
-    expect(parsed!.allergenReasoning.EU14_MILK).toContain("dairy");
+    expect(parsed!.allergens).toEqual(["MILK"]);
+    expect(parsed!.allergenReasoning.MILK).toContain("dairy");
   });
 
   it("accepts lower-case ids", () => {
-    const parsed = parseNutritionResponse(JSON.stringify({ allergens: ["eu14_fish"] }));
-    expect(parsed!.allergens).toEqual(["EU14_FISH"]);
+    // A model will answer in whatever case it feels like. The ids lost their
+    // `EU14_` prefix in 0119 and this case is still worth keeping.
+    const parsed = parseNutritionResponse(JSON.stringify({ allergens: ["fish"] }));
+    expect(parsed!.allergens).toEqual(["FISH"]);
   });
 
   it("keeps nulls rather than inventing figures", () => {

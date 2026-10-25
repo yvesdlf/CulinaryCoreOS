@@ -1199,9 +1199,36 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       movements, recipe status, approvals, time, pay and AI usage. Everything
       else records current state only, so "who changed this price, and when"
       is answerable for those and not in general.
-- [ ] **US 9 allergen profile.** Verified: `lib/allergens.ts` is the EU 14 of
-      Regulation 1169/2011. A venue under FDA rules needs the US set, which
-      overlaps but is not a subset.
+- [x] **US allergen profile** (0119). Profiles are data: a venue picks one,
+      `allergen_substances` names what is in the food without a
+      jurisdiction, and `allergen_declarations` says which substances each
+      profile requires declared and in what words — "crustaceans" in the EU,
+      "crustacean shellfish" in the United States.
+
+      Checking the stored data first changed the design. Nothing held an
+      `EU14_` id: the tables carried informal tokens — `dairy`, `gluten`,
+      `shellfish` — which the client resolved through an alias table on the
+      way to the screen. Five distinct values in the whole database, so this
+      was a normalisation rather than a six-table rewrite, and a trigger now
+      keeps it normalised: `db reset` runs the migrations and *then* loads
+      the seeds, so a one-time pass ran against an empty catalogue.
+
+      **A profile never hides a substance.** Celery, mustard, lupin,
+      sulphites and molluscs are not regulated in the United States and a US
+      venue still sees them — on the label as "also contains", not among the
+      declarations. The test pairs every US assertion with one proving the
+      substance is still there.
+
+      **Gluten is the interesting case.** The EU declares cereals containing
+      gluten; the US declares wheat. A record saying "a gluten cereal" cannot
+      be narrowed — nobody wrote down which — and dropping it is worse than
+      over-declaring it. It is declared as wheat with `over_inclusive` set,
+      and the sticker says it is a precaution. Wheat that is really rye
+      inconveniences somebody; omitted wheat harms them.
+
+      Still to do: the allergen matrix and the badges read the substance
+      names rather than the profile's wording. The label — the legally
+      dangerous surface — is profile-aware.
 - [x] **AI recipe import.** A bridge, not a second importer.
       `recipeParseRequest` and `parseRecipeResponse` already existed;
       `engine/ai/recipe-rows.ts` turns a `ParsedRecipe` into the rows

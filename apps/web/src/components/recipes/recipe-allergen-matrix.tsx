@@ -25,7 +25,7 @@ import {
 import { useProductStore } from "@/stores/product-store";
 import { useSubRecipeStore } from "@/stores/sub-recipe-store";
 import { allergenBreakdown } from "@/engine/allergen-breakdown";
-import { EU14_ALLERGENS, resolveAllergens } from "@/lib/allergens";
+import { ALLERGEN_SUBSTANCES, resolveAllergens } from "@/lib/allergens";
 import { AllergenGlyph } from "@/components/shared/allergen-glyph";
 
 interface Props {
@@ -57,7 +57,7 @@ export function RecipeAllergenMatrix({ entity }: Props) {
         if (a.known) present.add(a.definition.id);
       }
     }
-    return EU14_ALLERGENS.filter((a) => present.has(a.id));
+    return ALLERGEN_SUBSTANCES.filter((a) => present.has(a.id));
   }, [rows]);
 
   if (rows.length === 0) {

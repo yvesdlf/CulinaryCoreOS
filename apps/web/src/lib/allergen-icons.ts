@@ -37,20 +37,20 @@ import {
 
 /** Keyed by `AllergenDefinition.id`, which is the stable identifier. */
 const ICONS: Record<string, LucideIcon> = {
-  EU14_CELERY: Leaf,
-  EU14_GLUTEN_CEREALS: Wheat,
-  EU14_CRUSTACEANS: Shrimp,
-  EU14_EGGS: Egg,
-  EU14_FISH: Fish,
-  EU14_LUPIN: Flower,
-  EU14_MILK: Milk,
-  EU14_MOLLUSCS: Shell,
-  EU14_MUSTARD: Droplet,
-  EU14_PEANUTS: Nut,
-  EU14_SESAME: CircleDot,
-  EU14_SOYBEANS: Bean,
-  EU14_SULPHITES: Wind,
-  EU14_TREE_NUTS: Nut,
+  CELERY: Leaf,
+  GLUTEN_CEREALS: Wheat,
+  CRUSTACEANS: Shrimp,
+  EGGS: Egg,
+  FISH: Fish,
+  LUPIN: Flower,
+  MILK: Milk,
+  MOLLUSCS: Shell,
+  MUSTARD: Droplet,
+  PEANUTS: Nut,
+  SESAME: CircleDot,
+  SOYBEANS: Bean,
+  SULPHITES: Wind,
+  TREE_NUTS: Nut,
 };
 
 /**
