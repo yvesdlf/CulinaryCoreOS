@@ -27,6 +27,7 @@ import {
   UtensilsCrossed,
   DoorOpen,
   ClipboardList,
+  BarChart3,
 } from "lucide-react";
 import {
   Sidebar,
@@ -93,6 +94,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Inventory", to: "/inventory", icon: Warehouse },
       { title: "Stocktake", to: "/stocktake", icon: ClipboardCheck },
       { title: "Sales", to: "/sales", icon: Receipt },
+      // Last in Supply, because it reads from every section above it.
+      { title: "Reports", to: "/reports", icon: BarChart3 },
       { title: "Food Cost", to: "/food-cost", icon: Scale },
       { title: "Traceability", to: "/traceability", icon: ShieldCheck },
     ],

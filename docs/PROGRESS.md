@@ -1325,6 +1325,51 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
   narrower than the item claimed — a live channel and a real network call,
   which is the item above.
 
+### Reporting
+
+- [x] **A reports section** surfacing the figures that had nowhere to be read.
+      This application had eighty-three views and almost no reporting
+      screens: profit by unit, labour against revenue, what the venue owes
+      and how late, the pour cost of every bottle, and which hygiene
+      breaches told nobody were all computed, tested, and reachable only
+      from a psql prompt. A scan for views with no consumer in `apps/web/src`
+      found twenty-eight; six of them were reports rather than internal
+      plumbing, and those six are the page.
+
+      It adds no arithmetic. Every figure is a column of a view, and the
+      caveat columns are shown beside the numbers rather than filtered out
+      to tidy a table — `unattributed_goods_cost`, `movements_with_no_cost`,
+      `stuck`, `breaches_nobody_was_told_about`. The three that mean a total
+      is less certain than it looks are summarised above the tables before
+      anybody reaches one.
+
+      Each report exports to CSV with its caveat columns included: the
+      spreadsheet is where these get argued about, and a caveat that does
+      not survive the export was never really attached.
+
+      Three of the six have no demo data — cost of goods needs stock
+      movements carrying a business unit, payables need supplier invoices,
+      pour cost needs a measure configured — so they show the empty state,
+      which says it cannot tell "nothing recorded" from "no access".
+
+- [ ] **Trends over time.** The one genuinely missing capability rather than
+      a missing screen: every costing view is a snapshot or a single period,
+      and DOC1 RPT-FUNC-002 asks for daily, weekly, monthly and yearly
+      lines. Needs period-over-period views and a charting dependency, of
+      which there is currently none.
+
+- [ ] **Export beyond CSV.** PDF would go through the browser print path
+      that already works for labels and collection packs. Excel needs a
+      dependency. Scheduled delivery is blocked on the notification channel.
+
+- [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
+      and recorded here so the decision is visible rather than forgotten.**
+      This system's discipline is that a figure carries its caveats —
+      `never_counted`, `thin_evidence`, `sales_partly_unmapped`,
+      `over_inclusive`. A builder that lets somebody pick columns and group
+      them strips exactly that, and produces a number with no provenance,
+      which is the thing `METRICS.md` exists to prevent.
+
 ## Open questions for the user
 
 Three of these block work that is otherwise ready to start. They are

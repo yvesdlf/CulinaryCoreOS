@@ -179,6 +179,21 @@ immutable
 set search_path = ''
 as $$
   select coalesce(
+    /*
+     * The old ids first, and this was missed on the first pass because the
+     * tables did not hold any — the *seeds* did. `seed_manuza.sql` is
+     * generated from the mock catalogue and still writes `EU14_MILK`, so a
+     * rebuilt database arrived full of the spelling this migration exists to
+     * retire, passed straight through by the normaliser as an unrecognised
+     * value. Kept rather than dropped, which was the right failure and still
+     * the wrong result. Stripping the prefix is what a normaliser is for.
+     */
+    case
+      when upper(btrim(p_raw)) like 'EU14\_%'
+       and exists (select 1 from public.allergen_substances a
+                    where a.id = substring(upper(btrim(p_raw)) from 6))
+      then substring(upper(btrim(p_raw)) from 6)
+    end,
     case lower(btrim(p_raw))
       when 'celery' then 'CELERY'        when 'celeriac' then 'CELERY'
       when 'gluten' then 'GLUTEN_CEREALS' when 'cereals' then 'GLUTEN_CEREALS'

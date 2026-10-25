@@ -46,6 +46,7 @@ const PAGES = [
   { name: "menus", path: "/menus", heading: "Menus" },
   { name: "food cost", path: "/food-cost", heading: "Food cost" },
   { name: "sales", path: "/sales", heading: "Sales" },
+  { name: "reports", path: "/reports", heading: "Reports" },
 ];
 
 for (const p of PAGES) {
@@ -100,6 +101,8 @@ const TAB_PANELS = [
   // The page is headed "Human Resources", not "People" — the route and the
   // heading differ, and `ready()` waits on the heading.
   { page: "people", path: "/people", heading: "Human Resources", tab: "Payroll" },
+  { page: "reports", path: "/reports", heading: "Reports", tab: "Owed" },
+  { page: "reports", path: "/reports", heading: "Reports", tab: "Hygiene" },
 ];
 
 for (const p of TAB_PANELS) {

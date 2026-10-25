@@ -28,6 +28,7 @@ const StocktakePage = lazy(() => import("@/pages/stocktake").then((x) => ({ defa
 const MenusPage = lazy(() => import("@/pages/menus").then((x) => ({ default: x.MenusPage })));
 const FoodCostPage = lazy(() => import("@/pages/food-cost").then((x) => ({ default: x.FoodCostPage })));
 const SalesPage = lazy(() => import("@/pages/sales").then((x) => ({ default: x.SalesPage })));
+const ReportsPage = lazy(() => import("@/pages/reports").then((x) => ({ default: x.ReportsPage })));
 const AdministrationPage = lazy(() => import("@/pages/administration").then((x) => ({ default: x.AdministrationPage })));
 const SettingsPage = lazy(() => import("@/pages/settings").then((x) => ({ default: x.SettingsPage })));
 const HygienePage = lazy(() => import("@/pages/hygiene").then((x) => ({ default: x.HygienePage })));
@@ -162,6 +163,7 @@ export function App() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/stocktake" element={<StocktakePage />} />
         <Route path="/sales" element={<SalesPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         {/* A label is a physical sticker, so it gets its own print view: the
             browser dialog is the only thing here that reaches a printer. */}
         <Route path="/production/:id/label" element={<LabelPrintPage />} />
