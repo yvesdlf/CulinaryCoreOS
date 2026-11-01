@@ -55,6 +55,29 @@ jobs:
       - name: Production build
         run: pnpm --filter web build
 
+      # The guard in vite.config.ts is the only thing standing between a
+      # missing environment variable and a deployment that serves the mock
+      # catalogue as though it were the venue's own data. An unexercised
+      # guard is an assumption, so this asserts it: a Vercel production
+      # build with the variables stripped must fail, and must fail for the
+      # stated reason rather than by accident.
+      - name: A production build without a database is refused
+        env:
+          VERCEL_ENV: production
+        run: |
+          set -o pipefail
+          if pnpm --filter web build 2>&1 | tee /tmp/guard.log; then
+            echo "::error::A production build without VITE_SUPABASE_* succeeded."
+            echo "::error::It would serve the mock catalogue as real data. See vite.config.ts."
+            exit 1
+          fi
+          grep -q "mock catalogue" /tmp/guard.log || {
+            echo "::error::The build failed, but not on the database guard."
+            echo "::error::Something else is broken and the guard is now untested."
+            exit 1
+          }
+          echo "Refused, as it should be."
+
   browser:
     name: Accessibility and keyboard
     runs-on: ubuntu-latest

@@ -4,6 +4,7 @@ import { AppHeader } from "./app-header";
 import { Outlet } from "react-router-dom";
 import { useCatalogueRefresh } from "@/hooks/use-catalogue-refresh";
 import { Assistant } from "@/components/ai/assistant";
+import { MockDataBanner } from "./mock-data-banner";
 
 export function AppShell() {
   // Mounted once, at the shell, so every page benefits without each one
@@ -14,6 +15,9 @@ export function AppShell() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
+        {/* Above the header, so it is on every screen and cannot be
+            scrolled away. Renders nothing when a database is configured. */}
+        <MockDataBanner />
         <AppHeader />
         {/* SidebarInset renders the <main> landmark; this is only the
             scroll container, so it must not be another one. */}
