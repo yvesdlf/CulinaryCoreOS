@@ -180,3 +180,60 @@ export async function fetchHygieneByUnit(): Promise<HygieneRow[]> {
     breachesNobodyWasToldAbout: Number(r.breaches_nobody_was_told_about ?? 0),
   }));
 }
+
+export type TrendGrain = "day" | "week" | "month" | "quarter" | "year";
+
+export interface TrendRow {
+  periodStart: string;
+  periodEnd: string;
+  revenueNet: number | null;
+  labourCost: number | null;
+  goodsCost: number | null;
+  grossProfit: number | null;
+  grossProfitPercent: number | null;
+  labourPercentOfNet: number | null;
+  covers: number | null;
+  daysInPeriod: number;
+  daysWithData: number;
+  /** The period has not finished. Almost always true of the last row. */
+  isOpen: boolean;
+  previousRevenueNet: number | null;
+  previousGrossProfitPercent: number | null;
+}
+
+/**
+ * Daily profit bucketed into periods (0120).
+ *
+ * The completeness columns are the reason this is a function rather than a
+ * `group by` on the client: a month four days old holds a quarter of a
+ * month's revenue, and a chart that does not say so reads as a collapse.
+ */
+export async function fetchProfitTrend(
+  from: string, to: string, grain: TrendGrain,
+): Promise<TrendRow[]> {
+  const { data, error } = await requireSupabase().rpc("profit_trend", {
+    p_from: from, p_to: to, p_grain: grain, p_unit: null,
+  });
+  if (error) fail("fetchProfitTrend", error);
+  return (data ?? []).map((r: any) => ({
+    periodStart: r.period_start,
+    periodEnd: r.period_end,
+    revenueNet: num(r.revenue_net),
+    labourCost: num(r.labour_cost),
+    goodsCost: num(r.goods_cost),
+    grossProfit: num(r.gross_profit),
+    grossProfitPercent: num(r.gross_profit_percent),
+    labourPercentOfNet: num(r.labour_percent_of_net),
+    covers: num(r.covers),
+    daysInPeriod: Number(r.days_in_period ?? 0),
+    daysWithData: Number(r.days_with_data ?? 0),
+    isOpen: Boolean(r.is_open),
+    previousRevenueNet: num(r.previous_revenue_net),
+    previousGrossProfitPercent: num(r.previous_gross_profit_percent),
+  }));
+}
+
+/** A period is only comparable when it finished with every day in it. */
+export function isComparable(r: TrendRow): boolean {
+  return !r.isOpen && r.daysWithData >= r.daysInPeriod;
+}

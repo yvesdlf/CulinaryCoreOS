@@ -33,6 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, TriangleAlert, Wallet, Users, Boxes, Wine, ShieldCheck,
+  LineChart,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,9 +54,12 @@ import { venueToday, addDays } from "@/lib/today";
 import {
   fetchUnitProfit, fetchLabourAgainstRevenue, fetchCostOfGoods,
   fetchPayables, fetchPourCost, fetchHygieneByUnit,
+  fetchProfitTrend, isComparable,
   type UnitProfitRow, type LabourRow, type GoodsRow,
   type PayableRow, type PourCostRow, type HygieneRow,
+  type TrendRow, type TrendGrain,
 } from "@/data/reports";
+import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
 function said(err: unknown): string {
   const text = err instanceof Error ? err.message : String(err);
@@ -82,6 +86,8 @@ export function ReportsPage() {
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [pour, setPour] = useState<PourCostRow[]>([]);
   const [hygiene, setHygiene] = useState<HygieneRow[]>([]);
+  const [trend, setTrend] = useState<TrendRow[]>([]);
+  const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -93,22 +99,23 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h] = await Promise.all([
+      const [p, l, g, a, pc, h, tr] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
         fetchPayables().catch(() => []),
         fetchPourCost().catch(() => []),
         fetchHygieneByUnit().catch(() => []),
+        fetchProfitTrend(from, to, grain).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
-      setPayables(a); setPour(pc); setHygiene(h);
+      setPayables(a); setPour(pc); setHygiene(h); setTrend(tr);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [from, to, grain]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -189,8 +196,9 @@ export function ReportsPage() {
       {loading ? (
         <p className="mt-6 text-sm text-muted-foreground">Loading…</p>
       ) : (
-      <Tabs defaultValue="profit" className="mt-6">
+      <Tabs defaultValue="trend" className="mt-6">
         <TabsList>
+          <TabsTrigger value="trend"><LineChart className="size-4" />Trend</TabsTrigger>
           <TabsTrigger value="profit"><BarChart3 className="size-4" />Profit</TabsTrigger>
           <TabsTrigger value="labour"><Users className="size-4" />Labour</TabsTrigger>
           <TabsTrigger value="goods"><Boxes className="size-4" />Cost of goods</TabsTrigger>
@@ -198,6 +206,63 @@ export function ReportsPage() {
           <TabsTrigger value="pour"><Wine className="size-4" />Pour cost</TabsTrigger>
           <TabsTrigger value="hygiene"><ShieldCheck className="size-4" />Hygiene</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="trend" className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              Revenue and margin by period. A period that has not finished, or
+              that is missing days, is hatched and left out of the change
+              figure — the last bar is almost always a week in progress, and
+              drawn solid beside the one before it that bar reads as a
+              collapse.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="rep-grain">By</Label>
+              <select
+                id="rep-grain"
+                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                value={grain}
+                onChange={(e) => setGrain(e.target.value as TrendGrain)}
+              >
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="quarter">Quarter</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
+          </div>
+
+          {trend.length === 0 ? (
+            <EmptyState icon={LineChart} title="Nothing to trend yet">
+              A trend needs takings recorded over more than one period, and
+              reads the same figures as the profit report.
+            </EmptyState>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <section className="space-y-2">
+                <h3 className="text-sm font-medium">Net revenue</h3>
+                <TrendChart
+                  title={`Net revenue by ${grain}`}
+                  points={trendPoints(trend, (r) => r.revenueNet)}
+                  format={(v) => v.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                />
+                <ChangeLine rows={trend} pick={(r) => r.revenueNet}
+                            format={(v) => `${v.toFixed(1)}%`} />
+              </section>
+              <section className="space-y-2">
+                <h3 className="text-sm font-medium">Gross profit margin</h3>
+                <TrendChart
+                  title={`Gross profit percent by ${grain}`}
+                  points={trendPoints(trend, (r) => r.grossProfitPercent)}
+                  format={(v) => `${v.toFixed(1)}%`}
+                />
+                <ChangeLine rows={trend} pick={(r) => r.grossProfitPercent}
+                            format={(v) => `${v.toFixed(1)} points`} absolute />
+              </section>
+            </div>
+          )}
+        </TabsContent>
 
         <TabsContent value="profit" className="mt-4 space-y-3">
           <ReportHead
@@ -440,6 +505,70 @@ export function ReportsPage() {
       </Tabs>
       )}
     </div>
+  );
+}
+
+/**
+ * Rows as bars, with incompleteness carried through.
+ *
+ * `incomplete` is the union of two different things — the period has not
+ * finished, and the period is missing days — because to a reader they mean
+ * the same thing: do not compare this bar to the others.
+ */
+function trendPoints(
+  rows: TrendRow[], pick: (r: TrendRow) => number | null,
+): TrendPoint[] {
+  return rows.map((r) => ({
+    label: r.periodStart,
+    value: pick(r),
+    incomplete: !isComparable(r),
+    note: r.isOpen
+      ? "still running"
+      : `${r.daysWithData} of ${r.daysInPeriod} days`,
+  }));
+}
+
+/**
+ * The change between the last two periods that can honestly be compared.
+ *
+ * Not the last two rows. The final period is nearly always in progress, and
+ * a figure comparing a part-week to a whole one is the exact mistake the
+ * hatching exists to prevent — so the comparison walks back to the last two
+ * complete periods and says so when it cannot find them.
+ */
+function ChangeLine({ rows, pick, format, absolute }: {
+  rows: TrendRow[];
+  pick: (r: TrendRow) => number | null;
+  format: (v: number) => string;
+  absolute?: boolean;
+}) {
+  const complete = rows.filter(isComparable).filter((r) => pick(r) !== null);
+  if (complete.length < 2) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Not enough finished periods to compare yet.
+      </p>
+    );
+  }
+  const latest = pick(complete[complete.length - 1])!;
+  const before = pick(complete[complete.length - 2])!;
+  const change = absolute
+    ? latest - before
+    : before === 0 ? null : ((latest - before) / Math.abs(before)) * 100;
+
+  if (change === null) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        The previous period was nothing, so there is no change to express.
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-xs text-muted-foreground">
+      {change >= 0 ? "Up" : "Down"} {format(Math.abs(change))} on the period
+      before, comparing the last two that finished.
+    </p>
   );
 }
 

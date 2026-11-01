@@ -101,6 +101,7 @@ const TAB_PANELS = [
   // The page is headed "Human Resources", not "People" — the route and the
   // heading differ, and `ready()` waits on the heading.
   { page: "people", path: "/people", heading: "Human Resources", tab: "Payroll" },
+  { page: "reports", path: "/reports", heading: "Reports", tab: "Trend" },
   { page: "reports", path: "/reports", heading: "Reports", tab: "Owed" },
   { page: "reports", path: "/reports", heading: "Reports", tab: "Hygiene" },
 ];
