@@ -108,26 +108,69 @@ reasons, each of which shows up later as a support call:
 So entitlement is a **third gate**, beside `auth_can_write(org_id)` and
 `require_section_write(section)` — not a rewrite of either.
 
-### Shape
+### Shape — built in 0121
 
 ```
-plans                 what is sold: code, name, the packs it includes
-plan_sections         pack -> app_sections.code  (the mapping, as data)
-subscriptions         org_id, plan, status, period, external ref
-subscription_items    per venue, since the price is per venue
-org_entitlements      derived: org_id, section_code, level (write/read/none)
+plans                 what is sold: CORE, KITCHEN, SUPPLY, PEOPLE, PROPERTY, REVENUE
+plan_sections         pack -> app_sections.code, one pack per section
+subscriptions         org_id, status, period, external_ref (null until a provider)
+subscription_packs    which packs, with started_on / ended_on history
+entitled_level()      the gate
+org_entitlements      a view over it, for the settings screen
 ```
 
-`org_entitlements` is **derived**, refreshed by a function, exactly as
-`app_sections.scopes_by_unit` is derived by `refresh_section_unit_scoping()`.
-The same rule applies: never hand-write a derived table.
+**Correction to this document's first draft.** It said `org_entitlements`
+would be a derived *table* refreshed by a function, in the shape of
+`refresh_section_unit_scoping()` (0062). That was wrong, and building it
+showed why. `scopes_by_unit` is derived from the *schema* and changes only
+when a migration runs, so materialising it is safe. Entitlement is derived
+from rows that change whenever somebody pays or stops paying — and a stale
+write gate is either a hole or a lockout. It is computed live instead, with a
+view over it for the screens. One implementation, nothing to go stale.
 
-Then one function — `entitled_level(section)` — consulted by
-`require_section_write` before it consults permissions, and by the read
-rules in `section_read_rules`. A section the venue has not bought refuses
-writes and permits reads. Every one of the 61 control files should keep
-passing unchanged, because a fully-entitled org is the default; the new
-controls are the ones that prove a *partially* entitled org behaves.
+Three states, not two:
+
+| | |
+|---|---|
+| never bought it | `NONE` — no data exists; genuinely unreachable |
+| bought, lapsed | `READ` — records stay readable and exportable |
+| bought, current | `WRITE` |
+
+Keeping ended rows in `subscription_packs` instead of deleting them is the
+only thing that makes the first two distinguishable, and the two refusals say
+different things on purpose: one is a sales conversation, the other is a
+renewal.
+
+Two deliberate refusals to withhold, both of which turned out to matter more
+than the entitlement itself:
+
+- **Core is never withheld, in any state.** Core carries Parameters and
+  Administration. A venue locked out of those cannot change its payment
+  details, invite the person who would, or export anything on the way out. A
+  lock that cannot be undone from the inside is a trap, not a control.
+- **`PAST_DUE` still writes.** A failed card is a commercial problem.
+  Stopping a kitchen mid-service over one costs more goodwill than the
+  invoice is worth. Only `CANCELLED` drops to read-only.
+
+**A venue with no subscription row is unmetered**, explicitly. That is what
+makes 0121 safe to apply to a live database: billing is opt-in per
+organisation, and every venue that exists today keeps full write access until
+somebody creates a subscription row for it.
+
+The gate governs **writes only**. A never-bought section has no rows to read,
+and a lapsed one must stay readable by design, so threading entitlement
+through the three hundred read policies would buy nothing and risk a lot.
+
+Venues cannot write any of these four tables — there are no `INSERT`,
+`UPDATE` or `DELETE` policies for `authenticated` at all. Writes come from
+the service role, which is where the provider's webhook will sit.
+
+Proved in `supabase/tests/62_what_the_venue_bought.sql`, 33 checks, every one
+written as a member who already holds `WRITE` on every section so that a
+refusal can only have come from the new gate. Falsified four ways: removing
+the gate turns 6 red, collapsing lapsed into never-bought turns 5, removing
+the Core exemption turns 4, and granting the venue a write policy on its own
+subscription turns 4.
 
 ### The decision that blocks it
 
@@ -178,17 +221,18 @@ FAQ](https://support.stripe.com/questions/indonesia-faq).
 
 ### Order of work
 
-| | Needs a decision? |
+| | Status |
 |---|---|
-| `plans`, `plan_sections`, `subscriptions`, `subscription_items` | No — provider-agnostic |
-| `org_entitlements` + `entitled_level()` + the third gate | No |
-| Controls: a partially-entitled org is read-only, not dark | No |
-| Webhook handler, checkout, customer portal | **Yes — provider** |
+| `plans`, `plan_sections`, `subscriptions`, `subscription_packs` | **Done (0121)** |
+| `entitled_level()` + the third gate | **Done (0121)** |
+| Controls: lapsed is read-only, not dark | **Done (test 62)** |
+| A settings screen showing the packs and what they cost | Not started; `org_entitlements` is the view it reads |
+| Webhook handler, checkout, customer portal | **Blocked — provider** |
 | Reconcile job: provider state -> `subscriptions.status` | After the provider |
 | Retire the hand-set `ai_allowances` into plan entitlement | After the above |
 
-The first three rows are the bulk of it and need nobody's permission. The
-provider only touches the edge.
+The database half is built and proved. What remains is a screen and the
+provider integration, and only the second of those is blocked.
 
 ---
 

@@ -1392,7 +1392,11 @@ waiting for an answer.
   lives in production — a hosted Supabase project, self-hosted Postgres, or
   the existing project promoted. The failure mode to watch for either way is
   a build that succeeds without environment variables and serves the mock
-  catalogue as though it were real data; nothing asserts against that yet.
+  catalogue as though it were real data. ~~Nothing asserts against that
+  yet.~~ CI now does: a production build with the variables stripped must
+  fail, and must fail on the guard in `vite.config.ts` rather than by
+  accident. Outside that one path — `pnpm dev`, a preview deploy — a banner
+  states it on every screen instead.
 - **POS and accounting.** Named here rather than guessed at. Earlier passes
   of this document carried recommendations — QuickBooks and Xero at launch,
   Zoho Books secondary, integrate payments through a POS rather than
@@ -1400,6 +1404,18 @@ waiting for an answer.
   them is a decision and none should be built against until one is. **Which
   POS first?** is the question that actually gates work, because the sales
   import already exists and has no counterpart to import from.
+
+- **Where the selling entity is incorporated, and whether it will sell
+  outside Indonesia.** This decides the payment provider and nothing else
+  blocks the billing integration. Stripe does open Indonesian accounts —
+  settling IDR by virtual-account transfer — but an Indonesia-based Stripe
+  account **cannot take cross-border transactions at all**, so it works until
+  the first non-Indonesian customer, who then has no way to pay. If the
+  invoicing company is Indonesian and the product is meant to sell abroad,
+  that is a corporate-structure decision before it is a technical one. The
+  database half of billing is built and needs no answer to this (0121); the
+  webhook and checkout cannot start without one. See
+  `docs/programme/DEPLOYMENT_AND_BILLING.md`.
 
 ### Not blocking, but worth answering before the pricing is printed
 

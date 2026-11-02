@@ -562,3 +562,24 @@ to look broken in both.
 ## 13. What is deliberately not here
 - **Rooms cleaned per attendant hour** lives in `housekeeping_workload` and
   is hotel-module only.
+
+---
+
+## 14. What a venue has bought (0121)
+
+Not a metric so much as the thing that decides which metrics a venue may
+compute at all.
+
+- **`entitled_level(section, org)`** answers `WRITE`, `READ` or `NONE` for a
+  section: held, lapsed, or never bought. It is the third gate, after
+  `auth_can_write(org)` and `require_section_write(section)`, and it asks
+  about the *venue* rather than the person.
+- **`org_entitlements`** is a view over it — every section crossed with what
+  the venue holds and which pack would sell it. There is no stored
+  entitlement table; a stale write gate is either a hole or a lockout.
+- **A venue with no `subscriptions` row is unmetered.** Billing is opt-in per
+  organisation, which is what makes the migration safe on a live database.
+- **Core is never withheld and `PAST_DUE` still writes.** Only `CANCELLED`
+  drops held packs to read-only, and a lapsed pack stays readable and
+  exportable permanently — statutory retention does not pause because an
+  invoice did.
