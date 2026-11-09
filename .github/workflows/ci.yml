@@ -112,7 +112,10 @@ jobs:
 
       - name: Start Supabase and build the demo venue
         run: |
-          supabase start -x imgproxy,pooler,studio,realtime,storage-api,edge-runtime
+          # `realtime` is in rather than excluded: 0127 publishes the
+          # catalogue tables and the live-catalogue suite below is the only
+          # thing that proves a colleague's edit reaches an open screen.
+          supabase start -x imgproxy,pooler,studio,storage-api,edge-runtime
           # `db reset` alone applies the migrations and seed.sql and stops —
           # which is a venue with an owner and an empty catalogue. The visual
           # baselines are screenshots of the database this script builds, and
@@ -137,15 +140,39 @@ jobs:
             echo "VITE_SUPABASE_URL=$(supabase status -o json | jq -r .API_URL)"
             echo "VITE_SUPABASE_ANON_KEY=$(supabase status -o json | jq -r .ANON_KEY)"
           } > apps/web/.env.local
+          # And into the job's environment, for the suites that talk to the
+          # database directly rather than through the browser.
+          {
+            echo "SUPABASE_API_URL=$(supabase status -o json | jq -r .API_URL)"
+            echo "SUPABASE_ANON_KEY=$(supabase status -o json | jq -r .ANON_KEY)"
+          } >> "$GITHUB_ENV"
           # Fail here rather than three steps later with an empty page.
           grep -q 'ANON_KEY=ey' apps/web/.env.local
 
+      # Realtime is the one path that does not go through PostgREST, so none
+      # of the 1.461 database checks covers it: a policy that holds for a REST
+      # read and leaks over a websocket would be green in all of them. Three
+      # subscribers, one changed row — the member is told, another venue is
+      # not, and a client that never signed in gets no row content.
+      - name: Realtime respects tenancy
+        run: |
+          export SUPABASE_URL="$(supabase status -o json | jq -r .API_URL)"
+          export SUPABASE_ANON_KEY="$(supabase status -o json | jq -r .ANON_KEY)"
+          node apps/web/scripts/realtime-probe.mjs
+
       # Chromium only: the iPad project is WebKit, and the two screen-reader
       # tests that read the accessibility tree over CDP cannot run there.
-      - name: Accessibility, keyboard and screen-reader suites
+      - name: Accessibility, keyboard, screen-reader and live-catalogue suites
+        env:
+          # The specs read these from the environment; `.env.local` above is
+          # for the dev server. `live-catalogue.spec.ts` fails rather than
+          # skips when they are missing on CI.
+          VITE_SUPABASE_URL: ${{ env.SUPABASE_API_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
         run: >
           pnpm --filter web exec playwright test
           accessibility.spec.ts keyboard.spec.ts screen-reader.spec.ts
+          live-catalogue.spec.ts
           --project=desktop
 
       # The visual suite, which until now CI did not run at all — the
