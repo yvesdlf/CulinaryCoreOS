@@ -73,6 +73,29 @@ person remembered — and the visual regression baselines are screenshots *of
 that database*. They are now taken from the state this script builds, so
 `pnpm --filter web test:visual` means something.
 
+### The visual baselines come in two sets
+
+`test:visual` checks the macOS ones. CI checks the Linux ones, and those are
+bound to a pinned container rather than to Linux in general — two Ubuntu
+machines render text differently enough to matter at this suite's threshold,
+so a baseline taken on a laptop and checked on a runner would be a coin toss.
+
+Run the Linux set, or regenerate it, with the same command CI runs:
+
+```bash
+apps/web/scripts/visual-linux.sh            # check
+apps/web/scripts/visual-linux.sh --update   # regenerate
+```
+
+It needs Docker and the local stack above. It tests **HEAD**, not the working
+tree — the container gets a `git archive`, because installing Linux binaries
+over your `node_modules` would break the next `pnpm dev` — so commit first.
+Baselines, unlike code, are read from the working tree, since freshly
+generated ones are uncommitted by definition.
+
+A change to the interface that is genuinely intended turns both sets red.
+Regenerate both, and look at the diffs before committing them.
+
 `supabase/seed.sql` is generated from the mock catalogue in
 `apps/web/src/data/`, so the two never drift:
 

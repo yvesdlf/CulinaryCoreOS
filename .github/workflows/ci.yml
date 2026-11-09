@@ -110,13 +110,17 @@ jobs:
         with:
           version: 2.109.1
 
-      - name: Start Supabase and apply migrations
+      - name: Start Supabase and build the demo venue
         run: |
           supabase start -x imgproxy,pooler,studio,realtime,storage-api,edge-runtime
-          # Applies every migration, then seed.sql — which creates the demo
-          # organisation, the demo member, and the account auth.setup.ts signs
-          # in as. Without it the suites would sign in and see nothing.
-          supabase db reset --local
+          # `db reset` alone applies the migrations and seed.sql and stops —
+          # which is a venue with an owner and an empty catalogue. The visual
+          # baselines are screenshots of the database this script builds, and
+          # the a11y suites are worth more against it too: a contrast check on
+          # an empty table proves nothing. It does the reset itself, then the
+          # other six seeds in dependency order, then the costing pass without
+          # which 115 recipes cost zero and the allergen matrix is blank.
+          ./supabase/seed_local_demo.sh
 
       # The database controls, proved by trying to break them.
       #
@@ -136,10 +140,6 @@ jobs:
           # Fail here rather than three steps later with an empty page.
           grep -q 'ANON_KEY=ey' apps/web/.env.local
 
-      # Visual baselines are macOS-rendered and will not match Linux, so they
-      # are excluded until a Linux baseline set exists. Claiming otherwise
-      # would mean a permanently red job everyone learns to ignore.
-      #
       # Chromium only: the iPad project is WebKit, and the two screen-reader
       # tests that read the accessibility tree over CDP cannot run there.
       - name: Accessibility, keyboard and screen-reader suites
@@ -147,6 +147,32 @@ jobs:
           pnpm --filter web exec playwright test
           accessibility.spec.ts keyboard.spec.ts screen-reader.spec.ts
           --project=desktop
+
+      # The visual suite, which until now CI did not run at all — the
+      # baselines were macOS-rendered and the exclusion was defensible, but it
+      # left seventeen snapshots whose only check was somebody remembering to
+      # run them. They had been stale for eight weeks once, and fifteen of the
+      # seventeen were failing before anybody looked.
+      #
+      # It runs in a pinned container rather than on the runner, and the
+      # baselines are bound to that image. Two Ubuntu machines do not render
+      # text identically — font packages and fontconfig defaults move the
+      # glyphs, and this suite is tuned to catch 0,2% of the pixels changing —
+      # so a baseline taken on a laptop and checked on a runner is a coin
+      # toss. Binding both ends to one image makes it a check.
+      #
+      # The same script a developer runs locally, deliberately: if CI and the
+      # laptop disagree, the disagreement is in the database or the code and
+      # not in the way the suite was invoked.
+      - name: Visual regression, in the pinned Playwright image
+        run: ./apps/web/scripts/visual-linux.sh
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-diffs
+          path: apps/web/test-results/
+          retention-days: 7
 
       # The production bundle, served with vercel.json's headers. Every other
       # browser check uses the dev server, which is how a build that loaded

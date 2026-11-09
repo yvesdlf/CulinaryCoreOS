@@ -931,8 +931,12 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       caught it. Regenerated once for the whole stage, and rebound from
       `seed_manuza.sql` — which `DEPLOY.md` applies at deployment and
       `db reset` does not — to `seed.sql` alone, so a fresh clone can
-      reproduce them. The iPad baselines are still stale and need their own
-      pass.
+      reproduce them. ~~The iPad baselines are still stale and need their
+      own pass.~~ Done with the CI work above: two of the seventeen were
+      failing, both `sub-recipes-list`, and the diff was a sidebar item added
+      since the baseline was taken shifting four labels down a row.
+      Regenerated, and the iPad project runs in CI as well — the container
+      has WebKit, so there was no reason to leave half the suite unchecked.
 
 ## Backlog
 
@@ -1336,12 +1340,37 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       `auth_can_write(org_id)`, copied from the RPC, which is an
       organisation-level question: a chef with no People access read the
       model answers until `23_exposure.sql` caught it.
-- [ ] **The visual suite still does not run in CI.** Half of this item was
-      true and half was not — see the struck-through entry below. The
-      baselines are current; nothing automated checks them. The exclusion is
-      defensible, because macOS-rendered snapshots will not match Linux, but
-      it means the only thing checking them is somebody remembering to. Either
-      a Linux baseline set exists and the suite runs, or it is not a check.
+- [x] ~~**The visual suite still does not run in CI.**~~ It does, and the
+      baselines are bound to a container rather than to an operating system.
+
+      The obvious fix — generate Linux baselines, run the suite on the
+      runner — would not have held. Two Ubuntu machines do not render text
+      identically either: font packages, fontconfig defaults and the Chromium
+      build all move the glyphs, and this suite is tuned to catch 0,2% of the
+      pixels changing. A baseline taken on one and checked on another is a
+      coin toss, and a coin-toss check is the permanently-red job the old
+      exclusion was avoiding.
+
+      So both ends are pinned to `mcr.microsoft.com/playwright:v1.62.0-noble`,
+      and `apps/web/scripts/visual-linux.sh` is the single command CI and a
+      laptop both run — if they disagree, the disagreement is in the code or
+      the database and not in how the suite was invoked. The script refuses to
+      run if the installed Playwright has moved away from the pinned version,
+      which is the way this would otherwise rot silently.
+
+      **CI now builds the demo venue rather than just resetting.** The
+      baselines are screenshots of what `seed_local_demo.sh` builds — the real
+      catalogue, costed — and `db reset` alone gives a venue with an empty
+      one. The accessibility suites gain from it too: a contrast check on an
+      empty table proves nothing.
+
+      Falsified rather than assumed. Adding one sidebar item — the sparse
+      change the threshold was tuned for — moves 9.186 pixels, a ratio of
+      0,01 against a limit of 0,002, and turns 16 of the 33 red. Changing a
+      single nav *label* does not, which is the honest limit of a pixel
+      budget and is why the a11y and screen-reader suites assert on text.
+      Green twice in a row on both platforms, so it is not a flaky check
+      traded for a missed one.
 - [ ] Cascade `refPercent` from product yield onto recipe lines. **A decision,
       not a gap**, and it has been sitting in a list of gaps. Ref % is
       editable per line in the ingredient grid, so cascading it would discard
