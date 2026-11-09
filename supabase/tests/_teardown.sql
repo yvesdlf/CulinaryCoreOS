@@ -61,3 +61,14 @@ delete from auth.users where id::text like 'a0000000-%';
 -- behaviour and useless here, so the invented ones are removed and the
 -- membership is repointed at the venue that holds the data.
 delete from organizations where name in ('owner','chef','nobody','staff');
+
+/*
+ * `field_changes` is deliberately not on this list.
+ *
+ * It is append-only, and a teardown that switched the guard off to tidy up
+ * after itself would be the one caller in the codebase proving the guard is
+ * optional. The usual worry does not apply either: every entry the suite
+ * leaves behind describes a `T-` row the lines above have just deleted, so no
+ * screen can reach it — a history tab is opened from a record, and the record
+ * is gone. The venue's own seeded history is untouched.
+ */

@@ -69,15 +69,19 @@ select '── exposure: internal machinery is not an API ───────�
  * Over the API, `notify` writes a message into any venue's outbox addressed
  * however the caller likes; the seeders write defaults into any venue, five
  * of them not idempotently; `escalation_chain` hands out managers' emails.
+ * `install_field_audit` (0126) attaches and detaches triggers from a table —
+ * over PostgREST that is a signed-in user doing DDL, and detaching one is how
+ * you make the edit history stop recording you.
  */
 select t.expect_value($$
   select coalesce(string_agg(p.oid::regprocedure::text, ', ' order by 1), '')
     from pg_proc p
    where p.pronamespace = 'public'::regnamespace
      and (p.proname = 'notify' or p.proname like 'seed\_%'
-          or p.proname in ('escalation_chain', 'refresh_section_unit_scoping'))
+          or p.proname in ('escalation_chain', 'refresh_section_unit_scoping',
+                           'install_field_audit', 'record_field_changes'))
      and has_function_privilege('authenticated', p.oid, 'execute')$$,
-  'notify, the seeders and escalation_chain cannot be called by a signed-in user', '');
+  'notify, the seeders, escalation_chain and install_field_audit cannot be called by a signed-in user', '');
 
 select t.expect_value($$
   select (select prosecdef from pg_proc

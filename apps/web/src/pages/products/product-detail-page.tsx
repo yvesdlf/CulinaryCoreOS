@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BarcodePanel } from "@/components/products/barcode-panel";
+import { EditHistoryPanel } from "@/components/shared/edit-history-panel";
+import { useCanWriteSection } from "@/stores/access-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useProductStore } from "@/stores/product-store";
@@ -107,6 +109,13 @@ function ProductDetailForm() {
   const recipes = useRecipeStore((s) => s.recipes);
 
   const isNew = !id;
+  /*
+   * The same gate the database applies to `field_changes`: WRITE on the
+   * section that guards writing the catalogue. The history is a supervisory
+   * question, not a costing one — a cook needs the price, not the trail of
+   * who typed it.
+   */
+  const canSeeHistory = useCanWriteSection("RECIPES");
   const loaded = useCatalogueLoaded();
   const existing = id ? store.getById(id) : undefined;
 
@@ -397,6 +406,14 @@ function ProductDetailForm() {
           {/* A barcode is a fact about the product, like its pack size, so it
               lives here rather than on a screen of its own. */}
           <TabsTrigger value="barcodes">Barcodes</TabsTrigger>
+          {/* Only for somebody who can write the catalogue, and only once the
+              product exists. `field_changes` is gated on RECIPES write in the
+              database (0126), so a reader would be offered a tab that is
+              always empty — which looks like a broken feature rather than a
+              permission. */}
+          {canSeeHistory && !isNew && (
+            <TabsTrigger value="history">History</TabsTrigger>
+          )}
         </TabsList>
 
         {/* ── General tab ─────────────────────────────────────────────────── */}
@@ -1067,6 +1084,16 @@ function ProductDetailForm() {
             </p>
           )}
         </TabsContent>
+
+        {canSeeHistory && !isNew && existing && (
+          <TabsContent value="history" className="mt-4">
+            <EditHistoryPanel
+              table="products"
+              recordId={existing.id}
+              what="this product"
+            />
+          </TabsContent>
+        )}
 
       </Tabs>
 

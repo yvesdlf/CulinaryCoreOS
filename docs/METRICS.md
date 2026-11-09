@@ -608,3 +608,35 @@ Not a metric either, but the layer every metric above depends on being true.
   "not unnoticed" rather than "not again".
 - **A green CI run says nothing about a hosted project.** `DEPLOY.md` §1 is
   the step that does.
+
+---
+
+## 16. The edit history (0126)
+
+Not a metric, a record of how the metrics got their inputs. Six ledgers
+already answered "who changed this" — stock, recipe status, approvals, time,
+pay, AI usage. The price every costing in this system is built on was not one
+of them.
+
+- **One ledger, written by a trigger, driven by a registry.** `field_changes`
+  records the field, both values, the caller and the time;
+  `audited_tables` / `audited_fields` say what is watched, and
+  `install_field_audit()` attaches the triggers from them. A trigger on a
+  table the registry has forgotten refuses the write rather than recording
+  nothing — a trail that silently stops is read as "nothing changed".
+- **What a person enters, not what the engine derives.** A price edit on a
+  product rewrites six columns; five are the cascade's work. 71 fields across
+  11 tables, chosen as the numbers and permissions a venue argues about.
+- **Some fields are recorded without their values.** A bank account or a
+  national ID would otherwise exist a second time, under a different read
+  gate, for 0080's erasure to find. `values_withheld` says so, so a null is
+  never read as "it was empty".
+- **Read under WRITE on the section that guards writing the table** — not
+  read. The current price is on half the screens by design; the trail of who
+  typed it is a supervisory question. The section is taken from the table's
+  own `_section_guard`, and `66_an_edit_leaves_a_trace.sql` asserts the two
+  have not drifted.
+- **Append-only against the owner of the table, not only the API.** The one
+  permitted delete is the venue's own cascade, identified by the parent
+  already being gone. That exception was found by `supabase db reset`: the
+  first version refused it and made the foreign key impossible to honour.

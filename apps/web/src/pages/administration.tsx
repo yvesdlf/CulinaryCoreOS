@@ -47,6 +47,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { VenueChangesPanel } from "@/components/settings/venue-changes-panel";
 import {
   fetchAppSections, fetchAccessGrid, setSectionAccess,
   fetchVenueParameters, saveVenueParameter, fetchParameterChanges,
@@ -300,6 +301,13 @@ export function AdministrationPage() {
           </TabsTrigger>
           <TabsTrigger value="hiring">
             <BriefcaseBusiness aria-hidden="true" /> Hiring
+          </TabsTrigger>
+          {/* Not gated here. The policy on `field_changes` (0126) admits one
+              section at a time, so the panel shows what this reader is
+              entitled to and says as much — a tab hidden behind ADMIN would
+              deny a head chef the trail of their own catalogue. */}
+          <TabsTrigger value="changes">
+            <History aria-hidden="true" /> Changes
           </TabsTrigger>
         </TabsList>
 
@@ -755,6 +763,11 @@ export function AdministrationPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Changes ──────────────────────────────────────────────────────── */}
+        <TabsContent value="changes" className="pt-4">
+          <VenueChangesPanel />
         </TabsContent>
       </Tabs>
 

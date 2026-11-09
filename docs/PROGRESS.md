@@ -1213,10 +1213,40 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       load.
 
       The picker appears only for somebody who belongs to more than one.
-- [ ] **Field-level audit history.** The append-only ledgers cover stock
-      movements, recipe status, approvals, time, pay and AI usage. Everything
-      else records current state only, so "who changed this price, and when"
-      is answerable for those and not in general.
+- [x] ~~**Field-level audit history.**~~ 0126, and the general answer rather
+      than a seventh ledger: `field_changes`, written by one trigger driven by
+      a registry of 71 fields across 11 tables.
+
+      **What a person enters, not what the engine derives.** Saving a price
+      rewrites six columns on `products` and five of them are the cascade's
+      work. Auditing all of them turns one edit into six lines and buries the
+      one that matters — so the registry names the entered fields, which are
+      also the only ones not reproducible from something else.
+
+      **Three things it refuses to do, each for a reason worth keeping.** It
+      does not copy the values of a bank account or a national ID: that would
+      be a second copy of the most sensitive column in the database, under a
+      different read gate, which 0080's erasure would then have to find.
+      `values_withheld` marks those rows so a null is never read as "it was
+      empty". It does not write one line per column on an insert or a delete,
+      which is the row's creation restated twelve times. And it does not
+      snapshot a deleted row, for the first reason again.
+
+      **The read gate is WRITE on the section, not READ** — and the section is
+      taken from the table's own `_section_guard` rather than restated, with a
+      check that the two have not drifted. A cook needs the current price; the
+      trail of who typed it is a supervisory question.
+
+      **Two exceptions had to be found rather than designed.** Append-only
+      refused the venue's own cascade, which made the foreign key impossible
+      to honour — `supabase db reset` stopped dead on `seed.sql`. And the
+      audit row for each cascade-deleted product failed that same key against
+      a venue that was already gone. Both are now identified by the parent's
+      absence, which no ordinary delete can produce.
+
+      Screens: a History tab on the product, and Administration → Changes for
+      the venue. Both say what they do not cover, because a trail that looks
+      complete and is not gets used to rule things out.
 - [x] **US allergen profile** (0119). Profiles are data: a venue picks one,
       `allergen_substances` names what is in the food without a
       jurisdiction, and `allergen_declarations` says which substances each
