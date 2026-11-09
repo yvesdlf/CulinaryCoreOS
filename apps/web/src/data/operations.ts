@@ -87,6 +87,65 @@ export async function completeTraining(
   if (error) fail("completeTraining", error);
 }
 
+// ── What this venue has bought ──────────────────────────────────────────────
+
+/**
+ * One section, and whether the venue's plan reaches it.
+ *
+ * Read from `org_entitlements`, which is a view over `entitled_level()` and
+ * not a stored table — a stale write gate is either a hole or a lockout, so
+ * there is nothing cached to go out of date.
+ */
+export interface SectionEntitlement {
+  sectionCode: string;
+  sectionName: string;
+  planCode: string | null;
+  planName: string | null;
+  level: "WRITE" | "READ" | "NONE";
+}
+
+export interface VenueSubscription {
+  status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELLED";
+  trialEndsOn: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+}
+
+/**
+ * The venue's subscription, or null when there is none.
+ *
+ * Null is not an error state and not an empty one: a venue with no
+ * subscription row is unmetered, which is what every venue created before
+ * 0121 is. The screen says so rather than showing a plan nobody is on.
+ */
+export async function fetchVenueSubscription(): Promise<VenueSubscription | null> {
+  const { data, error } = await requireSupabase()
+    .from("subscriptions")
+    .select("status, trial_ends_on, current_period_start, current_period_end")
+    .maybeSingle();
+  if (error) fail("fetchVenueSubscription", error);
+  if (!data) return null;
+  const r = data as any;
+  return {
+    status: r.status,
+    trialEndsOn: r.trial_ends_on ?? null,
+    currentPeriodStart: r.current_period_start ?? null,
+    currentPeriodEnd: r.current_period_end ?? null,
+  };
+}
+
+export async function fetchEntitlements(): Promise<SectionEntitlement[]> {
+  const { data, error } = await requireSupabase()
+    .from("org_entitlements")
+    .select("section_code, section_name, plan_code, plan_name, level");
+  if (error) fail("fetchEntitlements", error);
+  return (data ?? []).map((r: any) => ({
+    sectionCode: r.section_code, sectionName: r.section_name,
+    planCode: r.plan_code ?? null, planName: r.plan_name ?? null,
+    level: r.level,
+  }));
+}
+
 // ── Marking a written answer ────────────────────────────────────────────────
 
 /**

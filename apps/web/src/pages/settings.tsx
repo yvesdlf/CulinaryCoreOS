@@ -39,7 +39,8 @@ import {
   type MessageChannel,
 } from "@/data/repository";
 import { useRecipeStore } from "@/stores/recipe-store";
-import { Percent, MessageSquare, Sparkles } from "lucide-react";
+import { Percent, MessageSquare, Sparkles, Receipt } from "lucide-react";
+import { PlanPanel } from "@/components/settings/plan-panel";
 import { AiSettingsCard } from "@/components/ai/ai-settings-card";
 import { VenueClockCard } from "@/components/settings/venue-clock-card";
 import type { OrgRole, ApprovalPolicy } from "@/engine/purchasing";
@@ -170,6 +171,7 @@ export function SettingsPage() {
           <TabsTrigger value="assistant">
             <Sparkles className="size-4" />Assistant
           </TabsTrigger>
+          <TabsTrigger value="plan"><Receipt className="size-4" />Plan</TabsTrigger>
           <TabsTrigger value="rules">Rules</TabsTrigger>
         </TabsList>
 
@@ -341,6 +343,10 @@ export function SettingsPage() {
         <TabsContent value="messaging" className="mt-4">
           <MessagingTab channels={channels} health={health}
             canManage={canManage} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="plan" className="mt-4">
+          <PlanPanel />
         </TabsContent>
 
         <TabsContent value="rules" className="mt-4 space-y-4">

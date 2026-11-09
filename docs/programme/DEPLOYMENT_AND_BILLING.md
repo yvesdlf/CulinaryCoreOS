@@ -226,7 +226,7 @@ FAQ](https://support.stripe.com/questions/indonesia-faq).
 | `plans`, `plan_sections`, `subscriptions`, `subscription_packs` | **Done (0121)** |
 | `entitled_level()` + the third gate | **Done (0121)** |
 | Controls: lapsed is read-only, not dark | **Done (test 62)** |
-| A settings screen showing the packs and what they cost | Not started; `org_entitlements` is the view it reads |
+| A settings screen showing what the venue is on | **Done** — `plan-panel.tsx`, Settings → Plan |
 | Webhook handler, checkout, customer portal | **Blocked — provider** |
 | Reconcile job: provider state -> `subscriptions.status` | After the provider |
 | Retire the hand-set `ai_allowances` into plan entitlement | After the above |
