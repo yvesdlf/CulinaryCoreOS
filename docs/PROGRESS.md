@@ -1276,10 +1276,21 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       run; what is unproved is the call itself, which needs keys and a Meta
       Business account that do not exist. *(Was listed three times across two
       sections. One item now.)*
-- [ ] **The participant-can-read path on an HR case is untested.** Verified:
-      `31_the_four_defects.sql` proves the refusal direction — a colleague who
-      is not a participant sees nothing — and nothing asserts that a named
-      participant *can* read. Proving it needs a non-owner member on a case.
+- [x] ~~**The participant-can-read path on an HR case is untested.**~~
+      `64_a_participant_can_read_their_case.sql`, and writing it found a
+      hole. Covering the direction nobody had meant exercising the branch
+      that matches a participant on their address rather than their account —
+      the path somebody takes when they are named on a case before they have
+      logged in. It read
+      `lower(p.email) = lower(coalesce(auth.jwt() ->> 'email', ''))`, so a
+      token with no email claim became the empty string and matched any
+      participant row whose email was also empty: two parties equal because
+      neither was anybody. A phone sign-up has no email claim, and `not null`
+      on the column stops null while saying nothing about `''`. Fixed in 0124
+      on both sides — `nullif` in the function so a blank matches nothing,
+      and a check constraint so the blank row cannot be written. Each layer
+      falsified on its own: dropping the constraint turns one check red,
+      reverting the function turns the other.
 - [ ] **Written-answer marking has schema and no screen.** Verified:
       `quiz_questions` carries `kind`, `model_answer` and `points`, and no
       file in `apps/web/src` reads `model_answer`.
