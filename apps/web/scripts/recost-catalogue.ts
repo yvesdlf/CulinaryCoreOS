@@ -52,7 +52,37 @@ if (authError) {
 }
 setSupabaseClient(client);
 
-const before = await fetchAll();
+/**
+ * Read once, retrying a token the API thinks comes from the future.
+ *
+ * GoTrue and PostgREST are separate containers with separate clocks, and on a
+ * fast machine the sign-in above and the first query below happen inside the
+ * same second. If PostgREST's clock is a fraction behind GoTrue's it rejects
+ * the brand-new token with "JWT issued at future" and the whole script dies
+ * before reading a row.
+ *
+ * Found on a CI runner, which is where this is fastest and the skew most
+ * likely — the step that seeds a venue and then costs it went red with a
+ * stack trace that reads like a permissions failure and is a clock.
+ *
+ * Waiting rather than reissuing, because the token is not wrong: it becomes
+ * valid on its own, within a second. Three tries, a second apart, and
+ * anything still failing is a real error and raises as one.
+ */
+async function readCatalogue() {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchAll();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (attempt >= 3 || !/issued at future/i.test(message)) throw err;
+      console.log(`the API read the token as issued in the future; waiting (${attempt}/2)`);
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+}
+
+const before = await readCatalogue();
 console.log(
   `loaded ${before.products.length} products, ` +
     `${before.subRecipes.length} sub-recipes, ${before.recipes.length} recipes`,

@@ -11,5 +11,13 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    /*
+     * Vitest stubs CSS imports to an empty string by default, and does it by
+     * file extension — so `index.css?raw` came back as "" and the token check
+     * in `src/lib/css-tokens.test.ts` passed while comparing nothing against
+     * nothing. Processing is on so the raw import is the file. There are no
+     * Tailwind plugins in this config, so "processing" here is reading it.
+     */
+    css: true,
   },
 });

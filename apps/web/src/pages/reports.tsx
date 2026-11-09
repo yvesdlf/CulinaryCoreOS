@@ -32,8 +32,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BarChart3, Download, TriangleAlert, Wallet, Users, Boxes, Wine, ShieldCheck,
-  LineChart,
+  BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
+  ShieldCheck, LineChart,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,7 +50,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toCsv, downloadCsv } from "@/lib/csv";
-import { venueToday, addDays } from "@/lib/today";
+import { venueToday, addDays, useNow } from "@/lib/today";
+import { useAuthStore } from "@/stores/auth-store";
 import {
   fetchUnitProfit, fetchLabourAgainstRevenue, fetchCostOfGoods,
   fetchPayables, fetchPourCost, fetchHygieneByUnit,
@@ -89,6 +90,16 @@ export function ReportsPage() {
   const [trend, setTrend] = useState<TrendRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
+  /*
+   * Controlled, only so the printed sheet can say which report it is. An
+   * uncontrolled tab panel is still the only one in the DOM and would print
+   * correctly; it would print under the heading "Reports", which is the
+   * heading of all seven.
+   */
+  const [tab, setTab] = useState("trend");
+
+  const printedOn = useNow();
+  const venue = useAuthStore((s) => s.activeOrg);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,12 +149,41 @@ export function ReportsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Reports"
-        description="Figures the venue already computes, in one place. Where a number comes with a caveat, the caveat is beside it — a total that hides what it could not count is worse than no total."
-      />
+      {/* On paper the sheet is one report, titled below. Leaving this in
+          gives the document two headings, the first of which describes six
+          reports it does not contain. */}
+      <div className="print:hidden">
+        <PageHeader
+          title="Reports"
+          description="Figures the venue already computes, in one place. Where a number comes with a caveat, the caveat is beside it — a total that hides what it could not count is worse than no total."
+        />
+      </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3">
+      {/*
+        * Only on paper. A screen has the venue switcher in the header, the
+        * dates in the controls below and the report in the selected tab; a
+        * sheet handed to an accountant or a landlord has none of that, and a
+        * table of figures with no venue, no period and no date on it is a
+        * page somebody has to be told how to read. `print:hidden` removes the
+        * chrome and this puts back what the chrome was carrying.
+        */}
+      <div className="hidden print:block">
+        <h1 className="text-xl font-semibold">
+          {venue?.name ?? "This venue"} — {REPORT_NAMES[tab] ?? "Reports"}
+        </h1>
+        {/*
+          * All three dates in the same form, and that form is ISO.
+          * `toLocaleDateString` gave "11/9/2026" beside a period written
+          * "2026-10-10 to 2026-11-09" — one sheet, two date formats, and the
+          * short one is read as 11 September by half the world. A document
+          * that leaves the room cannot explain itself.
+          */}
+        <p className="mt-1 text-sm">
+          {from} to {to} · printed {printedOn.toISOString().slice(0, 10)}
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end gap-3 print:hidden">
         <div className="space-y-2">
           <Label htmlFor="rep-from">From</Label>
           <Input id="rep-from" type="date" className="w-44"
@@ -196,8 +236,8 @@ export function ReportsPage() {
       {loading ? (
         <p className="mt-6 text-sm text-muted-foreground">Loading…</p>
       ) : (
-      <Tabs defaultValue="trend" className="mt-6">
-        <TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="mt-6">
+        <TabsList className="print:hidden">
           <TabsTrigger value="trend"><LineChart className="size-4" />Trend</TabsTrigger>
           <TabsTrigger value="profit"><BarChart3 className="size-4" />Profit</TabsTrigger>
           <TabsTrigger value="labour"><Users className="size-4" />Labour</TabsTrigger>
@@ -216,6 +256,12 @@ export function ReportsPage() {
               drawn solid beside the one before it that bar reads as a
               collapse.
             </p>
+            <div className="flex items-end gap-3 print:hidden">
+            <Button variant="outline" size="sm" onClick={() => window.print()}
+                    disabled={trend.length === 0}>
+              <Printer aria-hidden="true" />
+              Print or save as PDF
+            </Button>
             <div className="space-y-2">
               <Label htmlFor="rep-grain">By</Label>
               <select
@@ -230,6 +276,7 @@ export function ReportsPage() {
                 <option value="quarter">Quarter</option>
                 <option value="year">Year</option>
               </select>
+            </div>
             </div>
           </div>
 
@@ -572,17 +619,51 @@ function ChangeLine({ rows, pick, format, absolute }: {
   );
 }
 
+/*
+ * What the printed sheet calls itself. Keyed by the tab value, because the
+ * tab labels are three words wide to fit a tab strip and a document's title
+ * is not competing for horizontal space.
+ */
+const REPORT_NAMES: Record<string, string> = {
+  trend: "Revenue and margin trend",
+  profit: "Profit by outlet",
+  labour: "Labour against revenue",
+  goods: "Cost of goods",
+  payables: "Owed by supplier",
+  pour: "Pour cost",
+  hygiene: "Hygiene by outlet",
+};
+
 function ReportHead({ blurb, empty, onExport }: {
   blurb: string; empty: boolean; onExport: () => void;
 }) {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
+        {/*
+          * The blurb prints. It is where the report says what it excludes —
+          * "stock with no unit on it is excluded rather than spread" — and a
+          * PDF of the table without it is a number with no provenance, which
+          * is the thing this system is built not to produce.
+          */}
         <p className="max-w-prose text-sm text-muted-foreground">{blurb}</p>
-        <Button variant="outline" size="sm" onClick={onExport} disabled={empty}>
-          <Download aria-hidden="true" />
-          Download CSV
-        </Button>
+        <div className="flex gap-2 print:hidden">
+          <Button variant="outline" size="sm" onClick={onExport} disabled={empty}>
+            <Download aria-hidden="true" />
+            Download CSV
+          </Button>
+          {/*
+            * PDF through the browser's own print dialog, which every desktop
+            * browser can save to a file. No dependency, no server, and the
+            * sheet is exactly what the screen shows — including the caveats,
+            * which a generated PDF would have had to be told about twice.
+            */}
+          <Button variant="outline" size="sm" onClick={() => window.print()}
+                  disabled={empty}>
+            <Printer aria-hidden="true" />
+            Print or save as PDF
+          </Button>
+        </div>
       </div>
       {empty && (
         <EmptyState icon={BarChart3} title="Nothing in this period">

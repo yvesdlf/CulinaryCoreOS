@@ -23,7 +23,7 @@
 // shape.
 // ---------------------------------------------------------------------------
 
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 
 export interface TrendPoint {
   label: string;
@@ -43,6 +43,32 @@ export function TrendChart({
   height?: number;
 }) {
   const hatchId = useId().replace(/:/g, "");
+
+  /*
+   * Open on paper.
+   *
+   * A printed chart is a shape with no axis and no values — the labels live
+   * in the table below, which is collapsed. On screen that is the right trade
+   * (the chart is the quick read, the table is there for whoever wants it);
+   * on a sheet handed to somebody who cannot click it, a shape with no
+   * numbers is decoration.
+   *
+   * `beforeprint` rather than a `@media print` rule, because a closed
+   * `<details>` does not hide its children with anything CSS can override in
+   * every browser — the element's own state is what the rule would have to
+   * fight.
+   */
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    const open = () => setPrinting(true);
+    const close = () => setPrinting(false);
+    window.addEventListener("beforeprint", open);
+    window.addEventListener("afterprint", close);
+    return () => {
+      window.removeEventListener("beforeprint", open);
+      window.removeEventListener("afterprint", close);
+    };
+  }, []);
 
   if (points.length === 0) return null;
 
@@ -76,9 +102,9 @@ export function TrendChart({
             patternUnits="userSpaceOnUse"
             patternTransform="rotate(45)"
           >
-            <rect width="4" height="4" fill="var(--muted)" />
+            <rect width="4" height="4" fill="var(--color-muted)" />
             <line x1="0" y1="0" x2="0" y2="4"
-                  stroke="var(--muted-foreground)" strokeWidth="1.5" />
+                  stroke="var(--color-muted-foreground)" strokeWidth="1.5" />
           </pattern>
         </defs>
 
@@ -92,7 +118,7 @@ export function TrendChart({
               y={height - h}
               width={barWidth * 0.7}
               height={Math.max(h, 1)}
-              fill={p.incomplete ? `url(#hatch-${hatchId})` : "var(--primary)"}
+              fill={p.incomplete ? `url(#hatch-${hatchId})` : "var(--color-primary)"}
               vectorEffect="non-scaling-stroke"
             />
           );
@@ -101,8 +127,8 @@ export function TrendChart({
 
       {/* The data. Not an afterthought: a chart is a picture to a screen
           reader, and this is what it is a picture of. */}
-      <details className="mt-2">
-        <summary className="cursor-pointer text-xs text-muted-foreground">
+      <details className="mt-2" open={printing || undefined}>
+        <summary className="cursor-pointer text-xs text-muted-foreground print:hidden">
           The figures behind this chart
         </summary>
         <table className="mt-2 w-full text-sm">

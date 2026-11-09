@@ -1465,9 +1465,56 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       them paler, because a paler bar reads as a smaller value. Proved by
       13 checks in `supabase/tests/61_trends.sql`.
 
-- [ ] **Export beyond CSV.** PDF would go through the browser print path
-      that already works for labels and collection packs. Excel needs a
-      dependency. Scheduled delivery is blocked on the notification channel.
+- [x] ~~**Export beyond CSV.**~~ PDF, through the browser's own print
+      dialog — the path the labels and collection packs already use. Every
+      report carries "Print or save as PDF" beside "Download CSV".
+
+      No dependency and no server. A generated PDF would have meant a second
+      renderer to keep in step with the screen, and the first thing to fall
+      out of step would have been the caveats: the blurb above each table is
+      where the report says what it excludes ("stock with no unit on it is
+      excluded rather than spread"), and a PDF of the figures without it is a
+      number with no provenance. Printing the page keeps them together by
+      construction rather than by remembering.
+
+      What the sheet gains over the screen, because a document leaves the
+      room: the venue's name, the period and the date it was printed, all
+      three in ISO form. The first version used `toLocaleDateString` for the
+      printed date and produced "11/9/2026" beside a period written
+      "2026-10-10 to 2026-11-09" — one sheet, two date formats, and the short
+      one reads as 11 September to half the world.
+
+      Excel beyond CSV still needs a dependency and is still not done.
+      Scheduled delivery is still blocked on the notification channel.
+
+- [x] **The trend chart drew black bars, and the hatching was invisible.**
+      Found while checking what the printed report looked like, and it was
+      never a print problem: `trend-chart.tsx` asked for `var(--primary)` and
+      `var(--muted)`, and Tailwind 4 publishes the theme as `--color-primary`
+      and `--color-muted`. An undefined custom property makes `fill` fall back
+      to its initial value, which is black.
+
+      So every bar was black — including the hatched one. The hatch pattern
+      fills itself with `--muted` and strokes with `--muted-foreground`, both
+      undefined, so the tile was solid black on a black bar. The period that
+      has not finished was pixel-identical to the ones that had, on the chart
+      whose header says that distinction is "the whole reason the component
+      exists rather than a `<Bar>` from a library". 0120 shipped it that way
+      and five weeks of looking at it did not catch it.
+
+      `--secondary` and `--foreground` in the button's hover mix, `--popover`,
+      `--popover-foreground` and `--border` in the toast, and two sidebar
+      tokens in the rail's shadow were wrong the same way. The sidebar's own
+      widths were not: a component may define a token inline and read it back,
+      and that one does.
+
+      Guarded by `src/lib/css-tokens.test.ts`, which collects what the
+      stylesheet defines and what the components ask for and compares them.
+      Nothing else can: the compiler cannot see inside a string, eslint has no
+      opinion about CSS, and the visual baselines do not cover the reports
+      page. Writing it found that vitest stubs CSS imports to an empty string
+      by extension — `index.css?raw` came back empty and the first version of
+      the check passed while comparing nothing against nothing.
 
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
