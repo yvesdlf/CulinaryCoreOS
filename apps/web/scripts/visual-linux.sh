@@ -82,7 +82,31 @@ if [ -z "$ANON" ]; then
 fi
 
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+
+#
+# The container runs as root and installs `node_modules` into this directory,
+# so on Linux the files come back owned by root and an ordinary `rm -rf`
+# cannot remove them. That is not a theoretical tidiness problem: the trap ran
+# under `set -e`, its failure became the step's exit code, and CI reported the
+# visual suite as broken on a run where all 33 baselines had just matched.
+# A green check that reports red is worse than no check — nobody reads the
+# third one.
+#
+# So: try as this user, and if anything is left, delete it from inside a
+# container, which is root. Either way the exit status is the one the tests
+# produced.
+#
+cleanup() {
+  local code=$?
+  rm -rf "$WORK" 2>/dev/null || true
+  if [ -d "$WORK" ]; then
+    docker run --rm -v "$WORK:/work" "$IMAGE" \
+      bash -c 'rm -rf /work/* /work/.[!.]* /work/..?* 2>/dev/null; true' >/dev/null 2>&1 || true
+    rmdir "$WORK" 2>/dev/null || true
+  fi
+  exit $code
+}
+trap cleanup EXIT
 echo "Copying HEAD into $WORK…"
 (cd "$ROOT" && git archive HEAD) | tar -x -C "$WORK"
 
