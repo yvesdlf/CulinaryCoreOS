@@ -1291,9 +1291,21 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       and a check constraint so the blank row cannot be written. Each layer
       falsified on its own: dropping the constraint turns one check red,
       reverting the function turns the other.
-- [ ] **Written-answer marking has schema and no screen.** Verified:
-      `quiz_questions` carries `kind`, `model_answer` and `points`, and no
-      file in `apps/web/src` reads `model_answer`.
+- [x] ~~**Written-answer marking has schema and no screen.**~~ Built in
+      0125 and `written-answer-marking.tsx`. The missing piece was not the
+      screen: a marker genuinely cannot read `quiz_questions`, because
+      `authenticated` holds no SELECT on it and should not — that is where
+      the model answers live. So there was no way to hand a marker the
+      answers without handing them to everybody, and the RPC that awards the
+      marks had nothing to drive it. `written_answers_to_mark` is the
+      marker's counterpart to the `my_exam_questions` view candidates
+      already use: definer-rights on purpose, gated on People *write*, and
+      excluding the reader's own paper — otherwise a manager reads the model
+      answers to an exam they are about to sit, and whoever marks it
+      afterwards is going through the motions. The first draft gated on
+      `auth_can_write(org_id)`, copied from the RPC, which is an
+      organisation-level question: a chef with no People access read the
+      model answers until `23_exposure.sql` caught it.
 - [ ] **The visual suite still does not run in CI.** Half of this item was
       true and half was not — see the struck-through entry below. The
       baselines are current; nothing automated checks them. The exclusion is

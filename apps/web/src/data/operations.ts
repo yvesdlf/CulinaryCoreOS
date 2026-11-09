@@ -87,6 +87,82 @@ export async function completeTraining(
   if (error) fail("completeTraining", error);
 }
 
+// ── Marking a written answer ────────────────────────────────────────────────
+
+/**
+ * One written answer waiting to be marked.
+ *
+ * Read from `written_answers_to_mark`, not from the tables under it.
+ * `quiz_questions` holds the model answers and `authenticated` has no SELECT
+ * on it at all — that is deliberate, since a candidate who can read it has
+ * been given the answers — so the view is the only route, and it decides who
+ * sees what rather than merely formatting it. It excludes the reader's own
+ * attempt for the same reason.
+ */
+export interface WrittenAnswerToMark {
+  id: string;
+  attemptId: string;
+  questionId: string;
+  courseTitle: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  employeeNumber: string | null;
+  attemptedAt: string;
+  awaitingMarking: boolean;
+  prompt: string;
+  modelAnswer: string | null;
+  answer: string;
+  points: number;
+  awardedPoints: number | null;
+  markerComment: string | null;
+  markedByEmail: string | null;
+  markedAt: string | null;
+}
+
+export async function fetchWrittenAnswersToMark(): Promise<WrittenAnswerToMark[]> {
+  const { data, error } = await requireSupabase()
+    .from("written_answers_to_mark").select("*")
+    .order("attempted_at", { ascending: true });
+  if (error) fail("fetchWrittenAnswersToMark", error);
+  return (data ?? []).map((r: any) => ({
+    id: r.id, attemptId: r.attempt_id, questionId: r.question_id,
+    courseTitle: r.course_title, employeeId: r.employee_id,
+    firstName: r.first_name, lastName: r.last_name,
+    employeeNumber: r.employee_number ?? null,
+    attemptedAt: r.attempted_at, awaitingMarking: Boolean(r.awaiting_marking),
+    prompt: r.prompt, modelAnswer: r.model_answer ?? null, answer: r.answer,
+    points: Number(r.points),
+    awardedPoints: r.awarded_points === null ? null : Number(r.awarded_points),
+    markerComment: r.marker_comment ?? null,
+    markedByEmail: r.marked_by_email ?? null,
+    markedAt: r.marked_at ?? null,
+  }));
+}
+
+/**
+ * Award the marks for one attempt.
+ *
+ * The score is recomputed in the database across both halves of the paper —
+ * the auto-marked questions and these — because a percentage worked out in
+ * the browser is one the browser can be wrong about, and this one decides
+ * whether somebody holds a certification.
+ *
+ * `p_marks` is keyed by question id, which is what the RPC reads.
+ */
+export async function markWrittenAnswers(
+  attemptId: string,
+  marks: Record<string, number>,
+  passMark = 80,
+): Promise<{ score: number; passed: boolean }> {
+  const { data, error } = await requireSupabase().rpc("mark_written_answers", {
+    p_attempt: attemptId, p_marks: marks, p_pass_mark: passMark,
+  });
+  if (error) fail("markWrittenAnswers", error);
+  const r = data as any;
+  return { score: Number(r?.score ?? 0), passed: Boolean(r?.passed) };
+}
+
 export interface Competency {
   id: string; name: string; criteria: string; jobRoleId: string | null;
 }

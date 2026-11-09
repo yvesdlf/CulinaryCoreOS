@@ -102,7 +102,13 @@ select t.expect_value($$
      and has_table_privilege('authenticated', c.oid, 'select')
      and not coalesce('security_invoker=true' = any(c.reloptions)
                    or 'security_invoker=on'   = any(c.reloptions), false)
-     and pg_get_viewdef(c.oid) !~ '(auth_employee_id|auth_employee_org|auth_supplier_id|can_read_section)\('
+     -- `can_write_section` is strictly stronger than `can_read_section` —
+     -- it is the same section test with WRITE required rather than any
+     -- level — so a view filtered by it is at least as narrow as one this
+     -- check already accepts. It was missing only because no view had
+     -- needed it until `written_answers_to_mark` (0125), which hands out
+     -- exam model answers and should not settle for read.
+     and pg_get_viewdef(c.oid) !~ '(auth_employee_id|auth_employee_org|auth_supplier_id|can_read_section|can_write_section)\('
      -- The member list: every member sees who else works here (0083).
      and c.relname not in ('organization_people')$$,
   'every view a signed-in user can read is invoker-rights or filtered by section or identity', '');

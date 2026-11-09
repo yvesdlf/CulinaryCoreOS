@@ -16,7 +16,7 @@
 import { venueToday } from "@/lib/today";
 import { useEffect, useMemo, useState } from "react";
 import { Users, CalendarDays, BadgeCheck, Plus, Check, X, TriangleAlert,
-  UserPlus, CalendarRange, Clock, GraduationCap, Target, ClipboardCheck, Lock,
+  UserPlus, CalendarRange, Clock, GraduationCap, Target, ClipboardCheck, Lock, PenLine,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,6 +62,7 @@ import { RotaTab, AttendanceTab, LifecycleTab } from "@/components/people/rota-t
 import {
   TrainingTab, CompetencyTab, ReviewsTab, CasesTab,
 } from "@/components/people/development-tabs";
+import { WrittenAnswerMarking } from "@/components/people/written-answer-marking";
 import {
   fetchShifts, fetchAttendance, fetchOpenEntries, fetchTaskBoard,
   fetchTrainingCourses, fetchTrainingAssignments, fetchCompetencies,
@@ -259,6 +260,9 @@ export function PeoplePage() {
           </TabsTrigger>
           <TabsTrigger value="training" className="justify-start">
             <GraduationCap className="size-4" />Training ({courses.length})
+          </TabsTrigger>
+          <TabsTrigger value="marking" className="justify-start">
+            <PenLine className="size-4" />Marking
           </TabsTrigger>
           <TabsTrigger value="competency" className="justify-start">
             <Target className="size-4" />Competency
@@ -570,6 +574,10 @@ export function PeoplePage() {
         <TabsContent value="training" className="mt-4">
           <TrainingTab courses={courses} assignments={trainingAssignments}
             employees={employees} onDone={load} />
+        </TabsContent>
+
+        <TabsContent value="marking" className="mt-4">
+          <WrittenAnswerMarking onDone={load} />
         </TabsContent>
 
         <TabsContent value="competency" className="mt-4">
