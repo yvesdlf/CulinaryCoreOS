@@ -844,6 +844,24 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 - [x] A false pass worth remembering, caught here: an UPDATE refused by RLS
       matches zero rows and raises no exception, so a test asserting "no
       error" proves nothing. Re-run with `get diagnostics row_count`.
+- [x] **A second false pass, and a fourth way to produce one: an assertion
+      that reads more rows than it asserts about.** "The kitchen department
+      and the kitchen cost centre are one row" joined `departments` to
+      `cost_centres` on the code and filtered only the `departments` side to
+      the Demo venue. There are always five organisations while the suite
+      runs — `_fixtures.sql` makes four auth users, each sign-up gets its own
+      organisation, and each of those is seeded a KITCHEN unit — so the join
+      matched five rows, one true and four false, and `expect_value` does
+      `execute … into`, which keeps the first and discards the rest. The
+      answer therefore came from heap order: green while the Demo unit was
+      the earliest KITCHEN row, `got 'false', expected 'true'` as soon as an
+      update, a vacuum or a different plan moved it. Read as a flake for as
+      long as it was noticed, but the schema was correct on every one of
+      those runs and the check had never once proved what it claimed. Fixed
+      by naming the organisation on both sides of the join, which the unique
+      index on `(org_id, lower(code))` then holds to exactly one row. The
+      shape to grep for is a join between two org-scoped tables on anything
+      other than a primary key; every other one in the suite joins on `b.id`.
 
 ## In progress / next up
 
