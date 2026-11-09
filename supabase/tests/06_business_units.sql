@@ -45,8 +45,32 @@ select t.expect_value($$select count(*)::text from cost_centres c
 
 -- The point of the exercise: the kitchen department and the kitchen cost
 -- centre are the same row, not two rows that agree.
+--
+-- Both sides of the join name the organisation, and the `and c.org_id =
+-- d.org_id` is the whole point of this comment.
+--
+-- Filtering only `d` left the `cost_centres` side open to every organisation
+-- in the database, and there are always five. `_fixtures.sql` creates four
+-- auth users; `on_auth_user_created` gives each one an organisation of its
+-- own (rule 7 — a sign-up always owns something); `seed_organization_defaults`
+-- gives each of those a KITCHEN unit. So on every run the unfiltered join
+-- matched five rows — one true and four false — and `expect_value` does
+-- `execute … into`, which keeps the first row and discards the rest. Which
+-- row arrives first is the heap order of a sequential scan, so the check
+-- answered from physical storage: it passed while the Demo unit happened to
+-- be the earliest KITCHEN row and said "got 'false', expected 'true'" once
+-- anything moved it — an update, a vacuum, a plan the planner was free to
+-- choose. The schema was never at fault on any of those runs.
+--
+-- The failure to see here is not the flake. It is that a check which reads
+-- five rows and asserts about one of them proves nothing in either direction:
+-- four of those rows compare a Demo department against another venue's cost
+-- centre, which is not a question anybody wanted asked. With both sides named
+-- the unique index on (org_id, lower(code)) means exactly one row can match,
+-- and the assertion is about the row it claims to be about.
 select t.expect_value($$select (d.id = c.id)::text
-  from departments d join cost_centres c on lower(c.code) = lower(d.code)
+  from departments d join cost_centres c
+    on lower(c.code) = lower(d.code) and c.org_id = d.org_id
  where d.code = 'KITCHEN'
    and d.org_id = (select id from organizations where name='Demo Kitchen' limit 1)$$,
   'the kitchen department and the kitchen cost centre are one row', 'true');
