@@ -171,9 +171,37 @@ select t.expect_value($$
   ) x where a is distinct from public.normalise_allergen(a)$$,
   'nothing stored is left in a form the registry would rewrite', '0');
 
+/*
+ * Written here rather than read off the seeds.
+ *
+ * This asserted `products` already held a row whose allergens contained
+ * 'MILK', which is true locally because `db reset` loads seed_manuza after
+ * the migrations. A hosted project gets `db push` and no seeds, so on
+ * staging there were no products at all: this check failed, and the one
+ * above it — "nothing stored is left in a form the registry would rewrite" —
+ * passed over an empty table without asserting anything. A vacuous pass next
+ * to a failure is the worse of the two.
+ *
+ * So the row is created with the informal spelling the registry is supposed
+ * to rewrite, and the same two questions are asked of data this file put
+ * there.
+ */
+select t.fixture($$
+  insert into products (org_id, category, name, pack_unit, allergens)
+  values ((select id from organizations where name='Demo Kitchen' limit 1),
+          'T-DAIRY', 'T-Allergen Probe', 'EA',
+          array['milk','gluten'])$$)
+  as informal_token_fixture;
+
 select t.expect_value($$
-  select (count(*) > 0)::text from products where allergens @> array['MILK']$$,
+  select (count(*) > 0)::text from products
+   where name = 'T-Allergen Probe' and allergens @> array['MILK']$$,
   'and the informal tokens became ids rather than being lost', 'true');
+
+select t.expect_value($$
+  select (count(*) > 0)::text from products
+   where name = 'T-Allergen Probe' and allergens @> array['GLUTEN_CEREALS']$$,
+  'including the one whose id is not simply the word in capitals', 'true');
 
 /*
  * Held by a trigger rather than by the one-time pass, because `db reset`

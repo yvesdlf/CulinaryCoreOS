@@ -1395,6 +1395,57 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       them strips exactly that, and produces a number with no provenance,
       which is the thing `METRICS.md` exists to prevent.
 
+## The first hosted run (0122, 0123)
+
+Staging exists: `culinarycoreos-staging`, `ap-southeast-1`, all migrations
+applied. Pointing the control suite at it for the first time — the step
+`DEPLOY.md` §1 has described since before there was a hosted project to run it
+against — turned **19 checks red that had never been red in CI**.
+
+- [x] **A grant without a revoke means nothing on a hosted project.** 87 of
+      121 migrations end with `grant select on x to authenticated` and no
+      `revoke` first, because locally a new table starts with no privileges.
+      A hosted project's `alter default privileges` grants all on every new
+      table to `anon` and `authenticated`, so those grants added nothing to
+      what was already there. 148 of 163 tables differed from local; `anon`
+      had gained SELECT on 145, `authenticated` DELETE on 51, UPDATE on 25,
+      INSERT on 14. Nothing had been lost anywhere. Fixed in 0122.
+- [x] **The same thing one layer up, on functions.** PostgreSQL grants
+      EXECUTE to PUBLIC by default. `drain_outbox` and `attempt_delivery`
+      were callable by any signed-in user — the scheduler's job, out of the
+      scheduler's hands. 35 functions, fixed in 0123.
+- [x] **No data was exposed, and that was tested rather than assumed.**
+      Row-level security is on for every table an authenticated user can
+      write to, with no exceptions, and it held in every probe: an owner
+      rewriting their own AI allowance changed 0 rows, the parameter audit
+      trail refused outright, and a signed-out visitor reading employees,
+      takings, suppliers and organisations got 0 rows from each. Three
+      policies in the schema are reachable by `anon`, all three the allergen
+      registry, which is public reference data by design. The loss was depth:
+      the model wants a privilege *and* a policy to agree, and only the
+      policy was arguing.
+- [x] **The suite could not run against a hosted project at all.** Its
+      fixtures read `where name = 'Demo Kitchen'`, which only `seed.sql`
+      creates, and `db push` applies migrations and no seeds — while
+      `DEPLOY.md` is explicit that `seed.sql` must never be loaded on a hosted
+      project, since it carries a demo owner whose password is in this public
+      repository. The fixtures create the venue themselves now. Two allergen
+      checks had the same shape: one failed on an empty `products` table while
+      the one above it passed vacuously over the same empty table.
+- [x] **`63_the_privilege_boundary.sql`**, so the next occurrence is caught
+      rather than reasoned about. It sweeps every table in the schema rather
+      than a list. The hosted defaults belong to `supabase_admin` and no
+      migration running as the project role can remove them, so the guarantee
+      is "not unnoticed", not "not again".
+
+> **A green CI run says nothing about a hosted project.** Three drafts of 0122
+> were wrong before one was right — a blanket revoke reached views and
+> exposed the scheduler's job list; a list derived from `has_table_privilege`
+> stripped the 24 column-level grants `employees` depends on, because a table
+> privilege being absent is exactly what a column-granted table looks like.
+> Each was caught by the suite, and none would have been caught by reading
+> the diff.
+
 ## Open questions for the user
 
 Three of these block work that is otherwise ready to start. They are

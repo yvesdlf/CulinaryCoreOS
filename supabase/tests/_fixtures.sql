@@ -19,13 +19,37 @@
 \ir _teardown.sql
 
 select coalesce(string_agg(f, E'\n'), '') as fixture_problems from (
+  /*
+   * The venue the whole suite works against, created here rather than assumed.
+   *
+   * `supabase/seed.sql` creates it locally and `db reset` loads that; a hosted
+   * project gets `db push`, which applies migrations and no seed at all. So
+   * every fixture below that reads `where name = 'Demo Kitchen'` found null on
+   * staging, and the first not-null constraint caught it — DEPLOY.md §1 tells
+   * you to run this suite against a staging project, and until now that could
+   * not work.
+   *
+   * Loading seed.sql there instead is not the fix: it carries a demo owner
+   * whose password is in this public repository, which is exactly what
+   * DEPLOY.md's "what never goes near production" list exists to prevent.
+   *
+   * The id matches seed.sql's so a local and a hosted run are the same run.
+   * `on conflict do nothing` with no target, so it is a no-op locally and
+   * cannot fail on either the primary key or the slug. The defaults trigger
+   * on `organizations` gives it parameters, leave types, HACCP forms and its
+   * business units, exactly as a real venue gets them.
+   */
   select t.fixture($$
+    insert into organizations (id, name, slug)
+    values ('a7d63561-c014-53f4-9bd1-4273d5625836', 'Demo Kitchen', 'demo')
+    on conflict do nothing $$) as f
+  union all select t.fixture($$
     insert into auth.users (id, email, instance_id, aud, role) values
       ('a0000000-0000-0000-0000-000000000001','owner@test.local','00000000-0000-0000-0000-000000000000','authenticated','authenticated'),
       ('a0000000-0000-0000-0000-000000000002','chef@test.local','00000000-0000-0000-0000-000000000000','authenticated','authenticated'),
       ('a0000000-0000-0000-0000-000000000003','nobody@test.local','00000000-0000-0000-0000-000000000000','authenticated','authenticated'),
       ('a0000000-0000-0000-0000-000000000004','staff@test.local','00000000-0000-0000-0000-000000000000','authenticated','authenticated')
-  $$) as f
+  $$)
   -- Repointed, not inserted: the sign-up trigger has already made each of
   -- them the owner of an organisation of their own.
   union all select t.fixture($$

@@ -36,6 +36,24 @@ Then prove the controls survived the trip — **on staging only**:
 CCOS_ALLOW_REMOTE_TESTS=1 ./supabase/tests/run.sh "$STAGING_DATABASE_URL"
 ```
 
+`$STAGING_DATABASE_URL` is the **session pooler** string, not the direct one:
+
+```
+postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+```
+
+The direct host the dashboard shows first, `db.<ref>.supabase.co`, is IPv6-only
+on projects created recently and will not resolve from most networks —
+`could not translate host name`, which reads like a typo rather than a missing
+AAAA record. The region in the pooler host is the project's own, and the `aws-0`
+prefix is part of it: `aws-1-ap-southeast-1` answers but rejects the tenant.
+
+This step was documented long before it was run. The first time anybody ran it,
+121 migrations in, it found 19 failures that had never once been red in CI —
+see 0122 and 0123, and `63_the_privilege_boundary.sql`, which exists so the
+next occurrence is caught rather than reasoned about. **A green CI run says
+nothing about a hosted project.** The suite has to be pointed at one.
+
 They are the same checks CI runs, and running them against a hosted database
 is the only way to know it enforces what the local one does — a migration that
 applies is not the same as a trigger that fires. **Never point `run.sh` at

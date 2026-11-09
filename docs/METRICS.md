@@ -583,3 +583,28 @@ compute at all.
   drops held packs to read-only, and a lapsed pack stays readable and
   exportable permanently — statutory retention does not pause because an
   invoice did.
+
+---
+
+## 15. The privilege boundary (0122, 0123)
+
+Not a metric either, but the layer every metric above depends on being true.
+
+- **A privilege and a policy must both agree** before a write lands. On a
+  hosted Supabase project only the policy was arguing: `alter default
+  privileges` grants all on every new table to `anon` and `authenticated`, and
+  87 of 121 migrations granted what they needed without revoking first, which
+  is a no-op against a table that already has everything.
+- Found by pointing the control suite at a hosted project for the first time.
+  **19 checks failed there that had never been red in CI.** Measured: 148 of
+  163 tables differed from local, `anon` had gained SELECT on 145.
+- No data was exposed — row-level security held in every probe, and the only
+  three policies reachable by `anon` are the allergen registry, which is
+  public reference data. The loss was depth, not the boundary.
+- `63_the_privilege_boundary.sql` sweeps **every table in the schema** rather
+  than a list, so a table born with the hosted defaults shows up the first
+  time the suite runs against that database. The defaults themselves belong to
+  `supabase_admin` and cannot be removed by a migration, so the guarantee is
+  "not unnoticed" rather than "not again".
+- **A green CI run says nothing about a hosted project.** `DEPLOY.md` §1 is
+  the step that does.
