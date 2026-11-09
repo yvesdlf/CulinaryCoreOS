@@ -1178,28 +1178,51 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 
 ### Still true
 
-- [ ] **Realtime sync does not work and was deliberately reverted.** Reads
-      are hydrate-once at startup plus a refresh when the tab regains focus,
-      so a colleague's edit made while you are watching the same screen does
-      not appear on its own.
+- [~] **Realtime sync: it works, and the client does not use it yet.**
 
-      Backed out rather than shipped, because a sync that silently delivers
-      nothing is worse than none: it invites people to trust a screen that is
-      quietly stale, which is a costing error waiting to happen. What was
-      established, for whoever picks it up:
+      The note this replaces said the channel subscribed without error and
+      delivered nothing, and gave up there. It delivers. Reproducing the old
+      result found why it looked otherwise, and it is the first false pass in
+      `_harness.sql`: **the UPDATE used to test it matched no rows.** An
+      UPDATE that changes nothing writes nothing to the WAL, so a working
+      channel and a broken one are indistinguishable. I walked into the same
+      trap on the first attempt here — the product id I was updating no
+      longer existed after the database was rebuilt — and only saw it by
+      asking how many rows the update had touched.
 
-      * The tables must be in the `supabase_realtime` publication, and need
-        `replica identity full` so row-level security can filter deletes.
-      * The socket needs the session token via `realtime.setAuth()`. It is a
-        separate connection from the REST client and does not inherit it;
-        without it every change is filtered out by RLS.
-      * The realtime service caches the publication at boot, so it has to be
-        restarted after the publication changes.
-      * With all three done the channel subscribes without error and still
-        delivers no events. Not diagnosed further.
+      Done, in 0127: `products`, `recipes` and `sub_recipes` are in the
+      `supabase_realtime` publication with `replica identity full`, installed
+      by a re-runnable function because `alter publication ... add table`
+      raises on a table already in it. Full replica identity so a DELETE can
+      still be filtered by venue — without it Realtime has only the primary
+      key of a row that has gone and drops the event for everybody — and the
+      cost is that every UPDATE writes the whole previous row to the WAL,
+      which is why the list is three tables and not thirty.
 
-      Verified along the way that the fetch path itself is fine: a change made
-      directly in the database appears immediately on reload.
+      **Tenancy over the websocket is proved, not assumed.** Realtime is the
+      one path that does not go through PostgREST, so none of the 1.461
+      database checks covers it: a policy that holds for a REST read and
+      leaks over a socket would be green in all of them.
+      `apps/web/scripts/realtime-probe.mjs` puts three subscribers on one
+      table and changes one row — a member of the venue, a member of another
+      venue, and a client that never signed in. The member is told and gets
+      the new value; the other venue is told nothing at all; the signed-out
+      client receives `{"new":{},"old":{},"errors":["Error 401:
+      Unauthorized"]}` — the event's existence and its table, with no venue,
+      no row and no values. That last one is the platform's behaviour and is
+      written down rather than left to be rediscovered: an unauthenticated
+      socket can tell that some venue edited some product at some moment, and
+      nothing more.
+
+      **Still to do: the client half.** Nothing in the app subscribes yet.
+      The shape is decided — a channel on those three tables that calls the
+      existing `refreshCatalogue()`, debounced, rather than patching rows
+      into the stores. The ping is the signal and the REST read stays the
+      source of truth; merging a partial row into a normalised store is where
+      this would go wrong, and `refreshCatalogue` is already written, already
+      used by the focus refresh, and already careful not to blank a form
+      somebody is typing into.
+
 - [x] **Organization switcher** (0118). `member_preferences.active_org_id`,
       read by `auth_default_org_id()` — which is the point. That function is
       what `set_org_id()` stamps new rows with, so a switcher built in the
