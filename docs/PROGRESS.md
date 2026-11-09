@@ -1352,11 +1352,18 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       pour cost needs a measure configured — so they show the empty state,
       which says it cannot tell "nothing recorded" from "no access".
 
-- [ ] **Trends over time.** The one genuinely missing capability rather than
-      a missing screen: every costing view is a snapshot or a single period,
-      and DOC1 RPT-FUNC-002 asks for daily, weekly, monthly and yearly
-      lines. Needs period-over-period views and a charting dependency, of
-      which there is currently none.
+- [x] ~~**Trends over time.**~~ Built in 0120. `profit_trend(from, to,
+      grain, unit)` returns, per period, the figures *and* whether they can
+      be trusted: `is_open`, `days_in_period` against `days_with_data`, and
+      the previous period's figures so the comparison is made in the
+      database rather than guessed in the browser. A period with no revenue
+      has no margin rather than a margin of nought. Grain is whitelisted to
+      day/week/month/quarter/year and each length mapped explicitly —
+      `('1 ' || grain)::interval` is a syntax error for 'quarter', which
+      test 61 caught. No charting dependency was added: `trend-chart.tsx`
+      is hand-rolled SVG, hatching incomplete periods rather than drawing
+      them paler, because a paler bar reads as a smaller value. Proved by
+      13 checks in `supabase/tests/61_trends.sql`.
 
 - [ ] **Export beyond CSV.** PDF would go through the browser print path
       that already works for labels and collection packs. Excel needs a
