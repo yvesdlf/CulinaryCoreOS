@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
-  ShieldCheck, LineChart,
+  ShieldCheck, LineChart, FileSearch,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,14 +43,17 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { StatusChip } from "@/components/shared/status-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toCsv, downloadCsv } from "@/lib/csv";
-import { venueToday, addDays, useNow } from "@/lib/today";
+import {
+  PeriodPicker, resolvePeriod, type PeriodChoice,
+} from "@/components/reports/period-picker";
+import { ExportMenu } from "@/components/reports/export-menu";
+import { venueToday, useNow } from "@/lib/today";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   fetchUnitProfit, fetchLabourAgainstRevenue, fetchCostOfGoods,
@@ -59,6 +62,7 @@ import {
   type UnitProfitRow, type LabourRow, type GoodsRow,
   type PayableRow, type PourCostRow, type HygieneRow,
   type TrendRow, type TrendGrain,
+  fetchTraceability, traceabilityCaveats, type TraceabilityRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -76,10 +80,19 @@ function pct(v: number | null) {
 }
 
 export function ReportsPage() {
-  // A month back by default: long enough to be a pattern, short enough that
-  // a venue with a year of data does not wait for it on first open.
-  const [to, setTo] = useState(venueToday());
-  const [from, setFrom] = useState(addDays(venueToday(), -30));
+  /*
+   * A period, not a pair of dates. A manager asks for "last month", and the
+   * pair is still there behind Custom for when they genuinely want one.
+   * Last month by default: a finished period, so the first thing anybody
+   * sees is comparable rather than a month nine days old.
+   */
+  const today = venueToday();
+  const [choice, setChoice] = useState<PeriodChoice>(
+    { mode: "PRESET", kind: "MONTH", offset: -1 });
+  const [comparing, setComparing] = useState(false);
+  const period = useMemo(() => resolvePeriod(choice, today), [choice, today]);
+  const from = period.from;
+  const to = period.to;
 
   const [profit, setProfit] = useState<UnitProfitRow[]>([]);
   const [labour, setLabour] = useState<LabourRow[]>([]);
@@ -88,6 +101,7 @@ export function ReportsPage() {
   const [pour, setPour] = useState<PourCostRow[]>([]);
   const [hygiene, setHygiene] = useState<HygieneRow[]>([]);
   const [trend, setTrend] = useState<TrendRow[]>([]);
+  const [lots, setLots] = useState<TraceabilityRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
   /*
@@ -110,7 +124,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -118,9 +132,12 @@ export function ReportsPage() {
         fetchPourCost().catch(() => []),
         fetchHygieneByUnit().catch(() => []),
         fetchProfitTrend(from, to, grain).catch(() => []),
+        // Tolerated like the rest: Traceability reads sections somebody may
+        // not hold, and one refusal must not blank the other six reports.
+        fetchTraceability(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
-      setPayables(a); setPour(pc); setHygiene(h); setTrend(tr);
+      setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
@@ -183,17 +200,9 @@ export function ReportsPage() {
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3 print:hidden">
-        <div className="space-y-2">
-          <Label htmlFor="rep-from">From</Label>
-          <Input id="rep-from" type="date" className="w-44"
-                 value={from} onChange={(e) => setFrom(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="rep-to">To</Label>
-          <Input id="rep-to" type="date" className="w-44"
-                 value={to} onChange={(e) => setTo(e.target.value)} />
-        </div>
+      <div className="mt-4">
+        <PeriodPicker value={choice} onChange={setChoice} today={today}
+                      comparing={comparing} onComparingChange={setComparing} />
       </div>
 
       {/* The three caveats worth seeing before any of the tables. */}
@@ -245,6 +254,7 @@ export function ReportsPage() {
           <TabsTrigger value="payables"><Wallet className="size-4" />Owed</TabsTrigger>
           <TabsTrigger value="pour"><Wine className="size-4" />Pour cost</TabsTrigger>
           <TabsTrigger value="hygiene"><ShieldCheck className="size-4" />Hygiene</TabsTrigger>
+          <TabsTrigger value="traceability"><FileSearch className="size-4" />Traceability</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="mt-4 space-y-4">
@@ -549,6 +559,132 @@ export function ReportsPage() {
             </Table>
           )}
         </TabsContent>
+
+        {/* ── Traceability (0129) ─────────────────────────────────────────── */}
+        <TabsContent value="traceability" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              Every lot received in the period: who it came from, where it went,
+              and what the record cannot answer. Article 18 asks a food business
+              for one step back and one step forward, and the lines that cannot
+              give either are the ones to work from.
+            </p>
+            <ExportMenu
+              disabled={lots.length === 0}
+              build={() => ({
+                title: "Lot traceability",
+                venue: venue?.name ?? "This venue",
+                period: period.label,
+                printedOn: printedOn.toISOString().slice(0, 10),
+                caveats: traceabilityCaveats(lots),
+                columns: [
+                  { label: "Lot code" }, { label: "Product" },
+                  { label: "Supplier" }, { label: "Delivery" },
+                  { label: "Received" }, { label: "Expires" },
+                  { label: "Date kind" }, { label: "Status" },
+                  { label: "Received qty", numeric: true },
+                  { label: "Drawn qty", numeric: true },
+                  { label: "Movements", numeric: true },
+                  { label: "Preparations", numeric: true },
+                  { label: "First used" }, { label: "Last used" },
+                  { label: "Services" }, { label: "Concerns" },
+                ],
+                rows: lots.map((r) => [
+                  r.lotCode ?? "", r.productName ?? "", r.supplierName ?? "",
+                  r.deliveryReference ?? "", r.receivedOn, r.expiresOn ?? "",
+                  r.expiryKind ?? "", r.status,
+                  r.quantityReceived ?? "", r.quantityOut,
+                  r.movements, r.preparations,
+                  r.firstUsedOn ?? "", r.lastUsedOn ?? "",
+                  r.services ?? "", r.concerns.join("; "),
+                ]),
+              })}
+            />
+          </div>
+
+          {/* The report-level notes, on screen and in every exported file. A
+              sheet filed for two years has to say what it could not answer. */}
+          {traceabilityCaveats(lots).map((c) => (
+            <p key={c} className="flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{c}</span>
+            </p>
+          ))}
+
+          {lots.length === 0 ? (
+            <EmptyState icon={FileSearch} title="No lots received in this period">
+              A lot is created when stock is received against a delivery. If
+              goods have been received and nothing appears here, either the
+              period is wrong or receiving is not recording lots — which is the
+              gap this report exists to show.
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Lot</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>From</TableHead>
+                <TableHead>Received</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead className="text-right">Drawn</TableHead>
+                <TableHead>Went to</TableHead>
+                <TableHead>Concerns</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {lots.map((r) => (
+                  <TableRow key={r.lotId}>
+                    <TableCell className="font-medium">
+                      {r.lotCode?.trim() || (
+                        <span className="text-muted-foreground italic">none</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{r.productName}</TableCell>
+                    <TableCell>
+                      {r.supplierName ?? (
+                        <span className="text-muted-foreground italic">unknown</span>
+                      )}
+                      {r.deliveryReference && (
+                        <span className="text-muted-foreground"> · {r.deliveryReference}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{r.receivedOn}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {r.expiresOn ?? "\u2014"}
+                      {r.expiresOn && (
+                        <span className="text-muted-foreground">
+                          {" "}{r.expiryKind === "USE_BY" ? "use by"
+                             : r.expiryKind === "BEST_BEFORE" ? "best before"
+                             : "kind not stated"}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.readerSeesMovements ? r.quantityOut : "\u2014"}
+                    </TableCell>
+                    <TableCell>
+                      {!r.readerSeesMovements
+                        ? <span className="text-muted-foreground italic">not visible to you</span>
+                        : r.movements === 0
+                          ? <span className="text-muted-foreground">nothing drawn</span>
+                          : `${r.movements} movement${r.movements === 1 ? "" : "s"}` +
+                            (r.preparations > 0
+                              ? `, ${r.preparations} preparation${r.preparations === 1 ? "" : "s"}`
+                              : "") +
+                            (r.services ? ` \u00b7 ${r.services}` : "")}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.concerns.length === 0
+                        ? <span className="text-muted-foreground">—</span>
+                        : r.concerns.map((c) => (
+                            <span key={c} className="block text-status-warning">{c}</span>
+                          ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
       </Tabs>
       )}
     </div>
@@ -632,6 +768,7 @@ const REPORT_NAMES: Record<string, string> = {
   payables: "Owed by supplier",
   pour: "Pour cost",
   hygiene: "Hygiene by outlet",
+  traceability: "Lot traceability",
 };
 
 function ReportHead({ blurb, empty, onExport }: {
