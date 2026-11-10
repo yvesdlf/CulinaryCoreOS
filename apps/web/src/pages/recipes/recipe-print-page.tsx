@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { RecipeSheet } from "@/components/recipes/recipe-sheet";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useNow } from "@/lib/today";
+import { VenueLogo } from "@/components/shared/venue-logo";
 import { useLocaleStore } from "@/stores/locale-store";
 
 export function RecipePrintPage() {
@@ -54,6 +55,11 @@ export function RecipePrintPage() {
           Print
         </Button>
       </div>
+
+      {/* The venue's own mark, where it has one (0128). At the head of the
+          sheet rather than in the footer: a logo at the bottom of the last
+          page is not whose document this is. */}
+      <VenueLogo className="mx-auto mb-4 block max-w-3xl h-12" />
 
       <RecipeSheet recipe={recipe} />
 

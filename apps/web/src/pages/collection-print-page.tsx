@@ -21,6 +21,7 @@ import { fetchCollections } from "@/data/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { useNow } from "@/lib/today";
+import { VenueLogo } from "@/components/shared/venue-logo";
 import { useLocaleStore } from "@/stores/locale-store";
 
 export function CollectionPrintPage() {
@@ -94,6 +95,8 @@ export function CollectionPrintPage() {
 
       {/* Contents, on its own page. */}
       <section className="mx-auto max-w-3xl break-after-page">
+        {/* On the contents page, which is the front of the pack (0128). */}
+        <VenueLogo className="mb-4 h-12" />
         <h1 className="text-3xl font-semibold">{collection.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {sheets.length} {sheets.length === 1 ? "recipe" : "recipes"} · printed{" "}

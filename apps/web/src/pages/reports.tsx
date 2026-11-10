@@ -38,6 +38,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { VenueLogo } from "@/components/shared/venue-logo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -168,6 +169,11 @@ export function ReportsPage() {
         * chrome and this puts back what the chrome was carrying.
         */}
       <div className="hidden print:block">
+        {/* The venue's own mark, where it has one (0128). Beside the name
+            rather than instead of it: a logo is recognised by people who
+            already know the venue, and this sheet goes to people who may
+            not. */}
+        <VenueLogo venueName={venue?.name} className="mb-2 h-12" />
         <h1 className="text-xl font-semibold">
           {venue?.name ?? "This venue"} — {REPORT_NAMES[tab] ?? "Reports"}
         </h1>
