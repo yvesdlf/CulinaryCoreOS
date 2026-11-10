@@ -24,11 +24,31 @@ declare
   tracked integer;
   opened integer;
 begin
-  select id into org from public.organizations order by created_at limit 1;
-  if org is null then
-    raise notice 'no organization; run seed.sql first';
-    return;
-  end if;
+  /*
+   * `into strict`, and the same rule in every seed file.
+   *
+   * Three of these picked `order by created_at limit 1` — the oldest
+   * organisation — and three picked the one named 'Demo Kitchen'. On a
+   * laptop with a single venue the two rules agree by accident, which is why
+   * it never showed. On a database with two they split: seeding a hosted
+   * staging project put the suppliers, the stock and twelve employees into an
+   * empty organisation left over from an earlier session, and the takings
+   * into the real one, where there were then no outlets to attribute revenue
+   * to. Neither half complained.
+   *
+   * `strict` because the failure to avoid is not "no venue" — it is picking
+   * the wrong one silently.
+   */
+  begin
+    select id into strict org from public.organizations where name = 'Demo Kitchen';
+  exception
+    when no_data_found then
+      raise exception 'no organisation called "Demo Kitchen"'
+        using hint = 'Run seed.sql first, or rename the venue you want seeded.';
+    when too_many_rows then
+      raise exception 'more than one organisation is called "Demo Kitchen"'
+        using hint = 'The seeds cannot tell which venue you mean. Rename all but one.';
+  end;
 
   /*
    * Par and reorder point, by category.

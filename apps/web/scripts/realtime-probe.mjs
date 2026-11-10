@@ -98,15 +98,32 @@ function watcher(name) {
 const member = watcher("member");
 await member.client.auth.signInWithPassword({ email, password });
 
+/*
+ * A fixed address, signed in to if it already exists.
+ *
+ * This used to sign up `realtime-probe+<timestamp>@…` on every run, and
+ * signing up creates an organisation — so each run left another venue behind.
+ * Harmless until the seed files have to decide which venue they mean, which
+ * is exactly the defect this run found: on a laptop that had been probed
+ * twice, "the oldest organisation" and "the one called Demo Kitchen" stopped
+ * being the same place. One throwaway venue, reused, instead of one per run.
+ */
 const stranger = watcher("stranger");
-const strangerEmail = `realtime-probe+${Date.now()}@test.local`;
-const { error: signUpError } = await stranger.client.auth.signUp({
-  email: strangerEmail,
-  password: "realtime-probe-password-123",
-});
-if (signUpError) {
-  console.error(`could not create the other venue's user: ${signUpError.message}`);
-  process.exit(2);
+const strangerEmail = "realtime-probe@test.local";
+const strangerPassword = "realtime-probe-password-123";
+{
+  const { error: signInError } = await stranger.client.auth.signInWithPassword({
+    email: strangerEmail, password: strangerPassword,
+  });
+  if (signInError) {
+    const { error: signUpError } = await stranger.client.auth.signUp({
+      email: strangerEmail, password: strangerPassword,
+    });
+    if (signUpError) {
+      console.error(`could not create the other venue's user: ${signUpError.message}`);
+      process.exit(2);
+    }
+  }
 }
 
 const signedOut = watcher("signed-out");
