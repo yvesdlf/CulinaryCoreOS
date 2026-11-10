@@ -1219,8 +1219,7 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       current the whole time. Regenerated, and the only difference is the nav
       item that was supposed to be there.
 
-
-- [~] **Realtime sync: it works, and the client does not use it yet.**
+- [x] ~~**Realtime sync does not work.**~~ It does, and the app uses it.
 
       The note this replaces said the channel subscribed without error and
       delivered nothing, and gave up there. It delivers. Reproducing the old
@@ -1256,14 +1255,47 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       socket can tell that some venue edited some product at some moment, and
       nothing more.
 
-      **Still to do: the client half.** Nothing in the app subscribes yet.
-      The shape is decided — a channel on those three tables that calls the
-      existing `refreshCatalogue()`, debounced, rather than patching rows
-      into the stores. The ping is the signal and the REST read stays the
-      source of truth; merging a partial row into a normalised store is where
-      this would go wrong, and `refreshCatalogue` is already written, already
-      used by the focus refresh, and already careful not to blank a form
-      somebody is typing into.
+      **The client half**, in `use-catalogue-live.ts`: one channel on those
+      three tables, and an event is a *signal* rather than data. The obvious
+      design is to put the row from the event into the store, and it is where
+      this would go wrong — a product row from the WAL is the product, not the
+      costed view the stores hold, and `recalculateAll` is the only
+      implementation of the rules that derive the rest. So the socket says
+      "something changed" and `refreshCatalogue()` still says what.
+
+      Coalesced on a 1,5 second trailing edge. One save here is one
+      transaction that rewrites a product and every recipe the cascade
+      reaches, so it arrives as a burst; a leading edge would re-read the
+      catalogue mid-transaction and then stay quiet for the rows that
+      mattered. Nothing happens on a hidden tab — a background tab re-reading
+      1.100 products every time anybody saves spends a venue's bandwidth on a
+      screen nobody is looking at, and `useCatalogueRefresh` already catches
+      up on focus.
+
+      **An open editor is safe, and that was checked rather than assumed.**
+      The detail pages seed their form with a lazy `useState` initialiser, so
+      a refresh underneath swaps the store and leaves the form alone. What it
+      does change is the version the store holds — and the form still carries
+      the one it loaded at, so saving on top of a colleague's edit raises the
+      conflict it should, which `persistence.ts` already turns into a "Save
+      conflict" toast with a Reload action rather than a silent overwrite.
+
+      Proved end to end by `live-catalogue.spec.ts`: a second signed-in
+      session renames a product, and the name changes on a screen that is
+      already open, in about two seconds, with no reload. Falsified by
+      unmounting the hook, which turns it red. CI runs it, and runs
+      `realtime-probe.mjs` beside it — which meant taking `realtime` out of
+      the services `supabase start` skips.
+
+      **Two false signals cost time here and are worth knowing.** The first
+      is the one that sank the original attempt: an UPDATE that matches no
+      rows writes nothing to the WAL, and a channel that correctly reports no
+      change is indistinguishable from a broken one. The second was mine —
+      the test renamed a product to `T-live …`, which re-sorted it out of an
+      alphabetically ordered, paginated list and out of the DOM. The screen
+      was right and the test was looking in the wrong place. Both are written
+      into the test's header, because the next person will reach for exactly
+      those two shapes.
 
 - [x] **Organization switcher** (0118). `member_preferences.active_org_id`,
       read by `auth_default_org_id()` — which is the point. That function is

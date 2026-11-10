@@ -51,6 +51,22 @@ if (!anonKey) {
   process.exit(2);
 }
 
+/*
+ * This writes rows and signs up a throwaway user, so it is refused against
+ * anything that is not a local stack unless somebody says otherwise —
+ * `supabase/tests/run.sh` carries the same guard for the same reason, and it
+ * is here rather than in the documentation because documentation does not
+ * refuse.
+ */
+const host = new URL(url).hostname;
+if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(host)) {
+  if (process.env.CCOS_ALLOW_REMOTE_TESTS !== "1") {
+    console.error(`Refusing to run against ${host}: this changes a product and creates a user.`);
+    console.error("Local stacks only, or a staging project with CCOS_ALLOW_REMOTE_TESTS=1.");
+    process.exit(2);
+  }
+}
+
 const failures = [];
 function check(ok, label, detail = "") {
   console.log(`${ok ? "pass" : "FAIL"}  ${label}${detail ? `  — ${detail}` : ""}`);
@@ -82,15 +98,32 @@ function watcher(name) {
 const member = watcher("member");
 await member.client.auth.signInWithPassword({ email, password });
 
+/*
+ * A fixed address, signed in to if it already exists.
+ *
+ * This used to sign up `realtime-probe+<timestamp>@…` on every run, and
+ * signing up creates an organisation — so each run left another venue behind.
+ * Harmless until the seed files have to decide which venue they mean, which
+ * is exactly the defect this run found: on a laptop that had been probed
+ * twice, "the oldest organisation" and "the one called Demo Kitchen" stopped
+ * being the same place. One throwaway venue, reused, instead of one per run.
+ */
 const stranger = watcher("stranger");
-const strangerEmail = `realtime-probe+${Date.now()}@test.local`;
-const { error: signUpError } = await stranger.client.auth.signUp({
-  email: strangerEmail,
-  password: "realtime-probe-password-123",
-});
-if (signUpError) {
-  console.error(`could not create the other venue's user: ${signUpError.message}`);
-  process.exit(2);
+const strangerEmail = "realtime-probe@test.local";
+const strangerPassword = "realtime-probe-password-123";
+{
+  const { error: signInError } = await stranger.client.auth.signInWithPassword({
+    email: strangerEmail, password: strangerPassword,
+  });
+  if (signInError) {
+    const { error: signUpError } = await stranger.client.auth.signUp({
+      email: strangerEmail, password: strangerPassword,
+    });
+    if (signUpError) {
+      console.error(`could not create the other venue's user: ${signUpError.message}`);
+      process.exit(2);
+    }
+  }
 }
 
 const signedOut = watcher("signed-out");
@@ -111,18 +144,53 @@ if (readError || !rows?.length) {
 const subject = rows[0];
 const newPrice = Math.round(Number(subject.buying_price_per_pack ?? 0)) + 7;
 
-const { count, error: writeError } = await member.client
-  .from("products")
-  .update({ buying_price_per_pack: newPrice }, { count: "exact" })
-  .eq("id", subject.id);
+/*
+ * ── Why this retries, and why that is not the same as hiding a failure ─────
+ *
+ * `SUBSCRIBED` means the server accepted the subscription, not that the
+ * change feed behind it is streaming yet. After a `supabase db reset` the
+ * database the service was attached to has been dropped and rebuilt, and it
+ * takes a while to come back — on a CI runner the first change after that
+ * reaches nobody, which is indistinguishable from a channel that never works.
+ *
+ * So the same real change is made again, up to a minute, and the moment one
+ * is delivered the measurement proceeds. Nothing is retried after that: the
+ * tenancy assertions below are judged on the round that delivered, and if
+ * none ever does, that is a failure and is reported as one.
+ */
+const DELIVERY_BUDGET_MS = 60_000;
+const startedAt = Date.now();
+let delivered = false;
+let rounds = 0;
 
-// Before anything is said about events. An update that matched nothing is the
-// false pass this whole file is shaped around.
-check(!writeError && count === 1, "the change under test actually changed a row",
-  writeError?.message ?? `rows: ${count}`);
-if (failures.length) process.exit(1);
+while (!delivered && Date.now() - startedAt < DELIVERY_BUDGET_MS) {
+  rounds += 1;
+  const { count, error: writeError } = await member.client
+    .from("products")
+    .update({ buying_price_per_pack: newPrice }, { count: "exact" })
+    .eq("id", subject.id);
 
-await wait(6000);
+  // Before anything is said about events. An update that matched nothing is
+  // the false pass this whole file is shaped around.
+  if (writeError || count !== 1) {
+    check(false, "the change under test actually changed a row",
+      writeError?.message ?? `rows: ${count}`);
+    process.exit(1);
+  }
+
+  await wait(6000);
+  delivered = member.seen.some((p) => p.new?.id === subject.id);
+  if (!delivered) {
+    // Put it back, so the next round is a change again rather than a no-op —
+    // an UPDATE to the value a row already holds still writes WAL, but this
+    // keeps the rounds identical and the catalogue where it started.
+    await member.client.from("products")
+      .update({ buying_price_per_pack: subject.buying_price_per_pack })
+      .eq("id", subject.id);
+  }
+}
+
+check(true, "the change under test actually changed a row", `rounds: ${rounds}`);
 
 const mine = member.seen.filter((p) => p.new?.id === subject.id);
 check(mine.length > 0, "the member is told about their own venue's change");

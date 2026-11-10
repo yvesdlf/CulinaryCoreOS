@@ -30,7 +30,18 @@ declare
   base numeric;
   units numeric;
 begin
-  select id into org from organizations order by created_at limit 1;
+  /* The same rule as every other seed file — see seed_people.sql for why
+     picking the oldest organisation was wrong. */
+  begin
+    select id into strict org from public.organizations where name = 'Demo Kitchen';
+  exception
+    when no_data_found then
+      raise exception 'no organisation called "Demo Kitchen"'
+        using hint = 'Run seed.sql first, or rename the venue you want seeded.';
+    when too_many_rows then
+      raise exception 'more than one organisation is called "Demo Kitchen"'
+        using hint = 'The seeds cannot tell which venue you mean. Rename all but one.';
+  end;
   if org is null then
     raise notice 'no organization; nothing seeded';
     return;
