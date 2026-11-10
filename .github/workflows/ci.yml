@@ -124,6 +124,12 @@ jobs:
           # other six seeds in dependency order, then the costing pass without
           # which 115 recipes cost zero and the allergen matrix is blank.
           ./supabase/seed_local_demo.sh
+          # `db reset` drops the database Realtime was attached to, and the
+          # service does not recover on its own quickly enough to matter:
+          # every change after a reset reached nobody, and the probe below
+          # read that as a broken channel. Restarting it is the cheap half of
+          # the fix; the probe waiting for the feed to come back is the other.
+          docker restart "supabase_realtime_$(grep -m1 '^project_id' supabase/config.toml | cut -d'"' -f2)"
 
       # The database controls, proved by trying to break them.
       #
