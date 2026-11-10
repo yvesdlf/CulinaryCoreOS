@@ -1178,6 +1178,48 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 
 ### Still true
 
+- [x] **A venue puts its own mark on its documents** (0128). Every printed
+      sheet said CulinaryCoreOS in the footer and nothing about the venue but
+      its name in text — the wrong way round, since the costing is ours and
+      the document is theirs, and it goes to an accountant or a landlord who
+      has never heard of us.
+
+      A private `branding` bucket, `organizations.logo_path` holding the path
+      rather than a URL, and the venue's mark at the head of the recipe
+      sheets, the collection pack and every report PDF. Not in the
+      application's own chrome: a logo on a screen the venue's own staff are
+      already signed into is decoration, and a logo on a document is the
+      point.
+
+      **No SVG.** An SVG is not a picture, it is a document — it can carry
+      script and reference things off the page. It is inert inside an `<img>`,
+      which is the only way this is ever rendered, but these end up in PDFs
+      sent outside the venue, and "safe because of how we happen to render it
+      today" is a thinner promise than "it is a raster image".
+
+      Whoever may change the venue's parameters may change its logo — the
+      rule `organizations_update` already applies, said again on the bucket,
+      because a column somebody cannot write and a file they can is not a
+      control. 13 checks in `67_a_venue_puts_its_own_name_on_it.sql`, and
+      writing them found two false passes of my own making: a fixture that
+      assumed the bucket was empty, and a delete assertion that was being
+      refused by `storage.protect_delete()` — which refuses *everybody* —
+      rather than by the policy. It would have stayed green with no delete
+      policy at all.
+
+- [x] **A visual baseline that had been stale for two weeks.**
+      `recipe-editor-dark-desktop-darwin.png` was last taken on 2026-10-18;
+      the Reports item joined the sidebar on 2026-10-25 and that commit
+      regenerated most of the set but missed this one. Found while checking
+      something unrelated.
+
+      Worth noticing *why* it survived: CI checks the Linux baselines and a
+      developer checks the macOS ones, so the two sets can disagree
+      indefinitely and only one of them stops a merge. The Linux set was
+      current the whole time. Regenerated, and the only difference is the nav
+      item that was supposed to be there.
+
+
 - [~] **Realtime sync: it works, and the client does not use it yet.**
 
       The note this replaces said the channel subscribed without error and
