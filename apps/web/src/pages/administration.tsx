@@ -48,6 +48,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { VenueChangesPanel } from "@/components/settings/venue-changes-panel";
+import { VenueLogoCard } from "@/components/settings/venue-logo-card";
 import {
   fetchAppSections, fetchAccessGrid, setSectionAccess,
   fetchVenueParameters, saveVenueParameter, fetchParameterChanges,
@@ -571,6 +572,10 @@ export function AdministrationPage() {
               them is limited to the general manager and the executive chef.
             </p>
           )}
+
+          {/* Above the numbers: it is the one venue setting whose effect is
+              visible outside the building. */}
+          <VenueLogoCard disabled={!canAdminister} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             {parameters.map((p) => (

@@ -30,3 +30,4 @@ export * from "./operations";
 export * from "./administration";
 export * from "./floor";
 export * from "./edit-history";
+export * from "./branding";
