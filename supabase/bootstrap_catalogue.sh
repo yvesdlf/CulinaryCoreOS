@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Load the Manuza catalogue into a named organisation on a real database.
+# Load the catalogue into a named organisation on a real database.
 #
 #   supabase/bootstrap_catalogue.sh <connection-string> <org-id>
 #
-# Why this exists rather than `psql -f seed_manuza.sql`: that file starts by
+# Why this exists rather than `psql -f seed_catalogue.sql`: that file starts by
 # truncating products, recipes and sub-recipes across every organisation, and
 # writes into the demo organisation that only seed.sql creates — seed.sql being
 # the file that also creates an owner whose password is in this repository.
@@ -41,7 +41,7 @@ fi
 # tables first and copied across with ids derived from the venue: the same
 # venue always gets the same ids, so a second run still changes nothing,
 # and two venues never collide.
-src="$HERE/seed_manuza.sql"
+src="$HERE/seed_catalogue.sql"
 tables="products sub_recipes recipes sub_recipe_lines recipe_lines"
 
 {

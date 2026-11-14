@@ -31,7 +31,7 @@ export class ConflictError extends Error {
 
 /**
  * PostgREST caps a response at 1.000 rows by default and returns that silently
- * — no error, no flag. The Manuza catalogue has 1.106 ingredients, so a plain
+ * — no error, no flag. The catalogue has 1.106 ingredients, so a plain
  * select dropped 106 of them: recipe lines referencing those products rendered
  * as "Unknown Product" and costed nothing.
  *

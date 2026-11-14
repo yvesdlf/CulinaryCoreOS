@@ -1371,7 +1371,7 @@ function ClockingCard({ fences, disabled, onSaved }: {
           <div className="space-y-1">
             <Label htmlFor="fence-name">Name</Label>
             <Input id="fence-name" value={name} disabled={disabled}
-              placeholder="Manuza Beach Club"
+              placeholder="Warung Nusantara"
               onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1">

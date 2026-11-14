@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert a Manuza recipe workbook into the CSV the app's recipe import reads.
+Convert a recipe workbook into the CSV the app's recipe import reads.
 
 Why a conversion step rather than a parser in the browser: the import path is
 already built, previewed and tested — matching ingredients, reporting what it

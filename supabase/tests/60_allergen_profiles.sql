@@ -175,7 +175,7 @@ select t.expect_value($$
  * Written here rather than read off the seeds.
  *
  * This asserted `products` already held a row whose allergens contained
- * 'MILK', which is true locally because `db reset` loads seed_manuza after
+ * 'MILK', which is true locally because `db reset` loads seed_catalogue after
  * the migrations. A hosted project gets `db push` and no seeds, so on
  * staging there were no products at all: this check failed, and the one
  * above it — "nothing stored is left in a form the registry would rewrite" —

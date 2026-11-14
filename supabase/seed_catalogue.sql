@@ -1,4 +1,4 @@
--- Manuza catalogue — GENERATED from COGS V5. Do not edit by hand.
+-- Catalogue — GENERATED from COGS V5. Do not edit by hand.
 -- Regenerate: python3 scratchpad/cogs/build_seed.py
 --
 -- Costs are DERIVED from ingredient lines, not copied from the workbook.

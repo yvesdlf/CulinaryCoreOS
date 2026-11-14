@@ -31,7 +31,7 @@ const doc = (over: Partial<ApprovableDocument> = {}): ApprovableDocument => ({
   status: "SUBMITTED",
   totalAmount: "1000000",
   requestedById: "user-a",
-  requestedByEmail: "chef@manuza.test",
+  requestedByEmail: "chef@venue.test",
   ...over,
 });
 
@@ -61,7 +61,7 @@ describe("who may approve", () => {
   it("lets a senior enough colleague approve", () => {
     const v = canApprove(
       doc({ totalAmount: "6000000" }),
-      { id: "user-b", email: "gm@manuza.test", role: "ADMIN" },
+      { id: "user-b", email: "gm@venue.test", role: "ADMIN" },
       "REQUISITION",
       POLICIES,
     );
@@ -72,7 +72,7 @@ describe("who may approve", () => {
   it("refuses the person who raised it", () => {
     const v = canApprove(
       doc(),
-      { id: "user-a", email: "chef@manuza.test", role: "OWNER" },
+      { id: "user-a", email: "chef@venue.test", role: "OWNER" },
       "REQUISITION",
       POLICIES,
     );
@@ -84,7 +84,7 @@ describe("who may approve", () => {
     // A document raised before the person had an account still counts.
     const v = canApprove(
       doc({ requestedById: null }),
-      { id: "user-z", email: "CHEF@manuza.test", role: "OWNER" },
+      { id: "user-z", email: "CHEF@venue.test", role: "OWNER" },
       "REQUISITION",
       POLICIES,
     );
@@ -100,7 +100,7 @@ describe("who may approve", () => {
      */
     const v = canApprove(
       doc({ totalAmount: "30000000" }),
-      { id: "user-a", email: "chef@manuza.test", role: "CHEF" },
+      { id: "user-a", email: "chef@venue.test", role: "CHEF" },
       "REQUISITION",
       POLICIES,
     );
@@ -111,7 +111,7 @@ describe("who may approve", () => {
   it("refuses a role below the threshold and names the one needed", () => {
     const v = canApprove(
       doc({ totalAmount: "6000000" }),
-      { id: "user-b", email: "sous@manuza.test", role: "CHEF" },
+      { id: "user-b", email: "sous@venue.test", role: "CHEF" },
       "REQUISITION",
       POLICIES,
     );
@@ -120,7 +120,7 @@ describe("who may approve", () => {
   });
 
   it("refuses anything not awaiting approval", () => {
-    const approver = { id: "user-b", email: "gm@manuza.test", role: "OWNER" as const };
+    const approver = { id: "user-b", email: "gm@venue.test", role: "OWNER" as const };
     expect(canApprove(doc({ status: "DRAFT" }), approver, "REQUISITION", POLICIES).reason)
       .toMatch(/not been submitted/);
     expect(canApprove(doc({ status: "APPROVED" }), approver, "REQUISITION", POLICIES).reason)
