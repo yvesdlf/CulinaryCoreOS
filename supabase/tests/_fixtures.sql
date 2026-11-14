@@ -39,10 +39,32 @@ select coalesce(string_agg(f, E'\n'), '') as fixture_problems from (
    * on `organizations` gives it parameters, leave types, HACCP forms and its
    * business units, exactly as a real venue gets them.
    */
+  /*
+   * Adopt the venue if one is already called this, rather than making a
+   * second one.
+   *
+   * `on conflict do nothing` keys off the id, so on a database that already
+   * has a 'Demo Kitchen' under a *different* id this created a second venue
+   * with the same name — and the thirty-two lookups below, plus sixty-four
+   * numbered files, all find a venue by that name. Every one of them then
+   * failed with "more than one row returned by a subquery", and the suite
+   * refused to run at all.
+   *
+   * Which is the guard working: a fixture that half-loaded would have
+   * reported a screen of passes it never executed. But it meant the suite
+   * could not run against the staging project at all, because the owner
+   * signed up there and named their venue Demo Kitchen — exactly what
+   * `DEPLOY.md` §2 tells them to do.
+   *
+   * So: if a venue of this name exists, the fixtures use it. The test users,
+   * their grants and every `T-` row are removed by `_teardown.sql` either
+   * way, and the venue itself is never deleted.
+   */
   select t.fixture($$
     insert into organizations (id, name, slug)
-    values ('a7d63561-c014-53f4-9bd1-4273d5625836', 'Demo Kitchen', 'demo')
-    on conflict do nothing $$) as f
+    select 'a7d63561-c014-53f4-9bd1-4273d5625836', 'Demo Kitchen', 'demo'
+     where not exists (
+       select 1 from organizations where name = 'Demo Kitchen') $$) as f
   union all select t.fixture($$
     insert into auth.users (id, email, instance_id, aud, role) values
       ('a0000000-0000-0000-0000-000000000001','owner@test.local','00000000-0000-0000-0000-000000000000','authenticated','authenticated'),
