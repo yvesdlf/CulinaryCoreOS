@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- Written quiz answers, observation checklists, and HACCP control forms
 -- ---------------------------------------------------------------------------
--- Shaped by Manuza's actual paperwork rather than by what was easy to build.
+-- Shaped by the venue's actual paperwork rather than by what was easy to build.
 --
 -- The real quizzes are written, not multiple choice: "Please write the correct
 -- answer (1 point per question)", then things like "List 3 items in Sushi
@@ -333,7 +333,7 @@ $$;
 create trigger quiz_written_answers_set_org before insert on quiz_written_answers
   for each row execute function public.set_written_answer_org_id();
 
--- ── Manuza's own control sheets ─────────────────────────────────────────────
+-- ── The venue's own control sheets ────────────────────────────────
 -- Codes and titles taken from the venue's HACCP workbooks so an inspector
 -- asking for 3.1 finds 3.1. Temperature and pH forms are marked as critical
 -- control points; the rest are records.

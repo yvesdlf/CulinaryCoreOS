@@ -167,7 +167,7 @@ describe("parseCountSheet", () => {
     const result = parseCountSheet(
       parseCsv(
         [
-          "Manuza — month end count, 31 July",
+          "Month end count, 31 July",
           "",
           "id,item,quantity",
           "p1,Butter,4",

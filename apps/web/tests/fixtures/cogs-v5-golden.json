@@ -1,5 +1,5 @@
 {
- "source": "Manuza COGS V5 CLEANED.xlsx",
+ "source": "COGS V5 CLEANED.xlsx",
  "note": "Golden master for the cost engine. Stated* fields are the workbook's own computed figures, produced by a spreadsheet this code has never seen \u2014 the only non-circular check available. Three dishes (Greek salad, Duck salad, Rainbow rice) have truncated SUM ranges in the source and are expected to diverge.",
  "params": {
   "subRecipeWastePercent": 5.0,

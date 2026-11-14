@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // Hygiene template import
 // ---------------------------------------------------------------------------
-// A venue's HACCP paperwork is its own. The forms seeded here are Manuza's,
-// and every other kitchen — and Manuza itself after its next audit — needs to
+// A venue's HACCP paperwork is its own. The forms seeded here are the venue's,
+// and every other kitchen — and the venue itself after its next audit — needs to
 // bring its own sheets in rather than ask for a migration.
 //
 // Same shape as the recipe import, because it is the same problem: a form and

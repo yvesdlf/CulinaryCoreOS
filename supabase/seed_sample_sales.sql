@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- Sample sales, for exercising menu engineering before the venue trades
 -- ---------------------------------------------------------------------------
--- Manuza is not open, so there is no POS and no sales history. Menu
+-- The venue is not open, so there is no POS and no sales history. Menu
 -- engineering cannot be seen working without units sold per dish, so these are
 -- invented.
 --
