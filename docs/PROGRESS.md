@@ -1852,6 +1852,63 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       Worth watching for in the three sections still to be seeded. An
       absolute count over a shared view is a false pass waiting for data.
 
+- [x] **HR cases: a report that has to say whose caseload it is** (0133).
+      Fourth of the six, and the first with a different access shape.
+      Production, Maintenance and Housekeeping are section-gated — hold the
+      section, see everything in it. `hr_cases` is not in
+      `section_read_rules` at all: its read rule is `can_see_case`, a
+      participant by user id or by email, or the organisation's owner.
+
+      So the report is **intrinsically partial**, and two readers holding
+      identical sections correctly see different reports. A head of HR who is
+      not a participant on a case cannot see it, and "3 open cases" shown to
+      somebody who can see three of eleven would be read at a meeting as the
+      venue's caseload, written into minutes, and acted on. Every row carries
+      `reader_sees_all`, true only for an owner — the same shape as the
+      traceability report's `reader_sees_movements`, for the same reason.
+
+      **It deliberately carries no names, summaries, detail or outcome text.**
+      Not because the reader may not see them — they may, or the case would
+      not be in the result — but because this exports to CSV, Excel, Word and
+      PDF, and those files leave the system. A list of disciplinary cases
+      against named employees, mailed round a weekly management meeting, is a
+      disclosure the database cannot take back. `has_outcome` says whether
+      anything was written down, which is the finding; the words stay in the
+      application. That is a judgement rather than a schema rule, so test 72
+      pins it structurally: the day somebody adds `employee_name`, the suite
+      goes red and they have to argue with the comment above it.
+
+      Proved by 21 checks in `supabase/tests/72_*.sql`, two verified by
+      breaking the function first: forcing `reader_sees_all` true makes a
+      partial report claim to be whole, and dropping the venue scope puts
+      another venue's caseload in the sheet — which, because the reader owns
+      that other venue, would also have flipped `reader_sees_all` on.
+
+- [x] **Two date bugs in the HR seed, both of which still looked like
+      dates.** `seed_hr_cases.sql` set "when was this last touched" in a
+      later UPDATE as `opened_on - current_date`, which is negative for a
+      case opened in the past; Postgres keeps the sign through `%`, so
+      subtracting it put `updated_at` three weeks into the **future** and the
+      "nothing changed on it" concern could never fire on any row.
+
+      Corrected, it then reported a case opened 34 days ago as "nothing
+      changed for 37 days" — changed before it existed. The staleness now
+      lives in the insert where it can be clamped to the case's own age.
+
+      Recorded because neither looked wrong. A date in the future and a date
+      before the record began both render as a date, and the only reason
+      either was caught is that the concerns they drive were conspicuously
+      absent from every row.
+
+- [x] **`hr_cases` has no history at all.** Found while writing the report
+      rather than looking for it. There is no case event table — `hr_cases`
+      and `hr_case_participants` are the whole module — and `hr_cases` is not
+      in `audited_tables` either, so the most sensitive records in the system
+      are the only ones with no field-level history. "When was this last
+      touched" can therefore only be answered by `updated_at`, which moves on
+      any edit; the report's concern says "changed", not "worked on", because
+      that is all it can honestly say. **Not closed here.**
+
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
       This system's discipline is that a figure carries its caveats —

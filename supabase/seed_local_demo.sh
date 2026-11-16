@@ -37,6 +37,9 @@
 #                     them; needs seed_people, because 0056 refuses to
 #                     assign housekeeping to anybody who is not rostered,
 #                     and this publishes shifts for the two housekeepers
+#   seed_hr_cases     six months of HR cases and their participant lists;
+#                     needs seed_people, since a case is opened against an
+#                     employee and the participants are the access control
 #
 # Then `recost`, which is not optional: the seed ships every recipe with a zero
 # cost and an empty allergen list, and the script computes both. Skipping it
@@ -61,7 +64,7 @@ echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
 SEEDS=(seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people
-       seed_sample_sales seed_takings seed_production seed_maintenance seed_housekeeping)
+       seed_sample_sales seed_takings seed_production seed_maintenance seed_housekeeping seed_hr_cases)
 
 #
 # Every seed named above exists, checked before the first one runs.
