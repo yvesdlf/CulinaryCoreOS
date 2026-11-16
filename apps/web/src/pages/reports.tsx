@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
-  ShieldCheck, LineChart, FileSearch, ChefHat,
+  ShieldCheck, LineChart, FileSearch, ChefHat, Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -65,6 +65,7 @@ import {
   type TrendRow, type TrendGrain,
   fetchTraceability, traceabilityCaveats, type TraceabilityRow,
   fetchProduction, productionCaveats, type ProductionRow,
+  fetchMaintenance, maintenanceCaveats, type MaintenanceRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -105,6 +106,7 @@ export function ReportsPage() {
   const [trend, setTrend] = useState<TrendRow[]>([]);
   const [lots, setLots] = useState<TraceabilityRow[]>([]);
   const [production, setProduction] = useState<ProductionRow[]>([]);
+  const [maintenance, setMaintenance] = useState<MaintenanceRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
   /*
@@ -127,7 +129,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -141,10 +143,13 @@ export function ReportsPage() {
         // And Production, which is gated outright: a reader without it gets
         // an empty report rather than a partial one, which the caveats say.
         fetchProduction(from, to).catch(() => []),
+        // Maintenance is gated outright too: a reader without it gets an
+        // empty report rather than a partial one, which the caveats say.
+        fetchMaintenance(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
-      setProduction(pr);
+      setProduction(pr); setMaintenance(mt);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
@@ -268,6 +273,7 @@ export function ReportsPage() {
           <TabsTrigger value="hygiene"><ShieldCheck className="size-4" />Hygiene</TabsTrigger>
           <TabsTrigger value="traceability"><FileSearch className="size-4" />Traceability</TabsTrigger>
           <TabsTrigger value="production"><ChefHat className="size-4" />Production</TabsTrigger>
+          <TabsTrigger value="maintenance"><Wrench className="size-4" />Maintenance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="mt-4 space-y-4">
@@ -826,6 +832,157 @@ export function ReportsPage() {
             </Table>
           )}
         </TabsContent>
+
+        {/* ── Maintenance (0131) ──────────────────────────────────────────── */}
+        <TabsContent value="maintenance" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              One row per asset with work or a problem, ordered with the
+              statutory checks first. Raised and completed are of the period;
+              open, overdue and the planned-maintenance figures are as of
+              today, because an open job is open now.
+            </p>
+            <ExportMenu
+              disabled={maintenance.length === 0}
+              build={() => ({
+                title: "What broke, and what was never checked",
+                venue: venue?.name ?? "This venue",
+                period: period.label,
+                printedOn: printedOn.toISOString().slice(0, 10),
+                caveats: maintenanceCaveats(maintenance),
+                columns: [
+                  { label: "Asset" }, { label: "Name" }, { label: "Category" },
+                  { label: "Criticality" }, { label: "State" },
+                  { label: "Where" },
+                  { label: "Raised (period)", numeric: true },
+                  { label: "Completed (period)", numeric: true },
+                  { label: "Open now", numeric: true },
+                  { label: "Overdue now", numeric: true },
+                  { label: "Emergencies", numeric: true },
+                  { label: "Reactive", numeric: true },
+                  { label: "Planned", numeric: true },
+                  { label: "Downtime (min)", numeric: true },
+                  { label: "Labour (min)", numeric: true },
+                  { label: "Avg days to close", numeric: true },
+                  { label: "Oldest open (days)", numeric: true },
+                  { label: "Completed unverified", numeric: true },
+                  { label: "Plans", numeric: true },
+                  { label: "Plans overdue", numeric: true },
+                  { label: "Statutory overdue", numeric: true },
+                  { label: "Concerns" },
+                ],
+                rows: maintenance.map((r) => [
+                  r.assetCode ?? "", r.assetName ?? "no asset",
+                  r.category ?? "", r.criticality ?? "", r.assetStatus ?? "",
+                  r.locationName ?? "",
+                  r.raised, r.completed, r.stillOpen, r.overdue,
+                  r.emergencies, r.reactive, r.planned,
+                  r.downtimeMinutes, r.labourMinutes,
+                  r.avgDaysToComplete ?? "", r.oldestOpenDays ?? "",
+                  r.completedNotVerified,
+                  r.plansActive, r.plansOverdue, r.statutoryOverdue,
+                  r.concerns.join("; "),
+                ]),
+              })}
+            />
+          </div>
+
+          {maintenanceCaveats(maintenance).map((c) => (
+            <p key={c} className="flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{c}</span>
+            </p>
+          ))}
+
+          {maintenance.length === 0 ? (
+            <EmptyState icon={Wrench} title="Nothing on the maintenance agenda">
+              An asset appears here when it has work in the period, a planned
+              check past its date, or a state other than in service. Nothing
+              at all means either a quiet period or no Maintenance access —
+              this report is gated, so an empty one may be empty only for you.
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Asset</TableHead>
+                <TableHead>Where</TableHead>
+                <TableHead className="text-right">Period</TableHead>
+                <TableHead className="text-right">Open now</TableHead>
+                <TableHead className="text-right">Downtime</TableHead>
+                <TableHead>Concerns</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {maintenance.map((r) => (
+                  <TableRow key={r.assetId ?? "no-asset"}>
+                    <TableCell>
+                      {r.assetId == null ? (
+                        <span className="text-muted-foreground italic">no asset</span>
+                      ) : (
+                        <>
+                          <span className="font-medium">{r.assetName}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {r.assetCode}
+                            {r.criticality === "CRITICAL" && " \u00b7 critical"}
+                            {r.assetStatus !== "IN_SERVICE" &&
+                              ` \u00b7 ${r.assetStatus === "OUT_OF_SERVICE"
+                                ? "out of service" : "degraded"}`}
+                          </span>
+                        </>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {r.locationName ?? <span>{"\u2014"}</span>}
+                    </TableCell>
+                    {/* Of the period. */}
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.raised} raised
+                      <span className="block text-xs text-muted-foreground">
+                        {r.completed} completed
+                      </span>
+                    </TableCell>
+                    {/* As of today, which is why it is a separate column and
+                        not a continuation of the one before it. */}
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.stillOpen === 0
+                        ? <span className="text-muted-foreground">none</span>
+                        : <>
+                            {r.stillOpen}
+                            {r.oldestOpenDays != null && (
+                              <span className="block text-xs text-muted-foreground">
+                                oldest {r.oldestOpenDays}d
+                              </span>
+                            )}
+                          </>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.downtimeMinutes === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : `${Math.round(r.downtimeMinutes / 60 * 10) / 10}h`}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.concerns.length === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : r.concerns.map((c) => (
+                            <span
+                              key={c}
+                              className={
+                                /* A statutory breach is not the same kind of
+                                   thing as a late filter change, and the
+                                   colour is the only place the page says so
+                                   at a glance. */
+                                c.includes("statutory")
+                                  ? "block text-status-danger"
+                                  : "block text-status-warning"
+                              }
+                            >{c}</span>
+                          ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
       </Tabs>
       )}
     </div>
@@ -911,6 +1068,7 @@ const REPORT_NAMES: Record<string, string> = {
   hygiene: "Hygiene by outlet",
   traceability: "Lot traceability",
   production: "Planned against made",
+  maintenance: "What broke, and what was never checked",
 };
 
 function ReportHead({ blurb, empty, onExport }: {

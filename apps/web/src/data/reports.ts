@@ -454,3 +454,127 @@ export function productionCaveats(rows: ProductionRow[]): string[] {
   );
   return notes;
 }
+
+// ── Maintenance (0131) ──────────────────────────────────────────────────────
+
+/**
+ * One asset with work or a problem in the period, plus a row for work raised
+ * against no asset at all.
+ *
+ * Two kinds of number live in this row and the names are the only thing
+ * separating them. `raised` and `completed` are of the period. `stillOpen`,
+ * `overdue`, `oldestOpenDays` and every `plans*` column are as of today,
+ * because an open job is open now and a statutory check that came round in
+ * August is not resolved by the period ending in November.
+ *
+ * An absent asset means "nothing to say about it", not "no such asset": the
+ * report lists what is on the agenda, not the whole register.
+ */
+export interface MaintenanceRow {
+  assetId: string | null;
+  assetCode: string | null;
+  assetName: string | null;
+  category: string | null;
+  criticality: string | null;
+  assetStatus: string | null;
+  locationName: string | null;
+  raised: number;
+  completed: number;
+  stillOpen: number;
+  overdue: number;
+  emergencies: number;
+  reactive: number;
+  planned: number;
+  downtimeMinutes: number;
+  labourMinutes: number;
+  avgDaysToComplete: number | null;
+  oldestOpenDays: number | null;
+  completedNotVerified: number;
+  plansActive: number;
+  plansOverdue: number;
+  statutoryOverdue: number;
+  concerns: string[];
+}
+
+export async function fetchMaintenance(
+  from: string,
+  to: string,
+): Promise<MaintenanceRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("maintenance_report", { p_from: from, p_to: to });
+  if (error) fail("fetchMaintenance", error);
+  return (data ?? []).map((r: any) => ({
+    assetId: r.asset_id ?? null,
+    assetCode: r.asset_code ?? null,
+    assetName: r.asset_name ?? null,
+    category: r.category ?? null,
+    criticality: r.criticality ?? null,
+    assetStatus: r.asset_status ?? null,
+    locationName: r.location_name ?? null,
+    raised: Number(r.raised ?? 0),
+    completed: Number(r.completed ?? 0),
+    stillOpen: Number(r.still_open ?? 0),
+    overdue: Number(r.overdue ?? 0),
+    emergencies: Number(r.emergencies ?? 0),
+    reactive: Number(r.reactive ?? 0),
+    planned: Number(r.planned ?? 0),
+    downtimeMinutes: Number(r.downtime_minutes ?? 0),
+    labourMinutes: Number(r.labour_minutes ?? 0),
+    avgDaysToComplete: r.avg_days_to_complete == null ? null : Number(r.avg_days_to_complete),
+    oldestOpenDays: r.oldest_open_days == null ? null : Number(r.oldest_open_days),
+    completedNotVerified: Number(r.completed_not_verified ?? 0),
+    plansActive: Number(r.plans_active ?? 0),
+    plansOverdue: Number(r.plans_overdue ?? 0),
+    statutoryOverdue: Number(r.statutory_overdue ?? 0),
+    concerns: r.concerns ?? [],
+  }));
+}
+
+/**
+ * What the sheet has to say about itself.
+ *
+ * The last two notes are not optional and are not counts: they are the two
+ * ways this particular report misleads a reader who takes it at face value.
+ * A month-end total that silently excluded eleven overdue statutory checks,
+ * or a list read as the asset register, are both worse than no report.
+ */
+export function maintenanceCaveats(rows: MaintenanceRow[]): string[] {
+  const notes: string[] = [];
+  if (rows.length === 0) return notes;
+
+  const statutory = rows.reduce((n, r) => n + r.statutoryOverdue, 0);
+  const plans = rows.reduce((n, r) => n + r.plansOverdue, 0);
+  const unverified = rows.reduce((n, r) => n + r.completedNotVerified, 0);
+  const overdue = rows.reduce((n, r) => n + r.overdue, 0);
+
+  if (statutory > 0) {
+    notes.push(
+      `${statutory} statutory ${statutory === 1 ? "check is" : "checks are"} past ` +
+      `${statutory === 1 ? "its" : "their"} date. That is an obligation, not a backlog item.`,
+    );
+  }
+  if (plans - statutory > 0) {
+    notes.push(`${plans - statutory} other planned checks are past their date.`);
+  }
+  if (overdue > 0) {
+    notes.push(`${overdue} work orders are open past the date they were due.`);
+  }
+  if (unverified > 0) {
+    notes.push(
+      `${unverified} jobs were completed in this period and never verified. ` +
+      `Verification is a separate status so that somebody other than the person ` +
+      `who did the work signs it off; one nobody reaches is not a control.`,
+    );
+  }
+
+  notes.push(
+    "Raised and completed are of the period. Open, overdue and the planned-" +
+    "maintenance figures are as of today, because an open job is open now.",
+  );
+  notes.push(
+    "Only assets with work or a problem are listed. An asset that is absent " +
+    "has nothing to report, which is not the same as not existing — this is " +
+    "the agenda, not the asset register.",
+  );
+  return notes;
+}
