@@ -695,3 +695,109 @@ export function housekeepingCaveats(rows: HousekeepingRow[]): string[] {
   );
   return notes;
 }
+
+// ── HR cases (0133) ─────────────────────────────────────────────────────────
+
+/**
+ * One HR case the caller may see.
+ *
+ * `readerSeesAll` is the field that matters and it is not decoration.
+ * `hr_cases` is not section-gated: its read rule is `can_see_case`, which is
+ * a participant or the organisation's owner. So for anybody but an owner
+ * this is *the cases they are on*, not the venue's caseload — and a reader
+ * who took "3 open cases" for the latter would be acting on a figure that
+ * never claimed to be one.
+ *
+ * There is deliberately no name, summary, detail or outcome text here. Not
+ * because the reader may not see them, but because this exports to four file
+ * formats that leave the system, and access control does not travel with a
+ * spreadsheet. `hasOutcome` says whether anything was written down, which is
+ * the finding; the words themselves stay in the application.
+ */
+export interface HrCaseRow {
+  caseId: string;
+  reference: string;
+  kind: string;
+  status: string;
+  openedOn: string;
+  closedOn: string | null;
+  daysOpen: number;
+  participants: number;
+  lastChangedOn: string | null;
+  hasOutcome: boolean;
+  readerSeesAll: boolean;
+  concerns: string[];
+}
+
+export async function fetchHrCases(
+  from: string,
+  to: string,
+): Promise<HrCaseRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("hr_cases_report", { p_from: from, p_to: to });
+  if (error) fail("fetchHrCases", error);
+  return (data ?? []).map((r: any) => ({
+    caseId: r.case_id,
+    reference: r.reference,
+    kind: r.kind,
+    status: r.status,
+    openedOn: r.opened_on,
+    closedOn: r.closed_on ?? null,
+    daysOpen: Number(r.days_open ?? 0),
+    participants: Number(r.participants ?? 0),
+    lastChangedOn: r.last_changed_on ?? null,
+    hasOutcome: r.has_outcome === true,
+    readerSeesAll: r.reader_sees_all === true,
+    concerns: r.concerns ?? [],
+  }));
+}
+
+/**
+ * What the sheet has to say about itself.
+ *
+ * The first note is not optional and is not a count. Everything else here is
+ * a figure about a caseload; that one says whose caseload it is, and without
+ * it every other figure is capable of being read as the venue's.
+ */
+export function hrCasesCaveats(rows: HrCaseRow[]): string[] {
+  const notes: string[] = [];
+  if (rows.length === 0) return notes;
+
+  if (!rows[0].readerSeesAll) {
+    notes.push(
+      "These are the cases you are a participant on, not the venue's caseload. " +
+      "HR cases are visible to their participants and to the owner, so there " +
+      "may be cases here that you cannot see and this total does not include.",
+    );
+  } else {
+    notes.push("You are the owner, so this is every case in the venue.");
+  }
+
+  const open = rows.filter((r) => r.closedOn == null).length;
+  const noOutcome = rows.filter((r) => r.closedOn != null && !r.hasOutcome).length;
+  const alone = rows.filter((r) => r.participants <= 1 && r.closedOn == null).length;
+
+  if (noOutcome > 0) {
+    notes.push(
+      `${noOutcome} closed ${noOutcome === 1 ? "case has" : "cases have"} no ` +
+      `outcome recorded. A case closed without the decision written down is ` +
+      `one the venue cannot account for afterwards.`,
+    );
+  }
+  if (open > 0) {
+    notes.push(`${open} are still open, counted from the day each was opened to today.`);
+  }
+  if (alone > 0) {
+    notes.push(
+      `${alone} open ${alone === 1 ? "case has" : "cases have"} one participant. ` +
+      `Nobody but that person and the owner can reach ${alone === 1 ? "it" : "them"}.`,
+    );
+  }
+
+  notes.push(
+    "No names, summaries or outcome text appear here or in any export. This " +
+    "sheet leaves the system as a file; the case itself does not. Open the " +
+    "case in the application for the detail.",
+  );
+  return notes;
+}
