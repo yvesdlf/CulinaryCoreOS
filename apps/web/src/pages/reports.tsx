@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
-  ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble,
+  ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble, Scale,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -67,6 +67,7 @@ import {
   fetchProduction, productionCaveats, type ProductionRow,
   fetchMaintenance, maintenanceCaveats, type MaintenanceRow,
   fetchHousekeeping, housekeepingCaveats, type HousekeepingRow,
+  fetchHrCases, hrCasesCaveats, type HrCaseRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -109,6 +110,7 @@ export function ReportsPage() {
   const [production, setProduction] = useState<ProductionRow[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRow[]>([]);
   const [housekeeping, setHousekeeping] = useState<HousekeepingRow[]>([]);
+  const [hrCases, setHrCases] = useState<HrCaseRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
   /*
@@ -131,7 +133,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -150,10 +152,14 @@ export function ReportsPage() {
         fetchMaintenance(from, to).catch(() => []),
         // And Housekeeping, gated the same way.
         fetchHousekeeping(from, to).catch(() => []),
+        // HR cases are not section-gated at all: `can_see_case` decides, so
+        // an empty result here is normal rather than a refusal.
+        fetchHrCases(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
       setProduction(pr); setMaintenance(mt); setHousekeeping(hk);
+      setHrCases(hc);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
@@ -279,6 +285,7 @@ export function ReportsPage() {
           <TabsTrigger value="production"><ChefHat className="size-4" />Production</TabsTrigger>
           <TabsTrigger value="maintenance"><Wrench className="size-4" />Maintenance</TabsTrigger>
           <TabsTrigger value="housekeeping"><BedDouble className="size-4" />Housekeeping</TabsTrigger>
+          <TabsTrigger value="hr"><Scale className="size-4" />HR cases</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="mt-4 space-y-4">
@@ -1148,6 +1155,121 @@ export function ReportsPage() {
             </Table>
           )}
         </TabsContent>
+
+        {/* ── HR cases (0133) ─────────────────────────────────────────────── */}
+        <TabsContent value="hr" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              The shape of the caseload: how many, of what kind, how old, and
+              how many were closed without anybody recording what was decided.
+              No names and no summaries — this sheet leaves the system as a
+              file and the case does not.
+            </p>
+            <ExportMenu
+              disabled={hrCases.length === 0}
+              build={() => ({
+                title: "The caseload",
+                venue: venue?.name ?? "This venue",
+                period: period.label,
+                printedOn: printedOn.toISOString().slice(0, 10),
+                caveats: hrCasesCaveats(hrCases),
+                columns: [
+                  { label: "Reference" }, { label: "Kind" }, { label: "Status" },
+                  { label: "Opened" }, { label: "Closed" },
+                  { label: "Days", numeric: true },
+                  { label: "Participants", numeric: true },
+                  { label: "Last changed" },
+                  { label: "Outcome recorded" },
+                  { label: "Concerns" },
+                ],
+                rows: hrCases.map((r) => [
+                  r.reference, r.kind, r.status, r.openedOn, r.closedOn ?? "",
+                  r.daysOpen, r.participants, r.lastChangedOn ?? "",
+                  r.hasOutcome ? "yes" : "no",
+                  r.concerns.join("; "),
+                ]),
+              })}
+            />
+          </div>
+
+          {hrCasesCaveats(hrCases).map((c) => (
+            <p key={c} className="flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{c}</span>
+            </p>
+          ))}
+
+          {hrCases.length === 0 ? (
+            <EmptyState icon={Scale} title="No cases you can see in this period">
+              HR cases are not governed by section access. A case is visible to
+              the people named on it and to the venue's owner, so an empty
+              report here does not mean the venue has no cases — it means none
+              of them are yours.
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Case</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Age</TableHead>
+                <TableHead className="text-right">On it</TableHead>
+                <TableHead>Outcome</TableHead>
+                <TableHead>Concerns</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {hrCases.map((r) => (
+                  <TableRow key={r.caseId}>
+                    <TableCell>
+                      <span className="font-medium">{r.reference}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {r.kind.toLowerCase()}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.status.toLowerCase().replace(/_/g, " ")}
+                      <span className="block text-xs text-muted-foreground">
+                        {r.closedOn ? `closed ${r.closedOn}` : `opened ${r.openedOn}`}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.daysOpen}d
+                      {/* Only meaningful while it is still running. */}
+                      {r.closedOn == null && r.lastChangedOn != null && (
+                        <span className="block text-xs text-muted-foreground">
+                          touched {r.lastChangedOn}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.participants}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.closedOn == null
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : r.hasOutcome
+                          ? <span className="text-muted-foreground">recorded</span>
+                          : <span className="text-status-danger">none</span>}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.concerns.length === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : r.concerns.map((c) => (
+                            <span
+                              key={c}
+                              className={
+                                c.startsWith("closed with no outcome")
+                                  ? "block text-status-danger"
+                                  : "block text-status-warning"
+                              }
+                            >{c}</span>
+                          ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
       </Tabs>
       )}
     </div>
@@ -1235,6 +1357,7 @@ const REPORT_NAMES: Record<string, string> = {
   production: "Planned against made",
   maintenance: "What broke, and what was never checked",
   housekeeping: "The rooms, and the ones nobody checked",
+  hr: "The caseload",
 };
 
 function ReportHead({ blurb, empty, onExport }: {
