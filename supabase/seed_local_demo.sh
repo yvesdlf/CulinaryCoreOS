@@ -30,6 +30,9 @@
 #   seed_production   prep sheets and the batches made against them; needs the
 #                     catalogue's preparations and dishes, and the people
 #                     above, since a completion record names the cook
+#   seed_maintenance  the plant register, the planned-maintenance programme
+#                     and ninety days of work orders; needs only the
+#                     locations that seed.sql creates
 #
 # Then `recost`, which is not optional: the seed ships every recipe with a zero
 # cost and an empty allergen list, and the script computes both. Skipping it
@@ -53,7 +56,7 @@ esac
 echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
-for f in seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings seed_production; do
+for f in seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings seed_production seed_maintenance; do
   echo "Applying $f.sql…"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/$f.sql"
 done
@@ -63,18 +66,37 @@ cd "$ROOT/apps/web"
 # The anon key is the local stack's well-known development default; the
 # password is the demo owner's, which is in seed.sql and in this repository.
 export SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-$(supabase status -o json | sed -n 's/.*"ANON_KEY" *: *"\([^"]*\)".*/\1/p')}"
-# And the URL from the same place, rather than the default port.
+# And the URL, which is the part that cannot simply be read off.
 #
-# `recost` fell back to 54321 while the stack's gateway was published on
-# 54329, because something else on the machine already held 54321 and Docker
-# picked the next free port without comment. The script then rebuilt the whole
-# database and failed on the last step with "fetch failed" — 115 recipes
-# costing nothing, which reads as a data problem rather than a port.
-export SUPABASE_URL="${SUPABASE_URL:-$(supabase status -o json | sed -n 's/.*"API_URL" *: *"\([^"]*\)".*/\1/p')}"
-if [ -z "$SUPABASE_URL" ]; then
-  echo "Could not read the stack's API URL from \`supabase status\`." >&2
+# `supabase status` reports the API port from `config.toml`, not the one the
+# gateway is actually published on. When 54321 is already held by something
+# else the CLI publishes Kong somewhere else — 54329 on the machine this was
+# found on — and goes on reporting 54321 regardless. Reading the status was
+# therefore no better than hard-coding it.
+#
+# So the URL is tested rather than trusted, and corrected from Docker when it
+# is wrong. The failure this prevents: the script rebuilds the whole database,
+# reaches the last step, fails with "fetch failed", and leaves 115 recipes
+# costing nothing — which reads as a data problem rather than a port.
+api_url="${SUPABASE_URL:-$(supabase status -o json | sed -n 's/.*"API_URL" *: *"\([^"]*\)".*/\1/p')}"
+
+reachable() { curl -fsS -o /dev/null --max-time 5 "$1/auth/v1/health"; }
+
+if [ -z "$api_url" ] || ! reachable "$api_url"; then
+  kong="$(docker ps --filter name=supabase_kong_ --format '{{.Names}}' | head -1)"
+  published="$(docker port "$kong" 8000/tcp 2>/dev/null | head -1 | sed 's/.*://')"
+  if [ -n "$published" ]; then
+    echo "The API is published on $published, not on the configured port. Using it."
+    api_url="http://127.0.0.1:$published"
+  fi
+fi
+
+if [ -z "$api_url" ] || ! reachable "$api_url"; then
+  echo "Cannot reach the local Supabase API (tried ${api_url:-nothing})." >&2
+  echo "Is the stack running? \`supabase start\`" >&2
   exit 2
 fi
+export SUPABASE_URL="$api_url"
 export CCOS_PASSWORD="${CCOS_PASSWORD:-demo-password-123}"
 pnpm recost
 

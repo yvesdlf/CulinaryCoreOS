@@ -1668,14 +1668,39 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       would make stock on hand disagree with the opening balances in a way no
       screen explains.
 
+- [x] **The report returned every venue the reader belonged to.** Found by
+      reading 0129 again rather than by a failing test, which is the
+      uncomfortable part. Row-level security answers "may I see this", not
+      "is this mine": somebody who belongs to two venues may read both, so
+      without an explicit scope the report returned two Dinner rows on the
+      same date, no column saying which kitchen, and totals that were the sum
+      of two. Every one of those rows was permitted, so nothing in the suite
+      objected.
+
+      `traceability_report` had scoped to `auth_default_org_id()` since 0129
+      and this did not. Now it does, and test 69 proves it with a second
+      venue the reader also belongs to: four rows with the scope, five
+      without. The paired assertion matters as much — the reader *can* read
+      the other venue's plan directly, so the count is four because of the
+      scope and not because the row was invisible.
+
 - [x] **`seed_local_demo.sh` could not finish on a machine where the stack
-      had moved.** It read the anon key from `supabase status` and then
-      hard-coded the API port, so when something else held 54321 and Docker
-      published the gateway on 54329, it rebuilt the entire database and
-      failed on the last step with "fetch failed" — leaving 115 recipes
-      costing nothing, which reads as a data problem rather than a port. It
-      now reads the URL from the same place as the key, and refuses outright
-      if it cannot.
+      had moved.** It hard-coded the API port, so when something else held
+      54321 and the CLI published the gateway on 54329, it rebuilt the entire
+      database and failed on the last step with "fetch failed" — leaving 115
+      recipes costing nothing, which reads as a data problem rather than a
+      port.
+
+      The obvious fix was wrong. Reading the URL from `supabase status`, the
+      way the script already reads the anon key, returns **the configured
+      port and not the published one**: the CLI reports 54321 from
+      `config.toml` while Kong is on 54329, so the status is no more accurate
+      than the constant it replaced. That was only found by running the
+      rebuild again and watching it fail in the same place.
+
+      So the URL is now tested rather than trusted — probed against
+      `/auth/v1/health`, corrected from `docker port` when it does not
+      answer, and refused outright with the reason if neither works.
 
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**

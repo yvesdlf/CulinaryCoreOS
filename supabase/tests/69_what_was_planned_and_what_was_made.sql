@@ -273,6 +273,65 @@ select t.expect_rows($$
    where plan_id is null and planned_for = current_date - 305$$,
   'but an unplanned batch outside the period stays out of it', 0);
 
+select '── production: one venue, the one the reader is in ──────────────';
+
+/*
+ * Row-level security answers "may I see this", not "is this mine".
+ *
+ * A second venue, which chef@ also belongs to, with a service of its own on
+ * the same day as A. Without an explicit scope the report would return both
+ * — two Dinner rows on one date with no column saying which kitchen, and
+ * totals that are the sum of two. RLS would permit every one of those rows,
+ * so nothing else in this suite would object.
+ *
+ * `active_org_id` is set explicitly rather than left to the fallback,
+ * because adding a second membership can change which venue the fallback
+ * picks; the test would then be asserting the ordering rule rather than the
+ * scope.
+ */
+reset role;
+select t.act_as_nobody();
+
+insert into organizations (id, name, slug)
+values ('e0000000-0000-4000-8000-000000000690', 'T-69 Other Venue', 't69-other');
+
+insert into organization_members (organization_id, user_id, role)
+values ('e0000000-0000-4000-8000-000000000690',
+        'a0000000-0000-0000-0000-000000000002', 'OWNER');
+
+insert into member_access (org_id, user_id, section_code, level)
+select 'e0000000-0000-4000-8000-000000000690',
+       'a0000000-0000-0000-0000-000000000002', code, 'WRITE'
+  from app_sections;
+
+insert into member_preferences (user_id, active_org_id)
+values ('a0000000-0000-0000-0000-000000000002', :'demo')
+on conflict (user_id) do update set active_org_id = excluded.active_org_id;
+
+insert into production_plans (id, org_id, planned_for, service, note,
+                              created_by_email)
+values ('e0000000-0000-4000-8000-00000000069b',
+        'e0000000-0000-4000-8000-000000000690', current_date - 300,
+        'Dinner', 'T-69-OTHER', 'chef@test.local');
+
+set local role authenticated;
+select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
+
+select t.expect_value($$
+  select count(*)::text from public.production_report(
+    current_date - 310, current_date - 295) pr
+    join public.production_plans p on p.id = pr.plan_id
+   where p.note like 'T-69-%'$$,
+  'the other venue''s service is not in this venue''s report', '4');
+
+/*
+ * And the control on the control: chef@ really can read it, so the count
+ * above is four because of the scope and not because the row is invisible.
+ */
+select t.expect_rows($$
+  select 1 from public.production_plans p where p.note = 'T-69-OTHER'$$,
+  'even though the reader can see that plan perfectly well', 1);
+
 select '── production: who may read any of it ───────────────────────────';
 
 select t.act_as('a0000000-0000-0000-0000-000000000003', 'nobody@test.local');

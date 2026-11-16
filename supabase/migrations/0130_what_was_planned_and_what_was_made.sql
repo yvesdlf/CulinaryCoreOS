@@ -55,6 +55,20 @@
 -- function reads the table, so row-level security applies and such a reader
 -- gets nothing — which is the honest answer, unlike traceability, where the
 -- lots were shared and only the trace was gated.
+--
+-- ── One venue, the one the reader is working in ───────────────────────────
+--
+-- Row-level security answers "may I see this", not "is this mine". Somebody
+-- who belongs to two venues can read both, so without an explicit scope this
+-- would return both venues' services in one sheet — two Dinner rows on the
+-- same date, no column saying which kitchen, and totals that are the sum of
+-- two. Plausible, and wrong.
+--
+-- `auth_default_org_id()` is the venue the reader has actually switched to
+-- (0129 scopes the traceability report the same way, and
+-- `member_preferences.active_org_id` is where the choice is kept). The scope
+-- is therefore deliberate and not a second access check: a reader with no
+-- Production access still gets nothing, because RLS is doing that part.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.production_report(
@@ -80,6 +94,8 @@ language plpgsql
 stable
 set search_path = ''
 as $$
+declare
+  org uuid := public.auth_default_org_id();
 begin
   if p_from is null or p_to is null then
     raise exception 'a production report needs a period'
@@ -93,7 +109,8 @@ begin
   with plans as (
     select pl.id, pl.planned_for, pl.service
       from public.production_plans pl
-     where pl.planned_for between p_from and p_to
+     where pl.org_id = org
+       and pl.planned_for between p_from and p_to
   ),
   planned as (
     select l.plan_id,
@@ -114,7 +131,8 @@ begin
            r.produced_by_email, r.corrects_id, r.occurred_at,
            (r.occurred_at at time zone 'UTC')::date as made_on
       from public.production_records r
-     where not exists (
+     where r.org_id = org
+       and not exists (
        select 1 from public.production_records c where c.corrects_id = r.id
      )
   ),
