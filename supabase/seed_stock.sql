@@ -102,8 +102,53 @@ begin
    * would leave the reorder report and the count variance with nothing to
    * show. Roughly a third land below their reorder point.
    */
+  /*
+   * A lot per opening balance, so traceability has something to trace.
+   *
+   * Without these the venue has eighty stock movements and no lots at all,
+   * which makes the Traceability screen and the Article 18 report (0129) both
+   * empty — and an empty traceability report is indistinguishable from a
+   * venue that keeps no records. Seeded data should demonstrate the feature,
+   * not hide it.
+   *
+   * Deliberately uneven, for the same reason the opening quantities are: one
+   * in eight carries no lot code and one in five a date with no kind. Those
+   * are the lines the report exists to surface, and a demo where every lot is
+   * perfect demonstrates none of them.
+   *
+   * The missing suppliers are not manufactured — only 28 of the 72 tracked
+   * products carry one, because `seed_suppliers` can only link a product that
+   * names a supplier in the catalogue. That gap is real and the report is
+   * right to report it.
+   */
+  insert into public.stock_lots
+    (org_id, product_id, lot_code, supplier_id, delivery_reference,
+     received_on, expires_on, expiry_kind)
+  select
+    org,
+    p.id,
+    case when (hashtext(p.id::text) & 7) = 0 then ''
+         else 'OPEN-' || upper(substr(md5(p.id::text), 1, 6)) end,
+    p.supplier_id,
+    'Opening stock',
+    (now() - interval '3 days')::date,
+    case when (hashtext(p.id::text) & 15) = 0 then null
+         else (now() + interval '1 day' * (7 + (hashtext(p.id::text) & 63)))::date end,
+    case when (hashtext(p.id::text) & 15) = 0 then null
+         when (hashtext(p.id::text) & 4) = 0 then null
+         when (hashtext(p.id::text) & 1) = 0 then 'USE_BY'::public.expiry_kind
+         else 'BEST_BEFORE'::public.expiry_kind end
+  from public.products p
+  where p.org_id = org
+    and p.par_level is not null
+    and not exists (
+      select 1 from public.stock_lots l
+       where l.product_id = p.id and l.delivery_reference = 'Opening stock'
+    );
+
   insert into public.stock_movements
-    (org_id, product_id, kind, quantity, unit, unit_cost, reason, note, occurred_at)
+    (org_id, product_id, kind, quantity, unit, unit_cost, reason, note,
+     occurred_at, lot_id)
   select
     org,
     p.id,
@@ -113,7 +158,10 @@ begin
     p.gross_price_per_unit,
     'Opening stock',
     'Seeded opening balance',
-    now() - interval '3 days'
+    now() - interval '3 days',
+    (select l.id from public.stock_lots l
+      where l.product_id = p.id and l.delivery_reference = 'Opening stock'
+      limit 1)
   from public.products p
   where p.org_id = org
     and p.par_level is not null

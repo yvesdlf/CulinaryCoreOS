@@ -237,3 +237,115 @@ export async function fetchProfitTrend(
 export function isComparable(r: TrendRow): boolean {
   return !r.isOpen && r.daysWithData >= r.daysInPeriod;
 }
+
+// ── Traceability (0129) ─────────────────────────────────────────────────────
+
+/**
+ * One lot received in the period: where it came from, where it went, and what
+ * the record cannot answer.
+ *
+ * `readerSeesMovements` and `readerSeesProduction` are not decoration. The
+ * function reads as the caller, and the forward trace lives behind Inventory
+ * and Production while the lots themselves are shared — so a reader with
+ * neither gets every lot and an empty trace, which looks exactly like a venue
+ * that never used its stock. The sheet has to say which it is.
+ */
+export interface TraceabilityRow {
+  lotId: string;
+  lotCode: string | null;
+  productName: string | null;
+  supplierName: string | null;
+  deliveryReference: string | null;
+  receivedOn: string;
+  expiresOn: string | null;
+  expiryKind: string | null;
+  receiptTemperatureC: number | null;
+  status: string;
+  statusReason: string | null;
+  quantityReceived: number | null;
+  quantityOut: number;
+  movements: number;
+  preparations: number;
+  firstUsedOn: string | null;
+  lastUsedOn: string | null;
+  services: string | null;
+  concerns: string[];
+  readerSeesMovements: boolean;
+  readerSeesProduction: boolean;
+}
+
+export async function fetchTraceability(
+  from: string,
+  to: string,
+): Promise<TraceabilityRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("traceability_report", { p_from: from, p_to: to });
+  if (error) fail("fetchTraceability", error);
+  return (data ?? []).map((r: any) => ({
+    lotId: r.lot_id,
+    lotCode: r.lot_code ?? null,
+    productName: r.product_name ?? null,
+    supplierName: r.supplier_name ?? null,
+    deliveryReference: r.delivery_reference ?? null,
+    receivedOn: r.received_on,
+    expiresOn: r.expires_on ?? null,
+    expiryKind: r.expiry_kind ?? null,
+    receiptTemperatureC: r.receipt_temperature_c == null ? null : Number(r.receipt_temperature_c),
+    status: r.status,
+    statusReason: r.status_reason ?? null,
+    quantityReceived: r.quantity_received == null ? null : Number(r.quantity_received),
+    quantityOut: Number(r.quantity_out ?? 0),
+    movements: Number(r.movements ?? 0),
+    preparations: Number(r.preparations ?? 0),
+    firstUsedOn: r.first_used_on ?? null,
+    lastUsedOn: r.last_used_on ?? null,
+    services: r.services ?? null,
+    concerns: r.concerns ?? [],
+    readerSeesMovements: r.reader_sees_movements === true,
+    readerSeesProduction: r.reader_sees_production === true,
+  }));
+}
+
+/**
+ * What the sheet has to say about itself, beyond any single row.
+ *
+ * Built here rather than in the page so the same sentences reach the screen
+ * and all four exported formats — the caveats are the part that must not be
+ * lost on the way into a file.
+ */
+export function traceabilityCaveats(rows: TraceabilityRow[]): string[] {
+  const notes: string[] = [];
+  if (rows.length === 0) return notes;
+
+  if (!rows[0].readerSeesMovements) {
+    notes.push(
+      "You do not have Inventory access, so the forward trace is empty on " +
+      "every line. That is not the same as the stock never having been used.",
+    );
+  } else if (!rows[0].readerSeesProduction) {
+    notes.push(
+      "You do not have Production access, so lines show that stock was drawn " +
+      "but not which preparations it went into.",
+    );
+  }
+
+  const count = (p: (r: TraceabilityRow) => boolean) => rows.filter(p).length;
+  const noSupplier = count((r) => !r.supplierName);
+  const noCode = count((r) => !r.lotCode?.trim());
+  const unjudgeable = count((r) => r.expiresOn != null && !r.expiryKind);
+  const blocked = count((r) => r.status !== "OK");
+
+  if (noSupplier > 0) {
+    notes.push(`${noSupplier} of ${rows.length} lots name no supplier: one step back is not answerable for them.`);
+  }
+  if (noCode > 0) {
+    notes.push(`${noCode} have no lot code, so a delivery cannot be told apart from another of the same product.`);
+  }
+  if (unjudgeable > 0) {
+    notes.push(`${unjudgeable} carry a date with no kind, which cannot be judged safe or merely stale.`);
+  }
+  if (blocked > 0) {
+    notes.push(`${blocked} are blocked, recalled or withdrawn.`);
+  }
+  return notes;
+}
