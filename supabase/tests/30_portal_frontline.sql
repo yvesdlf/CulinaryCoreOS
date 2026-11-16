@@ -111,8 +111,23 @@ select t.expect_refused($$select public.inspect_room('b0000000-0000-4000-8000-00
   'but cannot pass their own room', 'cannot inspect a room you cleaned');
 
 select t.act_as('a0000000-0000-0000-0000-0000000000b1', 'porter@test.local');
-select t.expect_value($$select count(*)::text from rooms_to_inspect$$,
-  'somebody else sees it waiting to be inspected', '1');
+/*
+ * This room, not "one room".
+ *
+ * The check counted every row in the view and expected one, which only ever
+ * held because the demo database had no housekeeping in it. `seed_housekeeping.sql`
+ * gave the venue rooms, some of them legitimately awaiting inspection, and
+ * the count went to two — a red test with nothing wrong behind it.
+ *
+ * Worse than fragile, it was the wrong assertion: a count of one would have
+ * been just as green if this task had vanished and somebody else's room had
+ * appeared. What the line means is that the room the attendant just finished
+ * is visible to a colleague, so that is what it now says.
+ */
+select t.expect_rows($$
+  select 1 from rooms_to_inspect
+   where task_id = 'b0000000-0000-4000-8000-0000000000d9'$$,
+  'somebody else sees it waiting to be inspected', 1);
 select t.expect_refused($$select public.inspect_room('b0000000-0000-4000-8000-0000000000d9', false)$$,
   'a failed inspection has to say what is wrong', 'must say what is wrong');
 select t.expect_ok($$select public.inspect_room('b0000000-0000-4000-8000-0000000000d9', true, 9)$$,
