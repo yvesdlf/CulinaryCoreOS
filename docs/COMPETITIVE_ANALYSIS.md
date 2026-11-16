@@ -110,7 +110,7 @@ claims go into external-facing material.
 
 Singapore-headquartered, with offices in Thailand, Malaysia, **Indonesia**,
 Vietnam and the Philippines. The closest thing to a direct regional peer yet
-reviewed, and operating in the same market as Manuza.
+reviewed, and operating in the same market as the venue.
 
 **What they sell:** Q3 Financials Cloud (payables, receivables, general
 ledger, fixed assets, bank reconciliation, multi-currency, USALI-shaped chart

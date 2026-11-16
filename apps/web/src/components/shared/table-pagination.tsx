@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Table pagination
 // ---------------------------------------------------------------------------
-// The Manuza catalogue is 1.106 products, and the list rendered every one of
+// The catalogue is 1.106 products, and the list rendered every one of
 // them as a DOM row. That is slow to paint, slow to scroll, and slow enough
 // walking the accessibility tree that the tablet axe scan timed out at 30 s.
 //

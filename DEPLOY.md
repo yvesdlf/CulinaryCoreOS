@@ -66,7 +66,7 @@ that is not local unless told it is staging.
 
 ```text
 supabase/seed.sql               a demo owner whose password is in this repository
-supabase/seed_manuza.sql        starts by truncating every venue's catalogue
+supabase/seed_catalogue.sql        starts by truncating every venue's catalogue
 supabase/seed_sample_sales.sql  three months of invented sales
 supabase/tests/run.sh           writes and deletes rows (see above)
 ```
@@ -93,7 +93,7 @@ then load the catalogue into **that** organisation:
 supabase/bootstrap_catalogue.sh "$DATABASE_URL" <organisation-id>
 ```
 
-It reads the same generated rows as `seed_manuza.sql` but never truncates,
+It reads the same generated rows as `seed_catalogue.sql` but never truncates,
 writes only into the organisation you name, creates no logins, and leaves any
 row that already exists alone, so running it twice changes nothing. Find the
 organisation id with `select id, name from organizations;`.

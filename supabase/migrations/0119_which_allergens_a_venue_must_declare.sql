@@ -181,7 +181,7 @@ as $$
   select coalesce(
     /*
      * The old ids first, and this was missed on the first pass because the
-     * tables did not hold any — the *seeds* did. `seed_manuza.sql` is
+     * tables did not hold any — the *seeds* did. `seed_catalogue.sql` is
      * generated from the mock catalogue and still writes `EU14_MILK`, so a
      * rebuilt database arrived full of the spelling this migration exists to
      * retire, passed straight through by the normaliser as an unrecognised

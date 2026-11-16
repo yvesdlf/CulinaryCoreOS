@@ -275,7 +275,7 @@ capture.
 - [x] An import is saved as a named period with dates, not held in the tab.
       A menu decision gets argued about, so everyone has to be able to open
       the same numbers. Periods can be switched between and removed.
-- [x] Sample sales for three months, because Manuza is not trading yet and
+- [x] Sample sales for three months, because the venue is not trading yet and
       the analysis cannot be seen working without units sold. Every period
       carries a SAMPLE flag and the page states in as many words that the
       figures are invented — so the day a real export arrives nobody has to
@@ -929,7 +929,7 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
 - [x] **The visual baselines are green again.** They had been stale for eight
       weeks and fifteen of seventeen failed; CI excludes the suite, so nothing
       caught it. Regenerated once for the whole stage, and rebound from
-      `seed_manuza.sql` — which `DEPLOY.md` applies at deployment and
+      `seed_catalogue.sql` — which `DEPLOY.md` applies at deployment and
       `db reset` does not — to `seed.sql` alone, so a fresh clone can
       reproduce them. ~~The iPad baselines are still stale and need their
       own pass.~~ Done with the CI work above: two of the seventeen were
@@ -968,7 +968,7 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       exactly what an audit finds and nobody notices in advance. A breach
       cannot be recorded without a corrective action — a recorded breach with
       nothing done about it is evidence you knew.
-- [x] **Written quiz answers.** The real Manuza quizzes are written, not
+- [x] **Written quiz answers.** The venue's real quizzes are written, not
       multiple choice — "Please write the correct answer", then "List 3 items
       in Sushi Boat". A machine cannot mark that, so a question is now either
       auto-marked or marked by a named person, and the marker cannot be the

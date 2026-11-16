@@ -101,7 +101,7 @@ begin
      */
     for prod in
       /*
-       * The unit falls back through `total_unit` and `pack_unit`. The Manuza
+       * The unit falls back through `total_unit` and `pack_unit`. The the venue
        * catalogue leaves `stock_unit` empty and carries the measure in
        * `total_unit`, so keying on `stock_unit` alone matched nothing at all
        * — and an empty loop here is silent: three receipts were created with

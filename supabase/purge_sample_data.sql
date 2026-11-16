@@ -37,7 +37,7 @@ delete from requisitions where reference like 'REQ-%';
 delete from stock_movements where lot_id in (select id from stock_lots where lot_code like 'L____-%')
    or note like 'Receipt GRN-TEST%';
 delete from stock_lots where lot_code like 'L____-%' or lot_code like 'TEST-%';
-delete from stock_movements where actor_email = 'chef@manuza.test';
+delete from stock_movements where actor_email = 'chef@venue.test';
 
 -- Par levels were set on a handful of ingredients to demonstrate reordering.
 update products set par_level = null, reorder_point = null, stock_unit = null

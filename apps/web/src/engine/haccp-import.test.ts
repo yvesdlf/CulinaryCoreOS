@@ -69,7 +69,7 @@ describe("planHaccpImport", () => {
   it("finds the header below a title row", () => {
     const result = plan(
       [
-        "Manuza Beach Club — HACCP forms",
+        "Warung Nusantara — HACCP forms",
         "",
         "code,title,field",
         "1.1,Cleaning Schedule,Kitchen floor",

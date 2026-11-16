@@ -98,18 +98,18 @@ begin
          v.status::public.employment_status, v.etype::public.employment_type,
          v.started, v.hours
   from (values
-    ('E-001','Nyoman','Wirawan','chef@manuza.test',      d_kitchen,'Executive Chef',    'ACTIVE',   'FULL_TIME', date '2023-02-01', 45),
-    ('E-002','Kadek', 'Suartana','sous@manuza.test',     d_kitchen,'Sous Chef',         'ACTIVE',   'FULL_TIME', date '2023-06-15', 45),
-    ('E-003','Budi',  'Santoso', 'budi@manuza.test',     d_kitchen,'Chef de Partie',    'ACTIVE',   'FULL_TIME', date '2024-03-04', 40),
-    ('E-004','Wayan', 'Astini',  'wayan@manuza.test',    d_kitchen,'Commis Chef',       'PROBATION','FULL_TIME', date '2026-06-01', 40),
-    ('E-005','Ketut', 'Merta',   'ketut@manuza.test',    d_kitchen,'Kitchen Porter',    'ACTIVE',   'PART_TIME', date '2024-09-12', 24),
-    ('E-006','Sarah', 'Lindqvist','gm@manuza.test',      d_foh,    'General Manager',   'ACTIVE',   'FULL_TIME', date '2022-11-01', 45),
-    ('E-007','Putu',  'Ardana',  'putu@manuza.test',     d_foh,    'Restaurant Manager','ACTIVE',   'FULL_TIME', date '2023-08-20', 45),
-    ('E-008','Made',  'Sukerti', 'made@manuza.test',     d_foh,    'Waiter',            'ACTIVE',   'FULL_TIME', date '2025-01-15', 40),
-    ('E-009','Gede',  'Pramana', 'barmgr@manuza.test',   d_bar,    'Bar Manager',       'ACTIVE',   'FULL_TIME', date '2023-04-03', 45),
-    ('E-010','Komang','Yudha',   'komang@manuza.test',   d_bar,    'Bartender',         'ACTIVE',   'FULL_TIME', date '2025-05-19', 40),
-    ('E-011','Luh',   'Sriati',  'housekeep@manuza.test',d_house,  'Head Housekeeper',  'ACTIVE',   'FULL_TIME', date '2023-01-09', 45),
-    ('E-012','Ni',    'Kartini', 'kartini@manuza.test',  d_house,  'Room Attendant',    'ACTIVE',   'PART_TIME', date '2025-10-01', 30)
+    ('E-001','Nyoman','Wirawan','chef@venue.test',      d_kitchen,'Executive Chef',    'ACTIVE',   'FULL_TIME', date '2023-02-01', 45),
+    ('E-002','Kadek', 'Suartana','sous@venue.test',     d_kitchen,'Sous Chef',         'ACTIVE',   'FULL_TIME', date '2023-06-15', 45),
+    ('E-003','Budi',  'Santoso', 'budi@venue.test',     d_kitchen,'Chef de Partie',    'ACTIVE',   'FULL_TIME', date '2024-03-04', 40),
+    ('E-004','Wayan', 'Astini',  'wayan@venue.test',    d_kitchen,'Commis Chef',       'PROBATION','FULL_TIME', date '2026-06-01', 40),
+    ('E-005','Ketut', 'Merta',   'ketut@venue.test',    d_kitchen,'Kitchen Porter',    'ACTIVE',   'PART_TIME', date '2024-09-12', 24),
+    ('E-006','Sarah', 'Lindqvist','gm@venue.test',      d_foh,    'General Manager',   'ACTIVE',   'FULL_TIME', date '2022-11-01', 45),
+    ('E-007','Putu',  'Ardana',  'putu@venue.test',     d_foh,    'Restaurant Manager','ACTIVE',   'FULL_TIME', date '2023-08-20', 45),
+    ('E-008','Made',  'Sukerti', 'made@venue.test',     d_foh,    'Waiter',            'ACTIVE',   'FULL_TIME', date '2025-01-15', 40),
+    ('E-009','Gede',  'Pramana', 'barmgr@venue.test',   d_bar,    'Bar Manager',       'ACTIVE',   'FULL_TIME', date '2023-04-03', 45),
+    ('E-010','Komang','Yudha',   'komang@venue.test',   d_bar,    'Bartender',         'ACTIVE',   'FULL_TIME', date '2025-05-19', 40),
+    ('E-011','Luh',   'Sriati',  'housekeep@venue.test',d_house,  'Head Housekeeper',  'ACTIVE',   'FULL_TIME', date '2023-01-09', 45),
+    ('E-012','Ni',    'Kartini', 'kartini@venue.test',  d_house,  'Room Attendant',    'ACTIVE',   'PART_TIME', date '2025-10-01', 30)
   ) as v(num, first, last, email, dept, role, status, etype, started, hours)
   on conflict do nothing;
 
@@ -149,10 +149,10 @@ begin
 
   -- ── Who approves a hire ───────────────────────────────────────────────────
   insert into public.department_approvers (org_id, department_id, approver_email, deputy_email) values
-    (org, d_kitchen, 'chef@manuza.test',      'sous@manuza.test'),
-    (org, d_foh,     'gm@manuza.test',        'putu@manuza.test'),
-    (org, d_bar,     'barmgr@manuza.test',    'gm@manuza.test'),
-    (org, d_house,   'housekeep@manuza.test', 'gm@manuza.test')
+    (org, d_kitchen, 'chef@venue.test',      'sous@venue.test'),
+    (org, d_foh,     'gm@venue.test',        'putu@venue.test'),
+    (org, d_bar,     'barmgr@venue.test',    'gm@venue.test'),
+    (org, d_house,   'housekeep@venue.test', 'gm@venue.test')
   on conflict (department_id) do update
     set approver_email = excluded.approver_email,
         deputy_email   = excluded.deputy_email;

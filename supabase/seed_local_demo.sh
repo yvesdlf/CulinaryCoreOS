@@ -17,7 +17,7 @@
 # The order is not alphabetical and the dependencies are why:
 #
 #   seed.sql          the demo venue and its owner (loaded by `db reset`)
-#   seed_manuza       the real catalogue; TRUNCATES products first, so it must
+#   seed_catalogue       the real catalogue; TRUNCATES products first, so it must
 #                     come before anything that references a product
 #   seed_suppliers    promotes products.supplier text into supplier records
 #   seed_stock        par levels and opening stock, over those products
@@ -50,7 +50,7 @@ esac
 echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
-for f in seed_manuza seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings; do
+for f in seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings; do
   echo "Applying $f.sql…"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/$f.sql"
 done
