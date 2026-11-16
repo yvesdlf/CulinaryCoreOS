@@ -578,3 +578,120 @@ export function maintenanceCaveats(rows: MaintenanceRow[]): string[] {
   );
   return notes;
 }
+
+// ── Housekeeping (0132) ─────────────────────────────────────────────────────
+
+/**
+ * One room worked in the period, plus any room out of service whether it was
+ * worked or not, plus a row for work against a place rather than a room.
+ *
+ * A room out of service has no tasks *because* it is out of service, so it is
+ * included deliberately rather than joined away — it is usually the line the
+ * meeting most needs.
+ *
+ * `standardMinutes` and `actualMinutes` are summed over the tasks that
+ * recorded an actual, which includes rejected cleans. Somebody spent that
+ * time, and a room cleaned twice cost two cleans.
+ */
+export interface HousekeepingRow {
+  roomId: string | null;
+  roomNumber: string | null;
+  roomType: string | null;
+  floor: string | null;
+  roomState: string | null;
+  occupancy: string | null;
+  daysInState: number | null;
+  tasks: number;
+  finished: number;
+  unfinished: number;
+  rejected: number;
+  awaitingInspection: number;
+  inspections: number;
+  inspectionsFailed: number;
+  standardMinutes: number;
+  actualMinutes: number;
+  attendants: number;
+  concerns: string[];
+}
+
+export async function fetchHousekeeping(
+  from: string,
+  to: string,
+): Promise<HousekeepingRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("housekeeping_report", { p_from: from, p_to: to });
+  if (error) fail("fetchHousekeeping", error);
+  return (data ?? []).map((r: any) => ({
+    roomId: r.room_id ?? null,
+    roomNumber: r.room_number ?? null,
+    roomType: r.room_type ?? null,
+    floor: r.floor ?? null,
+    roomState: r.room_state ?? null,
+    occupancy: r.occupancy ?? null,
+    daysInState: r.days_in_state == null ? null : Number(r.days_in_state),
+    tasks: Number(r.tasks ?? 0),
+    finished: Number(r.finished ?? 0),
+    unfinished: Number(r.unfinished ?? 0),
+    rejected: Number(r.rejected ?? 0),
+    awaitingInspection: Number(r.awaiting_inspection ?? 0),
+    inspections: Number(r.inspections ?? 0),
+    inspectionsFailed: Number(r.inspections_failed ?? 0),
+    standardMinutes: Number(r.standard_minutes ?? 0),
+    actualMinutes: Number(r.actual_minutes ?? 0),
+    attendants: Number(r.attendants ?? 0),
+    concerns: r.concerns ?? [],
+  }));
+}
+
+/**
+ * What the sheet has to say about itself.
+ *
+ * The last note is the one that cannot be left out. A reader who takes this
+ * for the room list will conclude the venue has twenty rooms when it has two
+ * hundred, and will read an absent room as a room with no problems rather
+ * than a room nobody worked.
+ */
+export function housekeepingCaveats(rows: HousekeepingRow[]): string[] {
+  const notes: string[] = [];
+  if (rows.length === 0) return notes;
+
+  const failed = rows.reduce((n, r) => n + r.inspectionsFailed, 0);
+  const inspections = rows.reduce((n, r) => n + r.inspections, 0);
+  const awaiting = rows.reduce((n, r) => n + r.awaitingInspection, 0);
+  const unfinished = rows.reduce((n, r) => n + r.unfinished, 0);
+  const outOfService = rows.filter((r) => r.roomState === "OUT_OF_SERVICE").length;
+
+  if (failed > 0 && inspections > 0) {
+    notes.push(
+      `${failed} of ${inspections} inspections failed — ` +
+      `${Math.round((failed / inspections) * 100)}% of what was checked.`,
+    );
+  }
+  if (awaiting > 0) {
+    notes.push(
+      `${awaiting} cleans were finished and never inspected. A pass is what ` +
+      `makes a room sellable, so these are rooms in neither state.`,
+    );
+  }
+  if (unfinished > 0) {
+    notes.push(`${unfinished} tasks were never finished and carry no time against them.`);
+  }
+  if (outOfService > 0) {
+    notes.push(
+      `${outOfService} ${outOfService === 1 ? "room is" : "rooms are"} out of service. ` +
+      `Those have no tasks by definition and are listed for the days they have been out.`,
+    );
+  }
+
+  notes.push(
+    "Time allowed and time taken are summed over the tasks that recorded an " +
+    "actual. That includes cleans the inspector rejected: somebody spent that " +
+    "time, and a room cleaned twice cost two cleans.",
+  );
+  notes.push(
+    "Only rooms worked in the period, or out of service, are listed. This is " +
+    "the week's sheet, not the room list — an absent room was not worked, " +
+    "which is not the same as a room with nothing wrong.",
+  );
+  return notes;
+}

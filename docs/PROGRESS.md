@@ -1776,6 +1776,82 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       the report showed a venue with two machines. A modulus is only a spread
       if it shares no factor with the range.
 
+- [x] **Housekeeping had five views and no rooms** (0132). 0056 built the
+      module in September with `housekeeping_board`, `housekeeping_workload`,
+      `rooms_to_inspect`, `my_rooms` and `housekeeping_replenishment` over it.
+      The venue had four room types and **zero rooms**, so not one of those
+      five had ever rendered a row. `housekeeping_report` is one row per room
+      worked, ordered by what failed inspection.
+
+      Three things the first version of it got wrong, all found by looking at
+      the output rather than by the function erroring.
+
+      **A room out of service disappeared.** It has no tasks *because* it is
+      out of service, so an inner join to the sheet dropped it — and dropped
+      it silently, which is how a room stays off the market for five weeks
+      with nobody raising it. The concern written for it was unreachable code.
+
+      **Every room looked identical.** The seed's status modulus keyed off
+      `length(room_number)`, which is 3 for all twenty-four of them, so each
+      room took the same branch every day and the report showed two dozen
+      identical lines. The same mistake as the maintenance stride from a
+      different direction: a modulus only varies if the thing being divided
+      does.
+
+      **"Out of service 0 days."** `rooms.state_changed_at` is rewritten by
+      trigger whenever an inspection lands, so ages set before the work was
+      seeded were silently put back to today, and every "for n days" figure
+      read nought. Both the seed and the test now write them last.
+
+      And one the test found by disagreeing: minutes were summed over
+      *finished* tasks, which dropped every **rejected** clean. A rejected
+      clean did not finish, but somebody spent forty-five minutes on it and
+      the room was cleaned twice — so excluding it flattered exactly the
+      cases a supervisor is looking for. The filter is now `actual_minutes is
+      not null`: did this task consume anybody's time. `finished` stays a
+      count of DONE and INSPECTED, because a rejected clean is not finished
+      work even though it was paid for.
+
+      Proved by 21 checks in `supabase/tests/71_*.sql`, three verified by
+      breaking the function first: an inner join loses the out-of-service
+      room, filtering minutes on status takes 80 allowed and 100 taken down to
+      50 and 55, and dropping the venue scope puts another venue's floors in
+      the sheet.
+
+- [x] **The housekeeping seed had to seed the rota, and that is the finding.**
+      0056 refuses to assign housekeeping to anybody without a PUBLISHED
+      shift that day, and `shifts` was empty too — so a seed that simply
+      assigned work would have failed on its first row. `seed_housekeeping.sql`
+      publishes the shifts the work actually needs: twenty-four rooms over
+      three floors, fifty-six shifts, two hundred and fourteen tasks and a
+      hundred and forty-five inspections, twenty-six of them failed.
+
+      It is not a rota seed and does not pretend to be one. But it does mean
+      `housekeeping_workload` and `my_rooms` have rows for the first time as
+      well, which is three views brought to life rather than one.
+
+      Also recorded here because it was not obvious: a guest room **is** a
+      location in this schema — `rooms.location_id` is unique — so the seed
+      creates one location per room. Maintenance and hygiene hang their own
+      records off the same place, which is the reason for the rule: a work
+      order raised "in 305" and a room called 305 have to be the same row or
+      neither module can answer the other's question.
+
+- [x] **A test that only passed because a section had no data.** Seeding
+      housekeeping turned test 30 red: it counted every row in
+      `rooms_to_inspect` and expected one, which held only while the demo
+      database had no rooms in it. Giving the venue rooms — some of them
+      legitimately awaiting inspection — made it two.
+
+      Nothing was wrong behind it, but the assertion was wrong before the
+      seed existed: a count of one would have been just as green if the
+      task under test had vanished and somebody else's room had appeared.
+      What the line means is that the room the attendant just finished is
+      visible to a colleague, and it now says that instead.
+
+      Worth watching for in the three sections still to be seeded. An
+      absolute count over a shared view is a false pass waiting for data.
+
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
       This system's discipline is that a figure carries its caveats —

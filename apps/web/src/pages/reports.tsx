@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
-  ShieldCheck, LineChart, FileSearch, ChefHat, Wrench,
+  ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -66,6 +66,7 @@ import {
   fetchTraceability, traceabilityCaveats, type TraceabilityRow,
   fetchProduction, productionCaveats, type ProductionRow,
   fetchMaintenance, maintenanceCaveats, type MaintenanceRow,
+  fetchHousekeeping, housekeepingCaveats, type HousekeepingRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -107,6 +108,7 @@ export function ReportsPage() {
   const [lots, setLots] = useState<TraceabilityRow[]>([]);
   const [production, setProduction] = useState<ProductionRow[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRow[]>([]);
+  const [housekeeping, setHousekeeping] = useState<HousekeepingRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
   /*
@@ -129,7 +131,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr, mt] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -146,10 +148,12 @@ export function ReportsPage() {
         // Maintenance is gated outright too: a reader without it gets an
         // empty report rather than a partial one, which the caveats say.
         fetchMaintenance(from, to).catch(() => []),
+        // And Housekeeping, gated the same way.
+        fetchHousekeeping(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
-      setProduction(pr); setMaintenance(mt);
+      setProduction(pr); setMaintenance(mt); setHousekeeping(hk);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
@@ -274,6 +278,7 @@ export function ReportsPage() {
           <TabsTrigger value="traceability"><FileSearch className="size-4" />Traceability</TabsTrigger>
           <TabsTrigger value="production"><ChefHat className="size-4" />Production</TabsTrigger>
           <TabsTrigger value="maintenance"><Wrench className="size-4" />Maintenance</TabsTrigger>
+          <TabsTrigger value="housekeeping"><BedDouble className="size-4" />Housekeeping</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="mt-4 space-y-4">
@@ -983,6 +988,166 @@ export function ReportsPage() {
             </Table>
           )}
         </TabsContent>
+
+        {/* ── Housekeeping (0132) ─────────────────────────────────────────── */}
+        <TabsContent value="housekeeping" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              One row per room worked, ordered by what failed inspection.
+              Rooms out of service are listed although they have no tasks —
+              they have none because they are out of service, and that is
+              usually the line worth raising.
+            </p>
+            <ExportMenu
+              disabled={housekeeping.length === 0}
+              build={() => ({
+                title: "The rooms, and the ones nobody checked",
+                venue: venue?.name ?? "This venue",
+                period: period.label,
+                printedOn: printedOn.toISOString().slice(0, 10),
+                caveats: housekeepingCaveats(housekeeping),
+                columns: [
+                  { label: "Room" }, { label: "Type" }, { label: "Floor" },
+                  { label: "State" }, { label: "Occupancy" },
+                  { label: "Days in state", numeric: true },
+                  { label: "Tasks", numeric: true },
+                  { label: "Finished", numeric: true },
+                  { label: "Unfinished", numeric: true },
+                  { label: "Sent back", numeric: true },
+                  { label: "Awaiting inspection", numeric: true },
+                  { label: "Inspections", numeric: true },
+                  { label: "Failed", numeric: true },
+                  { label: "Time allowed (min)", numeric: true },
+                  { label: "Time taken (min)", numeric: true },
+                  { label: "Attendants", numeric: true },
+                  { label: "Concerns" },
+                ],
+                rows: housekeeping.map((r) => [
+                  r.roomNumber ?? "no room", r.roomType ?? "", r.floor ?? "",
+                  r.roomState ?? "", r.occupancy ?? "",
+                  r.daysInState ?? "",
+                  r.tasks, r.finished, r.unfinished, r.rejected,
+                  r.awaitingInspection, r.inspections, r.inspectionsFailed,
+                  r.standardMinutes, r.actualMinutes, r.attendants,
+                  r.concerns.join("; "),
+                ]),
+              })}
+            />
+          </div>
+
+          {housekeepingCaveats(housekeeping).map((c) => (
+            <p key={c} className="flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{c}</span>
+            </p>
+          ))}
+
+          {housekeeping.length === 0 ? (
+            <EmptyState icon={BedDouble} title="No rooms worked in this period">
+              A room appears here when it was cleaned in the period, or when it
+              is out of service. Nothing at all means either no sheets were
+              worked or you do not have Housekeeping access — this report is
+              gated, so an empty one may be empty only for you.
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Room</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead className="text-right">Cleans</TableHead>
+                <TableHead className="text-right">Inspected</TableHead>
+                <TableHead className="text-right">Time</TableHead>
+                <TableHead>Concerns</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {housekeeping.map((r) => (
+                  <TableRow key={r.roomId ?? "no-room"}>
+                    <TableCell>
+                      {r.roomId == null ? (
+                        <span className="text-muted-foreground italic">no room</span>
+                      ) : (
+                        <>
+                          <span className="font-medium">{r.roomNumber}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {r.roomType}
+                            {r.floor && ` \u00b7 floor ${r.floor}`}
+                          </span>
+                        </>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.roomState == null
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : <>
+                            {r.roomState.toLowerCase().replace(/_/g, " ")}
+                            {r.daysInState != null && r.daysInState > 0 && (
+                              <span className="block text-xs text-muted-foreground">
+                                {r.daysInState}d
+                              </span>
+                            )}
+                          </>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.tasks === 0
+                        ? <span className="text-muted-foreground">none</span>
+                        : <>
+                            {r.finished} of {r.tasks}
+                            {r.unfinished > 0 && (
+                              <span className="block text-xs text-muted-foreground">
+                                {r.unfinished} unfinished
+                              </span>
+                            )}
+                          </>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.inspections === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : <>
+                            {r.inspections - r.inspectionsFailed} passed
+                            {r.inspectionsFailed > 0 && (
+                              <span className="block text-xs text-status-warning">
+                                {r.inspectionsFailed} failed
+                              </span>
+                            )}
+                          </>}
+                    </TableCell>
+                    {/*
+                      Time taken against time allowed, as a pair rather than a
+                      ratio: a percentage with no denominator beside it is the
+                      number that gets somebody disciplined.
+                    */}
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.standardMinutes === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : <>
+                            {Math.round(r.actualMinutes / 60 * 10) / 10}h
+                            <span className="block text-xs text-muted-foreground">
+                              of {Math.round(r.standardMinutes / 60 * 10) / 10}h allowed
+                            </span>
+                          </>}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.concerns.length === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : r.concerns.map((c) => (
+                            <span
+                              key={c}
+                              className={
+                                c.startsWith("out of service")
+                                  ? "block text-status-danger"
+                                  : c.startsWith("not a room")
+                                    ? "block text-muted-foreground"
+                                    : "block text-status-warning"
+                              }
+                            >{c}</span>
+                          ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
       </Tabs>
       )}
     </div>
@@ -1069,6 +1234,7 @@ const REPORT_NAMES: Record<string, string> = {
   traceability: "Lot traceability",
   production: "Planned against made",
   maintenance: "What broke, and what was never checked",
+  housekeeping: "The rooms, and the ones nobody checked",
 };
 
 function ReportHead({ blurb, empty, onExport }: {
