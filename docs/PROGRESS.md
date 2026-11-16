@@ -1613,6 +1613,70 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       by extension — `index.css?raw` came back empty and the first version of
       the check passed while comparing nothing against nothing.
 
+- [x] **A report for a section that had no data at all** (0130). The second
+      phase of the reports work, and the first of six sections where the
+      report and the demo data had to be built together. `production_report`
+      puts the prep sheet and the completion record side by side — they have
+      both been stored since 0060 and nothing had ever compared them.
+
+      One row per planned service rather than per batch, because that is the
+      grain a kitchen works in and it fits across a table at a Monday
+      meeting. Three concerns come out of it: a service planned and never
+      cooked for, preparation made with no sheet behind it, and a batch
+      corrected after the fact.
+
+      Two things it deliberately does not do. It does not subtract
+      preparations made from dishes planned — a plan line is a recipe and a
+      number of covers, a completion record is a preparation and a number of
+      batches, and the only thing joining them is the cook's own plan
+      reference. And it does not drop production that answered to no plan,
+      which would make the report agree with the plan by construction.
+
+      Two defects were found in it before it was committed, both in the
+      version written a fortnight earlier. It called `venue_date()`, a
+      function that does not exist and never has — the comment beside it
+      claimed it was "the same function the rota and the takings use", which
+      was invention. And it summed corrected batches twice: 0060 keeps both
+      the superseded record and the correction, by design, so a report that
+      sums the table reads high and reads entirely plausible. Test 69 asserts
+      the arithmetic in full (2 + 0.5, not 2 + 1 + 0.5) rather than comparing
+      the figure to itself; removing the exclusion makes it fail at 3.5.
+
+      A third was found in the *test*. The check that a batch worked the
+      night before still answers its service passed against a deliberately
+      broken function, because the window was wide enough to contain both
+      days — `_harness.sql`'s first false-pass mode in a different coat. The
+      check now opens the period on the service, with the batch outside it.
+
+      Proved by 19 checks in `supabase/tests/69_*.sql`.
+
+- [x] **The Production section had no demo data, so nobody had seen any of
+      it work.** `seed_production.sql`: four weeks of services, 36 plans, 135
+      plan lines and 133 completion records, every choice a modulus of the
+      day index rather than `random()` — the visual baselines are screenshots
+      of this database and a seed that built a different kitchen each run
+      would turn them red for nothing.
+
+      It seeds the exceptions on purpose: three services nobody cooked for,
+      two sheets with no dishes on them, ten batches with no plan behind
+      them, six corrections, and four plans prepped the night before. A demo
+      where every line is a problem teaches the reader to ignore the column,
+      so they are a minority of the rows.
+
+      No stock movements. A completion record does not post consumption —
+      0060 derives theoretical usage as a view — and inventing `USAGE` rows
+      would make stock on hand disagree with the opening balances in a way no
+      screen explains.
+
+- [x] **`seed_local_demo.sh` could not finish on a machine where the stack
+      had moved.** It read the anon key from `supabase status` and then
+      hard-coded the API port, so when something else held 54321 and Docker
+      published the gateway on 54329, it rebuilt the entire database and
+      failed on the last step with "fetch failed" — leaving 115 recipes
+      costing nothing, which reads as a data problem rather than a port. It
+      now reads the URL from the same place as the key, and refuses outright
+      if it cannot.
+
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
       This system's discipline is that a figure carries its caveats —

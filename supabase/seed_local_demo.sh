@@ -27,6 +27,9 @@
 #   seed_people       departments, staff, approvers
 #   seed_sample_sales invented sales periods, over those recipes
 #   seed_takings      daily takings and the forecasts built from them
+#   seed_production   prep sheets and the batches made against them; needs the
+#                     catalogue's preparations and dishes, and the people
+#                     above, since a completion record names the cook
 #
 # Then `recost`, which is not optional: the seed ships every recipe with a zero
 # cost and an empty allergen list, and the script computes both. Skipping it
@@ -50,7 +53,7 @@ esac
 echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
-for f in seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings; do
+for f in seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings seed_production; do
   echo "Applying $f.sql…"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/$f.sql"
 done
@@ -60,6 +63,18 @@ cd "$ROOT/apps/web"
 # The anon key is the local stack's well-known development default; the
 # password is the demo owner's, which is in seed.sql and in this repository.
 export SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-$(supabase status -o json | sed -n 's/.*"ANON_KEY" *: *"\([^"]*\)".*/\1/p')}"
+# And the URL from the same place, rather than the default port.
+#
+# `recost` fell back to 54321 while the stack's gateway was published on
+# 54329, because something else on the machine already held 54321 and Docker
+# picked the next free port without comment. The script then rebuilt the whole
+# database and failed on the last step with "fetch failed" — 115 recipes
+# costing nothing, which reads as a data problem rather than a port.
+export SUPABASE_URL="${SUPABASE_URL:-$(supabase status -o json | sed -n 's/.*"API_URL" *: *"\([^"]*\)".*/\1/p')}"
+if [ -z "$SUPABASE_URL" ]; then
+  echo "Could not read the stack's API URL from \`supabase status\`." >&2
+  exit 2
+fi
 export CCOS_PASSWORD="${CCOS_PASSWORD:-demo-password-123}"
 pnpm recost
 

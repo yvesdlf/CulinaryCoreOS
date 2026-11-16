@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
-  ShieldCheck, LineChart, FileSearch,
+  ShieldCheck, LineChart, FileSearch, ChefHat,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,6 +64,7 @@ import {
   type PayableRow, type PourCostRow, type HygieneRow,
   type TrendRow, type TrendGrain,
   fetchTraceability, traceabilityCaveats, type TraceabilityRow,
+  fetchProduction, productionCaveats, type ProductionRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -103,6 +104,7 @@ export function ReportsPage() {
   const [hygiene, setHygiene] = useState<HygieneRow[]>([]);
   const [trend, setTrend] = useState<TrendRow[]>([]);
   const [lots, setLots] = useState<TraceabilityRow[]>([]);
+  const [production, setProduction] = useState<ProductionRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
   /*
@@ -125,7 +127,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -136,9 +138,13 @@ export function ReportsPage() {
         // Tolerated like the rest: Traceability reads sections somebody may
         // not hold, and one refusal must not blank the other six reports.
         fetchTraceability(from, to).catch(() => []),
+        // And Production, which is gated outright: a reader without it gets
+        // an empty report rather than a partial one, which the caveats say.
+        fetchProduction(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
+      setProduction(pr);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
@@ -261,6 +267,7 @@ export function ReportsPage() {
           <TabsTrigger value="pour"><Wine className="size-4" />Pour cost</TabsTrigger>
           <TabsTrigger value="hygiene"><ShieldCheck className="size-4" />Hygiene</TabsTrigger>
           <TabsTrigger value="traceability"><FileSearch className="size-4" />Traceability</TabsTrigger>
+          <TabsTrigger value="production"><ChefHat className="size-4" />Production</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="mt-4 space-y-4">
@@ -691,6 +698,134 @@ export function ReportsPage() {
             </Table>
           )}
         </TabsContent>
+
+        {/* ── Production (0130) ───────────────────────────────────────────── */}
+        <TabsContent value="production" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              What the kitchen planned against what it actually made, one row
+              per service. The three lines worth a sentence at the meeting are
+              a service nobody cooked for, preparation made with no sheet
+              behind it, and a batch corrected after the fact.
+            </p>
+            <ExportMenu
+              disabled={production.length === 0}
+              build={() => ({
+                title: "Planned against made",
+                venue: venue?.name ?? "This venue",
+                period: period.label,
+                printedOn: printedOn.toISOString().slice(0, 10),
+                caveats: productionCaveats(production),
+                columns: [
+                  { label: "Date" }, { label: "Service" },
+                  { label: "Dishes planned", numeric: true },
+                  { label: "Covers planned", numeric: true },
+                  { label: "Preparations made", numeric: true },
+                  { label: "Batches", numeric: true },
+                  { label: "Quantity", numeric: true },
+                  { label: "Made by" },
+                  { label: "Corrections", numeric: true },
+                  { label: "First batch" }, { label: "Last batch" },
+                  { label: "Concerns" },
+                ],
+                rows: production.map((r) => [
+                  r.plannedFor,
+                  r.service ?? (r.planId == null ? "no plan" : "all day"),
+                  r.dishesPlanned, r.coversPlanned,
+                  r.preparationsMade, r.batchesMade, r.quantityMade,
+                  r.madeBy ?? "", r.corrections,
+                  r.firstMadeAt ?? "", r.lastMadeAt ?? "",
+                  r.concerns.join("; "),
+                ]),
+              })}
+            />
+          </div>
+
+          {/* The report-level notes, on screen and in every exported file. */}
+          {productionCaveats(production).map((c) => (
+            <p key={c} className="flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{c}</span>
+            </p>
+          ))}
+
+          {production.length === 0 ? (
+            <EmptyState icon={ChefHat} title="No production planned or recorded">
+              A row appears for every prep sheet saved in the period and for
+              every day something was made without one. An empty report with
+              services in the diary means the kitchen is not recording either —
+              or that you do not have Production access, in which case this
+              report is empty for you and not for the venue.
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead className="text-right">Planned</TableHead>
+                <TableHead className="text-right">Made</TableHead>
+                <TableHead className="text-right">Batches</TableHead>
+                <TableHead>Worked by</TableHead>
+                <TableHead>Concerns</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {production.map((r) => (
+                  <TableRow key={r.planId ?? `loose-${r.plannedFor}`}>
+                    <TableCell className="whitespace-nowrap font-medium">
+                      {r.plannedFor}
+                    </TableCell>
+                    <TableCell>
+                      {r.planId == null
+                        ? <span className="text-muted-foreground italic">no plan</span>
+                        : r.service?.trim() || (
+                            /* 0060: a plan with no service is the whole day. */
+                            <span className="text-muted-foreground">all day</span>
+                          )}
+                    </TableCell>
+                    {/* Dishes and covers, which is what a plan is written in. */}
+                    <TableCell className="text-right tabular-nums">
+                      {r.planId == null ? "\u2014" : (
+                        <>
+                          {r.dishesPlanned}
+                          <span className="text-muted-foreground">
+                            {" "}dish{r.dishesPlanned === 1 ? "" : "es"}
+                            {r.coversPlanned > 0 && ` \u00b7 ${r.coversPlanned} covers`}
+                          </span>
+                        </>
+                      )}
+                    </TableCell>
+                    {/* Preparations and batches, which is what a record is
+                        written in. Deliberately not differenced: see
+                        `productionCaveats`. */}
+                    <TableCell className="text-right tabular-nums">
+                      {r.preparationsMade === 0
+                        ? <span className="text-muted-foreground">nothing</span>
+                        : <>
+                            {r.preparationsMade}
+                            <span className="text-muted-foreground">
+                              {" "}prep{r.preparationsMade === 1 ? "" : "s"}
+                            </span>
+                          </>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.batchesMade === 0 ? "\u2014" : r.batchesMade}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.madeBy ?? <span className="text-muted-foreground">{"\u2014"}</span>}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.concerns.length === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : r.concerns.map((c) => (
+                            <span key={c} className="block text-status-warning">{c}</span>
+                          ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
       </Tabs>
       )}
     </div>
@@ -775,6 +910,7 @@ const REPORT_NAMES: Record<string, string> = {
   pour: "Pour cost",
   hygiene: "Hygiene by outlet",
   traceability: "Lot traceability",
+  production: "Planned against made",
 };
 
 function ReportHead({ blurb, empty, onExport }: {
