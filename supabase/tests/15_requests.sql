@@ -28,10 +28,19 @@ select t.expect_value($$
    where not exists (select 1 from request_types r where r.org_id = o.id)$$,
   'every venue has request types (seed_request_types, through the registry)', '0');
 
+/*
+ * That the five exist, not that there are only five.
+ *
+ * This counted every type in the venue and expected five, so adding a sixth
+ * — which `seed_requests.sql` does, a catch-all with no promise on it —
+ * turned it red for no reason. Worse, the assertion forbade the venue ever
+ * configuring another kind of request, which was never what it meant.
+ */
 select t.expect_value($$
   select count(*)::text from request_types
-   where org_id = (select id from organizations where name='Demo Kitchen')$$,
-  'five of them — the five shapes Part C named', '5');
+   where org_id = (select id from organizations where name='Demo Kitchen')
+     and code in ('CLEAN', 'FAULT', 'GUEST', 'PEOPLE', 'SUPPLY')$$,
+  'the five shapes Part C named are all there', '5');
 
 select '── requests: anybody may knock on any department''s door ─────────';
 
@@ -215,13 +224,36 @@ select t.expect_value($$
 
 select '── requests: what every department is sitting on ────────────────';
 
+/*
+ * This venue's own requests, not the venue's total.
+ *
+ * Both of these read `request_load`'s absolute count and expected one and
+ * nought, which held only while the demo database had no requests. With
+ * sixty days of them seeded the figures became 58 and 17 — and neither
+ * number said anything about the two requests this test raised.
+ *
+ * The view is still exercised below, but as "it counts this one" rather
+ * than "the venue has exactly one", which is a claim no shared aggregate
+ * can make on a test's behalf.
+ */
 select t.expect_value($$
-  select open_count::text from request_load where unit_code='ADMIN'
-    and org_id=(select id from organizations where name='Demo Kitchen')$$,
-  'the converted fault is still open on Administration', '1');
+  select count(*)::text from requests q
+    join business_units b on b.id = q.business_unit_id
+   where q.title = 'T-tap dripping in the prep sink'
+     and b.code = 'ADMIN'
+     and q.status not in ('RESOLVED', 'CLOSED', 'REJECTED')$$,
+  'the converted fault is still open, and still on Administration', '1');
 select t.expect_value($$
-  select coalesce(sum(open_count), 0)::text from request_load
-   where unit_code='FOH' and org_id=(select id from organizations where name='Demo Kitchen')$$,
+  select (open_count >= 1)::text from request_load
+   where unit_code='ADMIN'
+     and org_id=(select id from organizations where name='Demo Kitchen')$$,
+  'and the department load view is counting it', 'true');
+select t.expect_value($$
+  select count(*)::text from requests q
+    join business_units b on b.id = q.business_unit_id
+   where q.title = 'T-misdirected'
+     and b.code = 'FOH'
+     and q.status not in ('RESOLVED', 'CLOSED', 'REJECTED')$$,
   'and the rejected one is not open on Front of house', '0');
 
 -- A promise nobody made is not a promise kept. Reporting an unchased request
