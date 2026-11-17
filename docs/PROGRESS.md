@@ -2014,6 +2014,54 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       four kinds above could have been written correctly from the start at no
       extra cost.
 
+- [x] **What the last shift left behind** (0135). The sixth and last. 0071
+      built the shift handover and nothing had ever been in it, so the board
+      had never shown a row and neither the writing nor the reading half had
+      been looked at.
+
+      One row per department, because the chain is per department: the
+      Kitchen's Tuesday says nothing about whether the Bar wrote one. Three
+      failures, deliberately counted apart because they are not
+      interchangeable — **nothing written**, **written and never published**,
+      and **published and never acknowledged**. Drafts come first: 0071 makes
+      DRAFT mean nobody else can see it, so that department handed over
+      nothing while believing it had.
+
+      A fourth, counted separately again: a handover **published with no
+      items and nothing in the summary**. It satisfies every check in the
+      system and tells the next shift nothing, which is the shape every
+      tick-box process eventually takes.
+
+      Proved by 19 checks in `supabase/tests/74_*.sql`, four verified by
+      breaking the function first: letting a draft count as covered, dropping
+      the trailing edge from the gap calculation (8 days becomes 7), removing
+      the section guard, and inner-joining to the handover table (the
+      department that writes none disappears).
+
+- [x] **The one report in the series that has to check access itself**, and
+      the reason is the grain. Every other one lets row-level security
+      decide: read the gated table as the caller and a reader without the
+      section gets no rows because there are none to get.
+
+      A row here is a *department*, and `business_units` is shared — "the
+      venue's departments, named on every screen". So the row set survived
+      RLS untouched and only the counts came from the gated tables. A reader
+      with no Handover access was handed five departments with nought in
+      every column: a report stating that **nobody in the venue had written a
+      handover all month**, which is a different and much worse claim than
+      "this is not yours to read".
+
+      Found by the test asserting zero rows and getting four. 0135 now checks
+      `can_read_section` explicitly, and both the function and the test say
+      why it is an exception rather than a tidier way of doing the same
+      thing.
+
+      Worth generalising: a report whose grain comes from a shared table does
+      not inherit the gate on its figures. Three of the six in this series
+      take their grain from the gated table itself and are safe by
+      construction; this one does not, and nothing but a test would have said
+      so.
+
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
       This system's discipline is that a figure carries its caveats —
