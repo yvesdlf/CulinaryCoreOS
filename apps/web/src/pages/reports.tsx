@@ -34,7 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
   ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble, Scale,
-  DoorOpen,
+  DoorOpen, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -70,6 +70,7 @@ import {
   fetchHousekeeping, housekeepingCaveats, type HousekeepingRow,
   fetchHrCases, hrCasesCaveats, type HrCaseRow,
   fetchRequests, requestsCaveats, type RequestsRow,
+  fetchHandover, handoverCaveats, type HandoverRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -114,6 +115,7 @@ export function ReportsPage() {
   const [housekeeping, setHousekeeping] = useState<HousekeepingRow[]>([]);
   const [hrCases, setHrCases] = useState<HrCaseRow[]>([]);
   const [frontDoor, setFrontDoor] = useState<RequestsRow[]>([]);
+  const [handover, setHandover] = useState<HandoverRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
   /*
@@ -136,7 +138,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq, hv] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -161,11 +163,12 @@ export function ReportsPage() {
         // Requests are readable by every member of the venue — no section
         // and no unit — so this one should never come back empty for access.
         fetchRequests(from, to).catch(() => []),
+        fetchHandover(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
       setProduction(pr); setMaintenance(mt); setHousekeeping(hk);
-      setHrCases(hc); setFrontDoor(rq);
+      setHrCases(hc); setFrontDoor(rq); setHandover(hv);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
@@ -293,6 +296,7 @@ export function ReportsPage() {
           <TabsTrigger value="housekeeping"><BedDouble className="size-4" />Housekeeping</TabsTrigger>
           <TabsTrigger value="hr"><Scale className="size-4" />HR cases</TabsTrigger>
           <TabsTrigger value="requests"><DoorOpen className="size-4" />Requests</TabsTrigger>
+          <TabsTrigger value="handover"><ClipboardList className="size-4" />Handover</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="mt-4 space-y-4">
@@ -1418,6 +1422,135 @@ export function ReportsPage() {
             </Table>
           )}
         </TabsContent>
+
+        {/* ── Handover (0135) ─────────────────────────────────────────────── */}
+        <TabsContent value="handover" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              One row per department: whether it kept the chain, and where it
+              broke. Drafts come first, because a handover nobody published is
+              the failure that feels like success — the writer handed over
+              nothing and believes they did.
+            </p>
+            <ExportMenu
+              disabled={handover.length === 0}
+              build={() => ({
+                title: "What the last shift left behind",
+                venue: venue?.name ?? "This venue",
+                period: period.label,
+                printedOn: printedOn.toISOString().slice(0, 10),
+                caveats: handoverCaveats(handover),
+                columns: [
+                  { label: "Department" },
+                  { label: "Days in period", numeric: true },
+                  { label: "Days covered", numeric: true },
+                  { label: "Days missing", numeric: true },
+                  { label: "Longest gap (days)", numeric: true },
+                  { label: "Written", numeric: true },
+                  { label: "Drafts", numeric: true },
+                  { label: "Published", numeric: true },
+                  { label: "Acknowledged", numeric: true },
+                  { label: "Never acknowledged", numeric: true },
+                  { label: "Empty", numeric: true },
+                  { label: "Items", numeric: true },
+                  { label: "Safety items", numeric: true },
+                  { label: "Avg hours to acknowledge", numeric: true },
+                  { label: "Concerns" },
+                ],
+                rows: handover.map((r) => [
+                  r.unitName, r.daysInPeriod, r.daysCovered, r.daysMissing,
+                  r.longestGapDays, r.written, r.drafts, r.published,
+                  r.acknowledged, r.neverAcknowledged, r.emptyHandovers,
+                  r.items, r.safetyItems, r.avgHoursToAcknowledge ?? "",
+                  r.concerns.join("; "),
+                ]),
+              })}
+            />
+          </div>
+
+          {handoverCaveats(handover).map((c) => (
+            <p key={c} className="flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{c}</span>
+            </p>
+          ))}
+
+          {handover.length === 0 ? (
+            <EmptyState icon={ClipboardList} title="No handovers you can see">
+              A row appears for every department in the venue. An empty report
+              means you do not have Handover access — unlike the other reports
+              here, this one returns nothing at all rather than a list of
+              departments with nought against each, because that would read as
+              nobody having written one.
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Department</TableHead>
+                <TableHead className="text-right">Covered</TableHead>
+                <TableHead className="text-right">Longest gap</TableHead>
+                <TableHead className="text-right">Read</TableHead>
+                <TableHead className="text-right">Items</TableHead>
+                <TableHead>Concerns</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {handover.map((r) => (
+                  <TableRow key={r.unitId}>
+                    <TableCell>
+                      <span className="font-medium">{r.unitName}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {r.written} written
+                        {r.drafts > 0 && `, ${r.drafts} still a draft`}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.daysCovered} of {r.daysInPeriod}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.longestGapDays === 0
+                        ? <span className="text-muted-foreground">none</span>
+                        : `${r.longestGapDays}d`}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.published === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : <>
+                            {r.acknowledged} of {r.published}
+                            {r.avgHoursToAcknowledge != null && (
+                              <span className="block text-xs text-muted-foreground">
+                                after {r.avgHoursToAcknowledge}h
+                              </span>
+                            )}
+                          </>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.items}
+                      {r.safetyItems > 0 && (
+                        <span className="block text-xs text-status-warning">
+                          {r.safetyItems} safety
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.concerns.length === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : r.concerns.map((c) => (
+                            <span
+                              key={c}
+                              className={
+                                c.includes("never published")
+                                  ? "block text-status-danger"
+                                  : "block text-status-warning"
+                              }
+                            >{c}</span>
+                          ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
       </Tabs>
       )}
     </div>
@@ -1507,6 +1640,7 @@ const REPORT_NAMES: Record<string, string> = {
   housekeeping: "The rooms, and the ones nobody checked",
   hr: "The caseload",
   requests: "The front door",
+  handover: "What the last shift left behind",
 };
 
 function ReportHead({ blurb, empty, onExport }: {

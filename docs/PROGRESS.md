@@ -2014,6 +2014,142 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       four kinds above could have been written correctly from the start at no
       extra cost.
 
+- [x] **What the last shift left behind** (0135). The sixth and last. 0071
+      built the shift handover and nothing had ever been in it, so the board
+      had never shown a row and neither the writing nor the reading half had
+      been looked at.
+
+      One row per department, because the chain is per department: the
+      Kitchen's Tuesday says nothing about whether the Bar wrote one. Three
+      failures, deliberately counted apart because they are not
+      interchangeable — **nothing written**, **written and never published**,
+      and **published and never acknowledged**. Drafts come first: 0071 makes
+      DRAFT mean nobody else can see it, so that department handed over
+      nothing while believing it had.
+
+      A fourth, counted separately again: a handover **published with no
+      items and nothing in the summary**. It satisfies every check in the
+      system and tells the next shift nothing, which is the shape every
+      tick-box process eventually takes.
+
+      Proved by 19 checks in `supabase/tests/74_*.sql`, four verified by
+      breaking the function first: letting a draft count as covered, dropping
+      the trailing edge from the gap calculation (8 days becomes 7), removing
+      the section guard, and inner-joining to the handover table (the
+      department that writes none disappears).
+
+- [x] **The one report in the series that has to check access itself**, and
+      the reason is the grain. Every other one lets row-level security
+      decide: read the gated table as the caller and a reader without the
+      section gets no rows because there are none to get.
+
+      A row here is a *department*, and `business_units` is shared — "the
+      venue's departments, named on every screen". So the row set survived
+      RLS untouched and only the counts came from the gated tables. A reader
+      with no Handover access was handed five departments with nought in
+      every column: a report stating that **nobody in the venue had written a
+      handover all month**, which is a different and much worse claim than
+      "this is not yours to read".
+
+      Found by the test asserting zero rows and getting four. 0135 now checks
+      `can_read_section` explicitly, and both the function and the test say
+      why it is an exception rather than a tidier way of doing the same
+      thing.
+
+      Worth generalising: a report whose grain comes from a shared table does
+      not inherit the gate on its figures. Three of the six in this series
+      take their grain from the gated table itself and are safe by
+      construction; this one does not, and nothing but a test would have said
+      so.
+
+- [x] **The handover seed was not re-runnable, and only the second run said
+      so.** It cleared `handover_items` before `handovers`. 0071 refuses to
+      delete an item from a *published* handover — "the record is what
+      somebody read" — so the first run worked against an empty table and
+      every run after it failed.
+
+      The guard allows the delete once the parent is gone, and `on delete
+      cascade` removes the parent first, so deleting the handover takes its
+      items with it. Reversed, and proved by running it twice and comparing
+      the figures.
+
+      Every seed in this series claims to be safe to run more than once. This
+      is the first one where that claim was false, and it was false in a way
+      no single run could reveal.
+
+- [x] **The handover seed covered half the month the page opens on.** The
+      Reports page defaults to last month; a twenty-eight-day seed ending
+      today covers roughly half of it, so the Handover tab opened reporting
+      twenty-six of thirty-one days missing for every department — an
+      artefact of the seed's length, not of anything the demo venue did.
+      Extended to sixty days, which covers any whole month the period picker
+      offers. Housekeeping's deliberate quiet stretch was widened with it, or
+      it would have shrunk to a rounding error in the longer window.
+
+      Worth checking in the other five: production and housekeeping are
+      twenty-eight days, maintenance ninety, HR cases a hundred and eighty,
+      requests sixty. The short ones are fine because their reports are read
+      for the current period rather than against a month boundary, but it is
+      the kind of thing that looks like a product defect to anybody opening
+      the page cold.
+
+- [ ] **The dashboard counts a draft as a handover.** Found while checking
+      what the handover seed would do to the overview tiles, and **not fixed
+      here** because it is a dashboard change with its own blast radius.
+
+      `unit_overview.last_handover_status` and `last_handover_on` (0074) take
+      the most recent handover for a department with no filter on status, and
+      `overview-tiles.tsx` uses the status only to choose between "no handover
+      written" and "last handover ⟨date⟩" — it never shows that the status is
+      DRAFT.
+
+      So the demo venue's Bar, which writes one every third day and publishes
+      none of them, appears on the dashboard as a department handing over
+      normally. 0071 is explicit that a draft is visible only to its author,
+      so that tile is telling the reader the opposite of what happened.
+
+      It is the precise failure `handover_report` was built to surface, and
+      the tile is actively hiding it. A fix is probably one line in the
+      component — "last handover 17 Nov (draft)" — plus a baseline
+      regeneration.
+
+- [ ] **The visual suite's dashboard does not show what the dashboard shows,
+      and I cannot say why.** Open question, recorded rather than guessed at.
+
+      After `seed_handover.sql`, the running application's dashboard shows
+      "45 unread handovers" in the alert line and "last handover 2026-11-17"
+      on all five department tiles. The container that renders the baselines
+      shows neither: "Unread handovers 0" and "no handover written" on every
+      tile. It does so **reproducibly** — `visual-linux.sh --update` rewrote
+      nothing, and a following check run passed 33 of 33 — so it is not a
+      race.
+
+      What rules out the obvious answers:
+
+      - Same user. `auth.setup.ts` signs in as `demo@culinarycore.local`,
+        which is the account the browser check used.
+      - Same database. The script reads the published Kong port from
+        `docker port` and passes it in; the container's requests figures are
+        the seeded ones.
+      - Same row of the same view. The Administration tile in the baseline
+        shows "2 requests past the promise" **and** "no handover written".
+        `unit_overview` produces both columns in one row, so a reader that
+        can see `requests_overdue` there should see `last_handover_status`
+        too.
+      - The data is visible to that user: querying `unit_overview` as the
+        demo user returns PUBLISHED for four departments and DRAFT for the
+        Bar.
+
+      What this does and does not mean. The baselines are self-consistent
+      with the harness, and CI runs the same harness the same way, so CI will
+      be green — the suite is not broken in the sense of failing. But if the
+      container is screenshotting a dashboard that differs from the one users
+      see, the suite is guarding something other than the product, and that
+      is worth more than the hour I had for it here.
+
+      Next step for whoever picks it up: have the container dump
+      `unit_overview` as it sees it, rather than inferring from pixels.
+
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
       This system's discipline is that a figure carries its caveats —
