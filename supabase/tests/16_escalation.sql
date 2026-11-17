@@ -64,14 +64,33 @@ select t.expect_rows($$
 -- `respond_by` is set from the type at insert, so it is four hours from the
 -- moment of insert rather than from `created_at`; the sweep is asked about a
 -- moment before it.
+/*
+ * Every sweep below is scoped to this test's own request.
+ *
+ * `chase_unanswered_requests` sweeps the whole venue, so these counted all
+ * of it and expected nought or one — which held only while the demo database
+ * had no requests in it. `seed_requests.sql` gave the venue sixty days of
+ * them, three of which are past their promise, and the counts became three
+ * and the `told_email` reads came back null because somebody else's request
+ * sorted first.
+ *
+ * Nothing was wrong behind it, but the assertions were wrong before that
+ * seed existed: "the sweep chased one thing" is not what any of these lines
+ * mean. They mean "it chased *this*", and the sweep returns `request_id` so
+ * they can say so.
+ */
 select t.expect_value($$
-  select count(*)::text from chase_unanswered_requests(now() + interval '1 hour')$$,
+  select count(*)::text from chase_unanswered_requests(now() + interval '1 hour') c
+    join public.requests q on q.id = c.request_id
+   where q.title = 'T-fridge alarm at 2am'$$,
   'is not chased an hour later, because nothing was promised by then', '0');
 
 select '── escalation: and is chased once it is ─────────────────────────';
 
 select t.expect_value($$
-  select told_email from chase_unanswered_requests(now() + interval '5 hours')$$,
+  select c.told_email from chase_unanswered_requests(now() + interval '5 hours') c
+    join public.requests q on q.id = c.request_id
+   where q.title = 'T-fridge alarm at 2am'$$,
   'five hours in, the night team''s manager is told', 'uncert@test.local');
 
 select t.expect_value($$
@@ -88,10 +107,14 @@ select t.expect_value($$
 select '── escalation: not chased again for the same delay ──────────────';
 
 select t.expect_value($$
-  select count(*)::text from chase_unanswered_requests(now() + interval '5 hours')$$,
+  select count(*)::text from chase_unanswered_requests(now() + interval '5 hours') c
+    join public.requests q on q.id = c.request_id
+   where q.title = 'T-fridge alarm at 2am'$$,
   'a second sweep at the same moment chases nothing', '0');
 select t.expect_value($$
-  select count(*)::text from chase_unanswered_requests(now() + interval '6 hours')$$,
+  select count(*)::text from chase_unanswered_requests(now() + interval '6 hours') c
+    join public.requests q on q.id = c.request_id
+   where q.title = 'T-fridge alarm at 2am'$$,
   'nor one an hour later, which has earned no further step', '0');
 
 select '── escalation: a longer silence goes further up the tree ────────';
@@ -102,7 +125,9 @@ select '── escalation: a longer silence goes further up the tree ───�
  * tree exists, and the first thing in this schema to read `parent_id`.
  */
 select t.expect_value($$
-  select told_email from chase_unanswered_requests(now() + interval '13 hours')$$,
+  select c.told_email from chase_unanswered_requests(now() + interval '13 hours') c
+    join public.requests q on q.id = c.request_id
+   where q.title = 'T-fridge alarm at 2am'$$,
   'thirteen hours in, the manager above is told instead', 'cert@test.local');
 select t.expect_value($$
   select escalation_level::text from requests where title='T-fridge alarm at 2am'$$,
@@ -145,8 +170,9 @@ select t.expect_rows($$
   'something raised against a department with no manager named', 1);
 
 select t.expect_value($$
-  select count(*)::text from chase_unanswered_requests(now() + interval '3 hours')
-   where reference like 'RQ-%' and told_email is null$$,
+  select count(*)::text from chase_unanswered_requests(now() + interval '3 hours') c
+    join public.requests q on q.id = c.request_id
+   where q.title = 'T-nobody to tell' and c.told_email is null$$,
   'is still chased, and the sweep reports that there was nobody to tell', '1');
 select t.expect_value($$
   select count(*)::text from request_events e

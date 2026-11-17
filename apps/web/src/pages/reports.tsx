@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
   ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble, Scale,
+  DoorOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -68,6 +69,7 @@ import {
   fetchMaintenance, maintenanceCaveats, type MaintenanceRow,
   fetchHousekeeping, housekeepingCaveats, type HousekeepingRow,
   fetchHrCases, hrCasesCaveats, type HrCaseRow,
+  fetchRequests, requestsCaveats, type RequestsRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -111,6 +113,7 @@ export function ReportsPage() {
   const [maintenance, setMaintenance] = useState<MaintenanceRow[]>([]);
   const [housekeeping, setHousekeeping] = useState<HousekeepingRow[]>([]);
   const [hrCases, setHrCases] = useState<HrCaseRow[]>([]);
+  const [frontDoor, setFrontDoor] = useState<RequestsRow[]>([]);
   const [grain, setGrain] = useState<TrendGrain>("week");
   const [loading, setLoading] = useState(true);
   /*
@@ -133,7 +136,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -155,11 +158,14 @@ export function ReportsPage() {
         // HR cases are not section-gated at all: `can_see_case` decides, so
         // an empty result here is normal rather than a refusal.
         fetchHrCases(from, to).catch(() => []),
+        // Requests are readable by every member of the venue — no section
+        // and no unit — so this one should never come back empty for access.
+        fetchRequests(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
       setProduction(pr); setMaintenance(mt); setHousekeeping(hk);
-      setHrCases(hc);
+      setHrCases(hc); setFrontDoor(rq);
     } catch (err) {
       toast.error("Could not load the reports", { description: said(err) });
     } finally {
@@ -286,6 +292,7 @@ export function ReportsPage() {
           <TabsTrigger value="maintenance"><Wrench className="size-4" />Maintenance</TabsTrigger>
           <TabsTrigger value="housekeeping"><BedDouble className="size-4" />Housekeeping</TabsTrigger>
           <TabsTrigger value="hr"><Scale className="size-4" />HR cases</TabsTrigger>
+          <TabsTrigger value="requests"><DoorOpen className="size-4" />Requests</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trend" className="mt-4 space-y-4">
@@ -1270,6 +1277,147 @@ export function ReportsPage() {
             </Table>
           )}
         </TabsContent>
+
+        {/* ── Requests (0134) ─────────────────────────────────────────────── */}
+        <TabsContent value="requests" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-sm text-muted-foreground">
+              One row per kind of request, because the promise is made by the
+              kind rather than by the department. Still waiting and answered
+              late are kept apart: the first is a list of people, the second
+              is history.
+            </p>
+            <ExportMenu
+              disabled={frontDoor.length === 0}
+              build={() => ({
+                title: "The front door",
+                venue: venue?.name ?? "This venue",
+                period: period.label,
+                printedOn: printedOn.toISOString().slice(0, 10),
+                caveats: requestsCaveats(frontDoor),
+                columns: [
+                  { label: "Kind" }, { label: "Goes to" },
+                  { label: "Promise (hours)", numeric: true },
+                  { label: "Raised", numeric: true },
+                  { label: "Acknowledged", numeric: true },
+                  { label: "Resolved", numeric: true },
+                  { label: "Rejected", numeric: true },
+                  { label: "Became work orders", numeric: true },
+                  { label: "Answered late", numeric: true },
+                  { label: "No promise", numeric: true },
+                  { label: "Open now", numeric: true },
+                  { label: "Overdue now", numeric: true },
+                  { label: "Never acknowledged", numeric: true },
+                  { label: "Avg hours to answer", numeric: true },
+                  { label: "Avg hours to resolve", numeric: true },
+                  { label: "Oldest open (days)", numeric: true },
+                  { label: "Concerns" },
+                ],
+                rows: frontDoor.map((r) => [
+                  r.typeName, r.unitName ?? "",
+                  r.respondWithinHours ?? "",
+                  r.raised, r.acknowledged, r.resolved, r.rejected, r.converted,
+                  r.answeredLate, r.noPromise, r.stillOpen, r.overdueNow,
+                  r.neverAcknowledged,
+                  r.avgHoursToAcknowledge ?? "", r.avgHoursToResolve ?? "",
+                  r.oldestOpenDays ?? "",
+                  r.concerns.join("; "),
+                ]),
+              })}
+            />
+          </div>
+
+          {requestsCaveats(frontDoor).map((c) => (
+            <p key={c} className="flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{c}</span>
+            </p>
+          ))}
+
+          {frontDoor.length === 0 ? (
+            <EmptyState icon={DoorOpen} title="Nothing came through the front door">
+              Every member of the venue can read every request, so unlike the
+              other reports here an empty one is not about your access. Either
+              nothing was raised in this period, or nothing is open.
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Kind</TableHead>
+                <TableHead>Goes to</TableHead>
+                <TableHead className="text-right">Raised</TableHead>
+                <TableHead className="text-right">Answered</TableHead>
+                <TableHead className="text-right">Waiting</TableHead>
+                <TableHead>Concerns</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {frontDoor.map((r) => (
+                  <TableRow key={r.typeId}>
+                    <TableCell>
+                      <span className="font-medium">{r.typeName}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {r.respondWithinHours == null
+                          ? "no promise"
+                          : `within ${r.respondWithinHours}h`}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {r.unitName ?? <span>{"\u2014"}</span>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.raised}
+                      {r.rejected > 0 && (
+                        <span className="block text-xs text-muted-foreground">
+                          {r.rejected} rejected
+                        </span>
+                      )}
+                    </TableCell>
+                    {/* Of the period: how fast, and how many too slow. */}
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.avgHoursToAcknowledge == null
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : <>
+                            {r.avgHoursToAcknowledge}h
+                            {r.answeredLate > 0 && (
+                              <span className="block text-xs text-status-warning">
+                                {r.answeredLate} late
+                              </span>
+                            )}
+                          </>}
+                    </TableCell>
+                    {/* As of today: people, not history. */}
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {r.stillOpen === 0
+                        ? <span className="text-muted-foreground">none</span>
+                        : <>
+                            {r.stillOpen}
+                            {r.overdueNow > 0 && (
+                              <span className="block text-xs text-status-danger">
+                                {r.overdueNow} past the promise
+                              </span>
+                            )}
+                          </>}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {r.concerns.length === 0
+                        ? <span className="text-muted-foreground">{"\u2014"}</span>
+                        : r.concerns.map((c) => (
+                            <span
+                              key={c}
+                              className={
+                                c.includes("still waiting")
+                                  ? "block text-status-danger"
+                                  : "block text-status-warning"
+                              }
+                            >{c}</span>
+                          ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
       </Tabs>
       )}
     </div>
@@ -1358,6 +1506,7 @@ const REPORT_NAMES: Record<string, string> = {
   maintenance: "What broke, and what was never checked",
   housekeeping: "The rooms, and the ones nobody checked",
   hr: "The caseload",
+  requests: "The front door",
 };
 
 function ReportHead({ blurb, empty, onExport }: {

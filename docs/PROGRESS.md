@@ -1909,6 +1909,111 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       any edit; the report's concern says "changed", not "worked on", because
       that is all it can honestly say. **Not closed here.**
 
+- [x] **The front door, and how long it took anybody to answer it** (0134).
+      Fifth of the six. 0066 gave the venue one front door and five request
+      types have existed since it was created; not one request had ever been
+      raised, so the Requests screen, the chaser in 0068 and this report were
+      all looking at an empty table.
+
+      **A row is a kind of request, not a department.** The department was the
+      obvious choice and it is wrong: the promise lives on the *type*
+      (`respond_within_hours`), so a department taking "Something is broken"
+      within four hours and "We have run out" within twenty-four has no
+      single figure for whether it answered in time. Aggregating would
+      average two different promises into a number that means nothing. The
+      receiving department rides along on the row instead.
+
+      **Two kinds of lateness, kept apart.** `answered_late` is history — it
+      was answered, after the promise had gone, and nobody can change that.
+      `overdue_now` is a list of people still waiting, and the only figure on
+      the page anybody can act on. Adding them produces something that is
+      neither.
+
+      **A type that promises nothing is not on time.** `respond_within_hours`
+      is nullable, so `respond_by` can be null and `respond_by < now()` is
+      false for it — correct arithmetic, wrong conclusion. Those are counted
+      separately and the configuration gap is named.
+
+      Unlike the four before it this report is the same for everybody:
+      `requests_read` is `org_id in auth_org_ids()` with no section and no
+      unit, which is what "one front door" means. Test 73 asserts that with a
+      reader holding NONE on every section, so the day somebody adds a gate
+      "for tidiness" the suite stops them.
+
+      Proved by 18 checks in `supabase/tests/73_*.sql`.
+
+- [x] **Average time to answer was measured from midnight.** The first
+      version of 0134 averaged from `raised_on::timestamp` — the start of the
+      day a request came in — rather than from `created_at`. Every afternoon
+      request therefore carried eleven or twelve invented hours, and a
+      two-hour promise showed a sixteen-hour average answer time while only
+      two of thirteen were actually late.
+
+      Caught because those two figures contradicted each other on the same
+      row. Nothing else would have: sixteen hours is a plausible number and
+      the column had no second opinion. The test now raises its fixtures at
+      14:00 for the sole purpose of making the wrong answer (24.5) and the
+      right one (10.5) impossible to confuse.
+
+- [x] **A modulus correlated with the thing it was varying against, for the
+      third time this session.** `seed_requests.sql` picked the kind of
+      request with `1 + (i * 5) % 6` while the status cycled on `i % 12`.
+      Twelve is a multiple of six, so the two were not independent and
+      **every rejection in the whole seed** landed on one kind — seven of its
+      thirteen requests rejected, and none anywhere else.
+
+      After `length(room_number)` being 3 for every room and `7i mod 14`
+      taking two values, the pattern is clear enough to write down: a modulus
+      is only a spread if it shares no factor with its range *and* no factor
+      with every other modulus derived from the same counter. All three now
+      hash the index instead.
+
+- [x] **The venue scope here is pinned only as a pair, which the test says.**
+      0134 filters the venue twice — on `requests` in the CTE and on
+      `request_types` in the final join — and either alone is sufficient,
+      since a request can only point at a type in its own organisation.
+      Removing one changes nothing and the check stays green; it goes red
+      only when both are gone. Found by mutating them one at a time and
+      watching nothing happen. Both are kept; the test records why a future
+      reader deleting one as redundant will not be caught.
+
+      Also noted, not changed: "Somewhere needs cleaning" routes to
+      Administration rather than Housekeeping, and three of the five types
+      route to Administration, which looks like a default rather than a
+      decision.
+
+- [x] **Seeding requests turned nine existing checks red, all correctly.**
+      Three files: `15_requests.sql`, `16_escalation.sql`, `21_overview.sql`.
+      Nothing was wrong behind any of them. Every one was an absolute count
+      over a shared table or view that could only ever have been written
+      while that table was empty.
+
+      - *"five of them — the five shapes Part C named"* counted every request
+        type in the venue. It forbade the venue ever configuring a sixth,
+        which was never what the line meant. It now asserts the five named
+        ones exist.
+      - Two `request_load` counts expected one and nought and read 58 and 17.
+        Neither number said anything about the two requests that test raises.
+        They are now scoped to those requests, with a separate check that the
+        load view is counting them — which is the part worth covering.
+      - Four sweeps in `16_escalation.sql` counted everything
+        `chase_unanswered_requests` touched, and two `told_email` reads came
+        back null because somebody else's request sorted first. The sweep
+        returns `request_id`, so they now say "it chased *this*".
+      - Two overview tiles expected one and read 8 and 9. The claim there is
+        that a three-day-old unanswered request is *still counted today* —
+        a statement about a delta — so a baseline is taken first and the
+        delta asserted.
+
+      This is the second time a seed has done it: housekeeping did the same
+      to `30_portal_frontline.sql`. The pattern is worth stating plainly. An
+      absolute count over a shared table is a false pass waiting for data:
+      it passes today because the table is empty, it would pass just as
+      happily if the thing under test vanished and something else appeared,
+      and it goes red the moment anybody adds realistic data. Three of the
+      four kinds above could have been written correctly from the start at no
+      extra cost.
+
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
       This system's discipline is that a figure carries its caveats —

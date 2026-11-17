@@ -801,3 +801,122 @@ export function hrCasesCaveats(rows: HrCaseRow[]): string[] {
   );
   return notes;
 }
+
+// ── Requests (0134) ─────────────────────────────────────────────────────────
+
+/**
+ * One request type: what came through the front door and how much of it was
+ * answered inside the promise that type makes.
+ *
+ * The row is a type rather than a department because the promise lives on
+ * the type. A department taking "Something is broken" within four hours and
+ * "We have run out" within twenty-four has no single figure for whether it
+ * answered in time, and averaging across them produces a number that means
+ * nothing. The receiving department is carried on the row instead.
+ *
+ * `answeredLate` and `overdueNow` are deliberately separate. The first is
+ * history — answered, after the promise had gone, and nobody can change it.
+ * The second is a list of people still waiting, and the only figure here
+ * anybody can act on.
+ *
+ * There is no `readerSeesAll` because there is nothing for it to say:
+ * `requests_read` has no section and no unit in it, so every member of the
+ * venue sees the same report.
+ */
+export interface RequestsRow {
+  typeId: string;
+  typeCode: string;
+  typeName: string;
+  unitName: string | null;
+  respondWithinHours: number | null;
+  raised: number;
+  acknowledged: number;
+  resolved: number;
+  rejected: number;
+  converted: number;
+  answeredLate: number;
+  noPromise: number;
+  stillOpen: number;
+  overdueNow: number;
+  neverAcknowledged: number;
+  avgHoursToAcknowledge: number | null;
+  avgHoursToResolve: number | null;
+  oldestOpenDays: number | null;
+  concerns: string[];
+}
+
+export async function fetchRequests(
+  from: string,
+  to: string,
+): Promise<RequestsRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("requests_report", { p_from: from, p_to: to });
+  if (error) fail("fetchRequests", error);
+  return (data ?? []).map((r: any) => ({
+    typeId: r.type_id,
+    typeCode: r.type_code,
+    typeName: r.type_name,
+    unitName: r.unit_name ?? null,
+    respondWithinHours: r.respond_within_hours == null ? null : Number(r.respond_within_hours),
+    raised: Number(r.raised ?? 0),
+    acknowledged: Number(r.acknowledged ?? 0),
+    resolved: Number(r.resolved ?? 0),
+    rejected: Number(r.rejected ?? 0),
+    converted: Number(r.converted ?? 0),
+    answeredLate: Number(r.answered_late ?? 0),
+    noPromise: Number(r.no_promise ?? 0),
+    stillOpen: Number(r.still_open ?? 0),
+    overdueNow: Number(r.overdue_now ?? 0),
+    neverAcknowledged: Number(r.never_acknowledged ?? 0),
+    avgHoursToAcknowledge: r.avg_hours_to_acknowledge == null ? null : Number(r.avg_hours_to_acknowledge),
+    avgHoursToResolve: r.avg_hours_to_resolve == null ? null : Number(r.avg_hours_to_resolve),
+    oldestOpenDays: r.oldest_open_days == null ? null : Number(r.oldest_open_days),
+    concerns: r.concerns ?? [],
+  }));
+}
+
+/** What the sheet has to say about itself. */
+export function requestsCaveats(rows: RequestsRow[]): string[] {
+  const notes: string[] = [];
+  if (rows.length === 0) return notes;
+
+  const overdue = rows.reduce((n, r) => n + r.overdueNow, 0);
+  const late = rows.reduce((n, r) => n + r.answeredLate, 0);
+  const raised = rows.reduce((n, r) => n + r.raised, 0);
+  const noPromise = rows.reduce((n, r) => n + r.noPromise, 0);
+  const typesWithout = rows.filter((r) => r.respondWithinHours == null).length;
+
+  if (overdue > 0) {
+    notes.push(
+      `${overdue} ${overdue === 1 ? "person is" : "people are"} still waiting ` +
+      `past the time somebody promised. That is the only figure here anybody ` +
+      `can still do something about.`,
+    );
+  }
+  if (late > 0 && raised > 0) {
+    notes.push(
+      `${late} of ${raised} raised in this period were answered after the ` +
+      `promise had passed. That is history and separate from the figure above.`,
+    );
+  }
+  if (typesWithout > 0) {
+    notes.push(
+      `${typesWithout} ${typesWithout === 1 ? "kind of request promises" : "kinds of request promise"} ` +
+      // The pronoun agrees with the *kind*, not with the number of requests:
+      // one kind and seven requests reads "against them" otherwise.
+      `no answer by any time, so the ${noPromise} raised against ` +
+      `${typesWithout === 1 ? "it" : "them"} cannot be late and cannot be chased.`,
+    );
+  }
+
+  notes.push(
+    "Raised, answered and answered-late are of the period. Still open, " +
+    "overdue and the oldest are as of today.",
+  );
+  notes.push(
+    "A row is a kind of request, not a department, because the promise is " +
+    "made by the kind. A department answering two kinds with different " +
+    "targets has no single figure for whether it answered in time.",
+  );
+  return notes;
+}
