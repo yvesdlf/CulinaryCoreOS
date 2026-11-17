@@ -111,6 +111,26 @@ select '── overview: what is waiting does not reset at midnight ────
 
 select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 
+/*
+ * What this adds, not what the venue has.
+ *
+ * Both checks below read the absolute figure and expected one, which held
+ * only while the demo database had no requests in it. `seed_requests.sql`
+ * gave the venue sixty days of them and the tiles read 8 and 9 — neither of
+ * which says anything about the request this test raises.
+ *
+ * The claim being made is that an unanswered request from three days ago is
+ * *still counted today* — that the tile is not a daily figure that resets at
+ * midnight. That is a statement about a delta, so the baseline is taken
+ * first and the delta is what is asserted. It is read as the signed-in user,
+ * because both views are row-level-security views and a baseline taken as
+ * anybody else would be a different number.
+ */
+create temporary table t_21_before as
+  select (select requests_unanswered from unit_overview where unit_code='ADMIN')
+           as unit_before,
+         (select requests_unanswered from venue_overview) as venue_before;
+
 select t.expect_rows($$
   insert into requests (request_type_id, title, created_at)
   select id, 'T-overview unanswered', now() - interval '3 days'
@@ -119,11 +139,13 @@ select t.expect_rows($$
   'something raised three days ago and never answered', 1);
 
 select t.expect_value($$
-  select requests_unanswered::text from unit_overview where unit_code='ADMIN'$$,
+  select ((select requests_unanswered from unit_overview where unit_code='ADMIN')
+          - (select unit_before from t_21_before))::text$$,
   'is still on the tile, because an unanswered request is not a daily figure', '1');
 
 select t.expect_value($$
-  select requests_unanswered::text from venue_overview$$,
+  select ((select requests_unanswered from venue_overview)
+          - (select venue_before from t_21_before))::text$$,
   'and on the venue line', '1');
 
 select '── overview: the venue line is asked, not summed ────────────────';
