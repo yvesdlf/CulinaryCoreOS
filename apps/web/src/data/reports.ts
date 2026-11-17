@@ -920,3 +920,107 @@ export function requestsCaveats(rows: RequestsRow[]): string[] {
   );
   return notes;
 }
+
+// ── Handover (0135) ─────────────────────────────────────────────────────────
+
+/**
+ * One department: whether it kept the handover chain, and where it broke.
+ *
+ * The three failures are not interchangeable. `drafts` is the worst — 0071
+ * makes DRAFT mean nobody else can see it, so the writer believes they
+ * handed over and the next shift got nothing. `daysMissing` is a department
+ * that stopped writing. `emptyHandovers` is one that kept writing and
+ * stopped saying anything.
+ *
+ * `daysMissing` counts calendar days with nothing published, and the schema
+ * has no notion of a department being closed — so a day the bar did not open
+ * looks the same as a day nobody wrote anything.
+ */
+export interface HandoverRow {
+  unitId: string;
+  unitCode: string;
+  unitName: string;
+  daysInPeriod: number;
+  daysCovered: number;
+  daysMissing: number;
+  longestGapDays: number;
+  written: number;
+  drafts: number;
+  published: number;
+  acknowledged: number;
+  neverAcknowledged: number;
+  emptyHandovers: number;
+  items: number;
+  safetyItems: number;
+  avgHoursToAcknowledge: number | null;
+  concerns: string[];
+}
+
+export async function fetchHandover(
+  from: string,
+  to: string,
+): Promise<HandoverRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("handover_report", { p_from: from, p_to: to });
+  if (error) fail("fetchHandover", error);
+  return (data ?? []).map((r: any) => ({
+    unitId: r.unit_id,
+    unitCode: r.unit_code,
+    unitName: r.unit_name,
+    daysInPeriod: Number(r.days_in_period ?? 0),
+    daysCovered: Number(r.days_covered ?? 0),
+    daysMissing: Number(r.days_missing ?? 0),
+    longestGapDays: Number(r.longest_gap_days ?? 0),
+    written: Number(r.written ?? 0),
+    drafts: Number(r.drafts ?? 0),
+    published: Number(r.published ?? 0),
+    acknowledged: Number(r.acknowledged ?? 0),
+    neverAcknowledged: Number(r.never_acknowledged ?? 0),
+    emptyHandovers: Number(r.empty_handovers ?? 0),
+    items: Number(r.items ?? 0),
+    safetyItems: Number(r.safety_items ?? 0),
+    avgHoursToAcknowledge: r.avg_hours_to_acknowledge == null ? null : Number(r.avg_hours_to_acknowledge),
+    concerns: r.concerns ?? [],
+  }));
+}
+
+/** What the sheet has to say about itself. */
+export function handoverCaveats(rows: HandoverRow[]): string[] {
+  const notes: string[] = [];
+  if (rows.length === 0) return notes;
+
+  const drafts = rows.reduce((n, r) => n + r.drafts, 0);
+  const unread = rows.reduce((n, r) => n + r.neverAcknowledged, 0);
+  const empty = rows.reduce((n, r) => n + r.emptyHandovers, 0);
+  const missing = rows.reduce((n, r) => n + r.daysMissing, 0);
+
+  if (drafts > 0) {
+    notes.push(
+      `${drafts} ${drafts === 1 ? "handover was" : "handovers were"} written ` +
+      `and never published. A draft is visible only to the person who wrote ` +
+      `it, so those shifts handed over nothing — while believing they had.`,
+    );
+  }
+  if (unread > 0) {
+    notes.push(
+      `${unread} were published and never acknowledged. That may mean nobody ` +
+      `read them, or only that nobody pressed the button; it is reported as ` +
+      `what it is.`,
+    );
+  }
+  if (empty > 0) {
+    notes.push(
+      `${empty} ${empty === 1 ? "was" : "were"} published with no items and ` +
+      `nothing in the summary.`,
+    );
+  }
+  if (missing > 0) {
+    notes.push(
+      `${missing} department-days have no published handover. The system has ` +
+      `no record of a department being closed, so a day one did not operate ` +
+      `looks exactly like a day nobody wrote one — this is a question to ask, ` +
+      `not a finding.`,
+    );
+  }
+  return notes;
+}

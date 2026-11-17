@@ -43,6 +43,8 @@
 #   seed_requests     sixty days through the front door; needs
 #                     seed_maintenance, because a request that became a work
 #                     order has to point at one that exists
+#   seed_handover     four weeks of shift handovers, one department per way
+#                     of breaking the chain; needs only the business units
 #
 # Then `recost`, which is not optional: the seed ships every recipe with a zero
 # cost and an empty allergen list, and the script computes both. Skipping it
@@ -67,7 +69,7 @@ echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
 SEEDS=(seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people
-       seed_sample_sales seed_takings seed_production seed_maintenance seed_housekeeping seed_hr_cases seed_requests)
+       seed_sample_sales seed_takings seed_production seed_maintenance seed_housekeeping seed_hr_cases seed_requests seed_handover)
 
 #
 # Every seed named above exists, checked before the first one runs.
