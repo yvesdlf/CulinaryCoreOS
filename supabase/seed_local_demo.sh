@@ -30,9 +30,6 @@
 #   seed_production   prep sheets and the batches made against them; needs the
 #                     catalogue's preparations and dishes, and the people
 #                     above, since a completion record names the cook
-#   seed_maintenance  the plant register, the planned-maintenance programme
-#                     and ninety days of work orders; needs only the
-#                     locations that seed.sql creates
 #
 # Then `recost`, which is not optional: the seed ships every recipe with a zero
 # cost and an empty allergen list, and the script computes both. Skipping it
@@ -56,7 +53,33 @@ esac
 echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
-for f in seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings seed_production seed_maintenance; do
+SEEDS=(seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people
+       seed_sample_sales seed_takings seed_production)
+
+#
+# Every seed named above exists, checked before the first one runs.
+#
+# This list and the files beside it drifted apart: the script named
+# `seed_maintenance` on a branch that did not carry it yet, and the mistake
+# survived local testing because the file was sitting in the working tree
+# untracked. A clean checkout — which is what CI is — got four minutes into
+# rebuilding the database and then stopped on "No such file or directory",
+# after `db reset` had already dropped everything.
+#
+# Failing here costs a second and names the file. Failing there costs the
+# build and leaves the database empty.
+#
+missing=()
+for f in "${SEEDS[@]}"; do
+  [ -f "$HERE/$f.sql" ] || missing+=("$f.sql")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "seed_local_demo.sh names files that are not here: ${missing[*]}" >&2
+  echo "Either add them or take them out of SEEDS." >&2
+  exit 2
+fi
+
+for f in "${SEEDS[@]}"; do
   echo "Applying $f.sql…"
   psql "$DB" -q -v ON_ERROR_STOP=1 -f "$HERE/$f.sql"
 done
