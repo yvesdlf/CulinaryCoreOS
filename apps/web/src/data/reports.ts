@@ -349,3 +349,108 @@ export function traceabilityCaveats(rows: TraceabilityRow[]): string[] {
   }
   return notes;
 }
+
+// ── Production (0130) ───────────────────────────────────────────────────────
+
+/**
+ * One planned service in the period, plus a row for each day of production
+ * that answered to no plan at all.
+ *
+ * `dishesPlanned` and `preparationsMade` are counted in different things and
+ * are never subtracted from one another — a plan line is a dish and a number
+ * of covers, a completion record is a preparation and a number of batches.
+ * The report says whether a plan was answered, not whether it was answered
+ * correctly; the second question needs a map between recipes and preparations
+ * that the database does not have.
+ *
+ * `planId` is null on the unplanned rows. That is the half worth reading: a
+ * kitchen improvising is either covering a shortage or ignoring the sheet.
+ */
+export interface ProductionRow {
+  plannedFor: string;
+  service: string | null;
+  planId: string | null;
+  dishesPlanned: number;
+  coversPlanned: number;
+  preparationsMade: number;
+  batchesMade: number;
+  quantityMade: number;
+  madeBy: string | null;
+  corrections: number;
+  firstMadeAt: string | null;
+  lastMadeAt: string | null;
+  concerns: string[];
+}
+
+export async function fetchProduction(
+  from: string,
+  to: string,
+): Promise<ProductionRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("production_report", { p_from: from, p_to: to });
+  if (error) fail("fetchProduction", error);
+  return (data ?? []).map((r: any) => ({
+    plannedFor: r.planned_for,
+    service: r.service ?? null,
+    planId: r.plan_id ?? null,
+    dishesPlanned: Number(r.dishes_planned ?? 0),
+    coversPlanned: Number(r.covers_planned ?? 0),
+    preparationsMade: Number(r.preparations_made ?? 0),
+    batchesMade: Number(r.batches_made ?? 0),
+    quantityMade: Number(r.quantity_made ?? 0),
+    madeBy: r.made_by ?? null,
+    corrections: Number(r.corrections ?? 0),
+    firstMadeAt: r.first_made_at ?? null,
+    lastMadeAt: r.last_made_at ?? null,
+    concerns: r.concerns ?? [],
+  }));
+}
+
+/**
+ * What the sheet has to say about itself, beyond any single row.
+ *
+ * Deliberately counts rather than lists. A head of department reading this
+ * before a Monday meeting needs "four services went uncooked", not four
+ * sentences; the rows underneath say which. The one exception is an empty
+ * report, where the reason it is empty is the only thing worth saying.
+ */
+export function productionCaveats(rows: ProductionRow[]): string[] {
+  const notes: string[] = [];
+  if (rows.length === 0) return notes;
+
+  const planned = rows.filter((r) => r.planId != null);
+  const count = (p: (r: ProductionRow) => boolean) => rows.filter(p).length;
+
+  const barren = planned.filter((r) => r.preparationsMade === 0).length;
+  const noDishes = planned.filter((r) => r.dishesPlanned === 0).length;
+  const loose = count((r) => r.planId == null);
+  const corrected = rows.reduce((n, r) => n + r.corrections, 0);
+
+  if (barren > 0) {
+    notes.push(
+      `${barren} of ${planned.length} planned services have no production ` +
+      `recorded against them. Either the prep was not recorded or it was not done.`,
+    );
+  }
+  if (noDishes > 0) {
+    notes.push(`${noDishes} plans have no dishes written on them, so there was nothing to answer.`);
+  }
+  if (loose > 0) {
+    notes.push(
+      `${loose} days have production that answered to no plan. That is not ` +
+      `necessarily wrong — a batch made mid-service is still a batch — but it is not on a sheet.`,
+    );
+  }
+  if (corrected > 0) {
+    notes.push(
+      `${corrected} batches were corrected after the fact. The superseded ` +
+      `records are excluded from every figure here; both rows remain on the Production screen.`,
+    );
+  }
+  notes.push(
+    "Dishes planned and preparations made are counted in different units and " +
+    "are not compared. This report says whether a plan was answered, not whether " +
+    "what was made matched what was on it.",
+  );
+  return notes;
+}
