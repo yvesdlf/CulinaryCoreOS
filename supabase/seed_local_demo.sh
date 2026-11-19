@@ -103,7 +103,26 @@ export SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-$(supabase status -o json | sed -
 # costing nothing — which reads as a data problem rather than a port.
 api_url="${SUPABASE_URL:-$(supabase status -o json | sed -n 's/.*"API_URL" *: *"\([^"]*\)".*/\1/p')}"
 
-reachable() { curl -fsS -o /dev/null --max-time 5 "$1/auth/v1/health"; }
+#
+# Reachable, with patience.
+#
+# `db reset` restarts the containers, so for a few seconds afterwards Kong is
+# listening and the service behind it is not: the probe gets a 502, or an
+# empty reply, and a single attempt reads that as "no Supabase here". It then
+# refused to cost a catalogue that had just been seeded perfectly well —
+# twice, on a rebuild that was otherwise fine.
+#
+# Half a minute of retrying, which is longer than the restart has ever taken
+# and short enough that a genuinely absent stack still fails quickly.
+#
+reachable() {
+  local i
+  for i in $(seq 1 15); do
+    curl -fsS -o /dev/null --max-time 5 "$1/auth/v1/health" && return 0
+    sleep 2
+  done
+  return 1
+}
 
 if [ -z "$api_url" ] || ! reachable "$api_url"; then
   kong="$(docker ps --filter name=supabase_kong_ --format '{{.Names}}' | head -1)"
