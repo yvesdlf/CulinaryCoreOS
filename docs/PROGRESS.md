@@ -1702,6 +1702,80 @@ Nine commits on `chore/pr-workflow-and-docs`, since merged to `main`.
       `/auth/v1/health`, corrected from `docker port` when it does not
       answer, and refused outright with the reason if neither works.
 
+- [x] **The maintenance record had never been read by anything** (0131).
+      0055 built a small CMMS — assets, work orders, an event log and planned
+      maintenance on an interval — and gave it two views, `maintenance_due`
+      and `asset_health`. Neither is a period report and neither is reachable
+      from a screen. `maintenance_report` is one row per asset with work or a
+      problem, statutory breaches first.
+
+      It mixes two kinds of number in one row on purpose. `raised` and
+      `completed` are of the period; `still_open`, `overdue` and the plan
+      columns are as of today. Picking one would have been wrong both ways: a
+      period-only report closes the month with eleven overdue statutory
+      checks invisible, and a state-only one cannot be compared to last
+      month. The column names carry the distinction and the caveats say it
+      again in words, on screen and in all four exported formats.
+
+      A work order counts if it was **raised or finished** in the period. A
+      job opened in March and closed in November is November's work, and a
+      report that counted only what was raised would show a quiet month after
+      every busy one. Downtime is summed on completion alone: an open job's
+      downtime is still accruing and is not a figure yet.
+
+      The due date is `last_completed_on + interval_days`, with "never done"
+      meaning "due today" rather than overdue — 0055's own formula, repeated
+      rather than improved. Two derivations of when a statutory check falls
+      due is how a venue ends up with a screen and a report disagreeing about
+      whether it is in breach.
+
+      It scopes to `auth_default_org_id()`, the venue the reader has
+      switched to, like 0129 and 0130. Without it a reader who belongs to two
+      venues gets two plant registers merged into one agenda with their
+      downtime added together — and every row would be permitted, so no
+      access test would object.
+
+      Proved by 23 checks in `supabase/tests/70_*.sql`, three of them
+      verified by breaking the function first: filtering on `raised_at` alone
+      drops the completed count from 3 to 2, summing downtime over open jobs
+      takes 135 minutes to 1134, and dropping the venue scope puts another
+      venue's plant on the agenda.
+
+- [x] **A test that passed against a deliberately broken function, twice in
+      one day.** Worth recording because the shape repeats. The production
+      report's "a batch worked the night before still answers its service"
+      check passed against a function that filtered by date, because the
+      window contained both days. The maintenance report's "downtime is
+      counted on completion" check passed against a function that counted
+      every job, because the open job in the fixture had no downtime
+      recorded.
+
+      Neither was a bad assertion. Both were assertions whose fixture could
+      not distinguish the two behaviours — `_harness.sql`'s first false-pass
+      mode arriving through the data rather than through the SQL. The habit
+      that caught both is cheap: break the function on purpose and watch the
+      test go red before believing it.
+
+- [x] **The Maintenance section had no demo data either.**
+      `seed_maintenance.sql`: fourteen assets, ten planned-maintenance
+      schedules and seventy-three work orders over ninety days, with the
+      findings seeded on purpose — two statutory checks past their date, one
+      planned check, an asset out of service and one degraded, work orders
+      open past their due date, jobs completed and never verified,
+      emergencies, a job open seventy-four days, and work raised against no
+      asset at all.
+
+      Nothing is assigned to anybody. 0055 refuses an assignment to someone
+      whose certifications do not cover the asset, who is on leave, or who
+      has left; a seed that tripped it would fail halfway and leave the
+      database half-built. That rule belongs in the control suite, which has
+      it.
+
+      The first version used a stride of 7 against 14 assets, and `7i mod 14`
+      takes only two values — so twelve of the fourteen never saw a job and
+      the report showed a venue with two machines. A modulus is only a spread
+      if it shares no factor with the range.
+
 - [ ] **Custom report builder** (DOC1 RPT-FUNC-005). **Recommended against,
       and recorded here so the decision is visible rather than forgotten.**
       This system's discipline is that a figure carries its caveats —
