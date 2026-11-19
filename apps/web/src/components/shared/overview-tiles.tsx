@@ -191,9 +191,31 @@ export function UnitTiles({ units }: { units: UnitOverview[] }) {
                   </li>
                 )}
                 {u.shiftsToday > 0 && <li>{u.shiftsToday} on today</li>}
-                {u.lastHandoverStatus === null
-                  ? <li>no handover written</li>
-                  : u.lastHandoverOn && <li>last handover {u.lastHandoverOn}</li>}
+                {/*
+                  * A draft is not a handover, and this tile used to say it
+                  * was.
+                  *
+                  * `last_handover_status` (0074) takes the most recent
+                  * handover for the department with no filter on status, and
+                  * this read it only to choose between "no handover written"
+                  * and "last handover <date>". 0071 is explicit that a DRAFT
+                  * is visible to nobody but the person who wrote it — so a
+                  * department that writes one every shift and publishes none
+                  * appeared here as handing over normally, which is the
+                  * opposite of what happened.
+                  *
+                  * It is the failure with a false sense of having done the
+                  * work: the writer believes they handed over, the next
+                  * shift got nothing, and the only surface that could have
+                  * said so agreed with the writer.
+                  */}
+                {u.lastHandoverStatus === null ? (
+                  <li>no handover written</li>
+                ) : u.lastHandoverStatus === "DRAFT" ? (
+                  <li className="text-destructive">handover written, not published</li>
+                ) : (
+                  u.lastHandoverOn && <li>last handover {u.lastHandoverOn}</li>
+                )}
               </ul>
             </CardContent>
           </Card>
