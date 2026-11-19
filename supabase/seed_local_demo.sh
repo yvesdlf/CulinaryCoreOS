@@ -30,6 +30,9 @@
 #   seed_production   prep sheets and the batches made against them; needs the
 #                     catalogue's preparations and dishes, and the people
 #                     above, since a completion record names the cook
+#   seed_maintenance  the plant register, the planned-maintenance programme
+#                     and ninety days of work orders; needs only the
+#                     locations that seed.sql creates
 #
 # Then `recost`, which is not optional: the seed ships every recipe with a zero
 # cost and an empty allergen list, and the script computes both. Skipping it
@@ -54,7 +57,7 @@ echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
 SEEDS=(seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people
-       seed_sample_sales seed_takings seed_production)
+       seed_sample_sales seed_takings seed_production seed_maintenance)
 
 #
 # Every seed named above exists, checked before the first one runs.
