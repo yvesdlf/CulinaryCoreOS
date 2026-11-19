@@ -117,6 +117,25 @@ api_url="${SUPABASE_URL:-$(supabase status -o json | sed -n 's/.*"API_URL" *: *"
 #
 reachable() {
   local i
+  for i in $(seq 1 10); do
+    curl -fsS -o /dev/null --max-time 5 "$1/auth/v1/health" && return 0
+    sleep 2
+  done
+
+  #
+  # Kong keeps a dead upstream after `db reset`.
+  #
+  # The gateway does not restart with the services behind it, so it goes on
+  # answering 502 for an auth container that has been healthy for minutes.
+  # Waiting does not fix it — three rebuilds in a row seeded the whole
+  # database correctly and then refused to cost it, each time reporting that
+  # the stack was not running while every container was up.
+  #
+  # The CI workflow already restarts `realtime` after a reset for the same
+  # class of reason. This is the other one.
+  #
+  echo "The API gateway is not answering. Restarting it…"
+  docker restart "supabase_kong_$(grep -m1 '^project_id' "$ROOT/supabase/config.toml" | cut -d'\"' -f2)" >/dev/null 2>&1 || return 1
   for i in $(seq 1 15); do
     curl -fsS -o /dev/null --max-time 5 "$1/auth/v1/health" && return 0
     sleep 2
