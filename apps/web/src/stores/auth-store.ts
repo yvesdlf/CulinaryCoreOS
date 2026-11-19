@@ -54,11 +54,37 @@ export function canWrite(role: OrgRole | undefined): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "CHEF";
 }
 
-async function loadOrganizations(): Promise<Organization[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase
+/**
+ * The venues this person belongs to.
+ *
+ * `.eq("user_id", …)` is the whole point of this function and it was missing.
+ * The read policy on `organization_members` is `organization_id in
+ * auth_org_ids()` — every member of a venue can see their colleagues, which
+ * is deliberate and is what makes the staff directory work. So a query that
+ * did not filter by user returned **one row per colleague**, each joined to
+ * the same venue, and the store ended up holding that venue once per member
+ * of it.
+ *
+ * What that looked like: `VenuePicker` renders when `organizations.length >=
+ * 2`, so the switcher appeared for anybody in a venue with two or more staff
+ * and listed their single venue once per colleague, with duplicate React
+ * keys. The component's own header says it is "shown only to somebody who
+ * belongs to more than one".
+ *
+ * `client` is a parameter so the test can hand in a fake and assert on the
+ * filter rather than on the shape of the result — the symptom is a duplicate
+ * list, but the defect is a query that asks for too much, and only one of
+ * those is worth pinning.
+ */
+export async function loadOrganizations(
+  userId: string,
+  client: typeof supabase = supabase,
+): Promise<Organization[]> {
+  if (!client) return [];
+  const { data, error } = await client
     .from("organization_members")
     .select("role, created_at, organizations(id, name, slug)")
+    .eq("user_id", userId)
     .order("created_at");
   if (error) throw new Error(error.message);
 
@@ -169,7 +195,7 @@ async function applySession(
     return;
   }
   try {
-    const organizations = await loadOrganizations();
+    const organizations = await loadOrganizations(session.user.id);
     /*
      * Ask the database which organisation it will write to rather than
      * guessing. `organizations[0]` is the oldest membership, which is the
