@@ -238,7 +238,8 @@ select t.expect_value($$select count(*)::text from labour_cost_daily$$,
 -- than an empty table. Without this pair the whole section passes against no
 -- data at all, which is the third false pass in _harness.sql.
 select t.act_as('a0000000-0000-0000-0000-000000000001', 'owner@test.local');
-select t.expect_value($$select count(*)::text from pay_rates$$,
+select t.expect_value($$select count(*)::text from pay_rates
+   where note is distinct from 'seed_financials'$$,
   'the owner sees every one, so the refusal above was a refusal', '5');
 
 reset role;
