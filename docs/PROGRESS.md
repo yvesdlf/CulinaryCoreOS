@@ -2267,3 +2267,43 @@ waiting for an answer.
   platform key** — all three have written recommendations in
   `docs/commercial/`. The AI key question is built both ways and needs no
   further decision to ship; the other two are yours.
+
+### Simphony-grade dashboard (from the R&A research in docs/research/)
+
+- [x] **The dashboard leads with the money, over a period you choose** (0136).
+      The research into Oracle MICROS Simphony found its dashboard leads with
+      a single tile — net sales *today vs same-day-last-week vs
+      same-day-last-year, with variance* — and that CCOS computed every part
+      of this and showed none of it. `financial_summary(from, to)` sums the
+      venue P&L (`unit_profit_daily`) over one range; the dashboard asks three
+      times, for the chosen period, the one before it and the same period a
+      year ago, and sets them side by side with the variance.
+
+      The one subtle rule — what "the same period last year" means — stays in
+      the period engine (`sameTimeLastYear`), not re-derived in SQL, the same
+      discipline that keeps `venue_date` from existing twice. Both comparison
+      columns are clipped to how far the current period has run: an eighteen-
+      day month is compared against the first eighteen days of the month
+      before, not a whole finished month, which would read as a collapse that
+      is really just the calendar. That clipping took the demo's "vs previous"
+      from a misleading −43% to a fair −13%.
+
+      `financial_summary` is invoker-rights over a `security_invoker` view, so
+      a reader with REVENUE but not PAY sees revenue and a blank labour line;
+      money-readers only, scoped to the active venue. Proved by 10 checks in
+      `supabase/tests/75_*.sql`, two verified by breaking the function —
+      averaging the daily averages instead of weighting by covers (16,667 vs
+      15,000), and dropping the venue scope (another venue's takings leak in).
+      The range assembly and variance are 8 unit tests in
+      `financial-compare.test.ts`.
+
+- [ ] **The demo has revenue but no costs, so every financial report reads
+      100% margin.** Found building the above. 250 takings over 70 dates, but
+      zero clock-ins (no labour cost) and zero usage movements (no cost of
+      goods) — `labour_cost_daily` and `cost_of_goods_daily` are empty, so
+      `unit_profit_daily` shows revenue, no cost, and gross profit equal to
+      revenue. The reporting is correct; the demo does not exercise the cost
+      side. **Next:** a `seed_financials` that posts pay rates, clock-ins
+      against the shifts, and usage from `sales_usage_theoretical`, so cost of
+      goods, labour-against-revenue, profit-by-outlet and the new comparison
+      all show a real P&L.

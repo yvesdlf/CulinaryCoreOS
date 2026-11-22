@@ -22,6 +22,7 @@ import type Decimal from "decimal.js";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { VenueLine, UnitTiles } from "@/components/shared/overview-tiles";
+import { FinancialComparison } from "@/components/shared/financial-comparison";
 import {
   fetchVenueOverview, fetchUnitOverview,
   type VenueOverview, type UnitOverview,
@@ -222,7 +223,14 @@ export function DashboardPage() {
         * See `unit_overview` in migration 0074.
         */}
       {venue && (
-        <section className="mb-6 space-y-3">
+        <section className="mb-6 space-y-4">
+          {/*
+            * The money first — the full-venue P&L for a chosen period against
+            * the last one and a year ago. This is the "CEO's first glance" the
+            * brief above describes; the departmental tiles are the detail
+            * under it. Gated to money-readers inside the component.
+            */}
+          <FinancialComparison maySeeMoney={venue.maySeeMoney} />
           <VenueLine venue={venue} />
           <UnitTiles units={units} />
         </section>
