@@ -34,7 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
   ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble, Scale,
-  DoorOpen, ClipboardList, Receipt, Gauge,
+  DoorOpen, ClipboardList, Receipt, Gauge, Store,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -73,6 +73,7 @@ import {
   fetchHandover, handoverCaveats, type HandoverRow,
   fetchPayroll, type PayrollRow,
   fetchProductivity, type ProductivityRow,
+  fetchSalesByChannel, type SalesChannelRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -108,6 +109,7 @@ export function ReportsPage() {
   const [labour, setLabour] = useState<LabourRow[]>([]);
   const [payroll, setPayroll] = useState<PayrollRow[]>([]);
   const [productivity, setProductivity] = useState<ProductivityRow[]>([]);
+  const [sales, setSales] = useState<SalesChannelRow[]>([]);
   const [goods, setGoods] = useState<GoodsRow[]>([]);
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [pour, setPour] = useState<PourCostRow[]>([]);
@@ -142,7 +144,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq, hv, pay, prod] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq, hv, pay, prod, sl] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -174,9 +176,13 @@ export function ReportsPage() {
         // Labour productivity: revenue and covers per labour hour, gated
         // through unit_profit_daily (REVENUE+PAY) like profit and labour.
         fetchProductivity(from, to).catch(() => []),
+        // Sales by channel: where the takings came from, REVENUE-gated like
+        // the trend and profit reports.
+        fetchSalesByChannel(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g); setPayroll(pay);
       setProductivity(prod);
+      setSales(sl);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
       setProduction(pr); setMaintenance(mt); setHousekeeping(hk);
       setHrCases(hc); setFrontDoor(rq); setHandover(hv);
@@ -296,6 +302,7 @@ export function ReportsPage() {
         <TabsList className="print:hidden">
           <TabsTrigger value="trend"><LineChart className="size-4" />Trend</TabsTrigger>
           <TabsTrigger value="profit"><BarChart3 className="size-4" />Profit</TabsTrigger>
+          <TabsTrigger value="sales"><Store className="size-4" />Sales</TabsTrigger>
           <TabsTrigger value="labour"><Users className="size-4" />Labour</TabsTrigger>
           <TabsTrigger value="payroll"><Receipt className="size-4" />Payroll</TabsTrigger>
           <TabsTrigger value="productivity"><Gauge className="size-4" />Productivity</TabsTrigger>
@@ -545,6 +552,54 @@ export function ReportsPage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {r.salesToLabour === null ? "\u2014" : `${r.salesToLabour.toFixed(2)}\u00d7`}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="sales" className="mt-4 space-y-3">
+          <ReportHead
+            blurb="Where the takings came from, by channel. Gross is what guests paid; commission is what a delivery platform kept; net is what the venue kept. The share is of net, so a delivery line that looks large at gross reads honestly after its cut. Average spend is net over covers."
+            empty={sales.length === 0}
+            onExport={() => exportCsv("sales-by-channel",
+              ["channel","kind","gross","commission","commission %","net","covers",
+               "avg spend","share of net %"],
+              sales.map((r) => [r.channelName ?? "", r.channelKind ?? "", r.gross,
+                r.commission, r.commissionPercent ?? "", r.net, r.covers,
+                r.avgSpend ?? "", r.shareOfNet ?? ""]))}
+          />
+          {sales.length > 0 && (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Channel</TableHead>
+                <TableHead className="text-right">Gross</TableHead>
+                <TableHead className="text-right">Commission</TableHead>
+                <TableHead className="text-right">Net</TableHead>
+                <TableHead className="text-right">Covers</TableHead>
+                <TableHead className="text-right">Avg spend</TableHead>
+                <TableHead className="text-right">Share</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {sales.map((r) => (
+                  <TableRow key={r.channelCode ?? r.channelName ?? Math.random()}>
+                    <TableCell className="font-medium">{r.channelName ?? "\u2014"}</TableCell>
+                    <TableCell className="text-right tabular-nums">{money(r.gross)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.commission > 0
+                        ? <span>{money(r.commission)}{r.commissionPercent !== null && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              {r.commissionPercent.toFixed(1)}%
+                            </span>)}</span>
+                        : "\u2014"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{money(r.net)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.covers}</TableCell>
+                    <TableCell className="text-right tabular-nums">{money(r.avgSpend)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.shareOfNet === null ? "\u2014" : `${r.shareOfNet.toFixed(1)}%`}
                     </TableCell>
                   </TableRow>
                 ))}

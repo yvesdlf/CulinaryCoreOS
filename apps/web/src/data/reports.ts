@@ -1172,3 +1172,46 @@ export async function fetchProductivity(
     daysWithData: num(r.days_with_data),
   }));
 }
+
+// ── Sales by channel (0139) ────────────────────────────────────────────────
+// Where the takings came from — the till, takeaway, a delivery platform that
+// keeps a cut. `sales_by_channel` groups revenue_daily by channel over a
+// range: gross, the commission taken and its percent of gross, net, covers,
+// weighted average spend, and the channel's share of net. REVENUE-gated.
+export interface SalesChannelRow {
+  channelCode: string | null;
+  channelName: string | null;
+  channelKind: string | null;
+  gross: number;
+  commission: number;
+  net: number;
+  covers: number;
+  avgSpend: number | null;
+  commissionPercent: number | null;
+  shareOfNet: number | null;
+  daysWithData: number;
+}
+
+export async function fetchSalesByChannel(
+  from: string,
+  to: string,
+): Promise<SalesChannelRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("sales_by_channel", { p_from: from, p_to: to });
+  if (error) fail("fetchSalesByChannel", error);
+  const num = (v: any) => (v == null ? 0 : Number(v));
+  const opt = (v: any) => (v == null ? null : Number(v));
+  return (data ?? []).map((r: any) => ({
+    channelCode: r.channel_code ?? null,
+    channelName: r.channel_name ?? null,
+    channelKind: r.channel_kind ?? null,
+    gross: num(r.gross),
+    commission: num(r.commission),
+    net: num(r.net),
+    covers: num(r.covers),
+    avgSpend: opt(r.avg_spend),
+    commissionPercent: opt(r.commission_percent),
+    shareOfNet: opt(r.share_of_net),
+    daysWithData: num(r.days_with_data),
+  }));
+}
