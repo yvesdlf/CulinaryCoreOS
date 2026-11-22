@@ -34,7 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
   ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble, Scale,
-  DoorOpen, ClipboardList, Receipt,
+  DoorOpen, ClipboardList, Receipt, Gauge,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,6 +72,7 @@ import {
   fetchRequests, requestsCaveats, type RequestsRow,
   fetchHandover, handoverCaveats, type HandoverRow,
   fetchPayroll, type PayrollRow,
+  fetchProductivity, type ProductivityRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -106,6 +107,7 @@ export function ReportsPage() {
   const [profit, setProfit] = useState<UnitProfitRow[]>([]);
   const [labour, setLabour] = useState<LabourRow[]>([]);
   const [payroll, setPayroll] = useState<PayrollRow[]>([]);
+  const [productivity, setProductivity] = useState<ProductivityRow[]>([]);
   const [goods, setGoods] = useState<GoodsRow[]>([]);
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [pour, setPour] = useState<PourCostRow[]>([]);
@@ -140,7 +142,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq, hv, pay] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq, hv, pay, prod] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -169,8 +171,12 @@ export function ReportsPage() {
         // Payroll: per-person labour, gated through labour_cost_daily like the
         // labour report, so a reader without Pay gets an empty one.
         fetchPayroll(from, to).catch(() => []),
+        // Labour productivity: revenue and covers per labour hour, gated
+        // through unit_profit_daily (REVENUE+PAY) like profit and labour.
+        fetchProductivity(from, to).catch(() => []),
       ]);
       setProfit(p); setLabour(l); setGoods(g); setPayroll(pay);
+      setProductivity(prod);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
       setProduction(pr); setMaintenance(mt); setHousekeeping(hk);
       setHrCases(hc); setFrontDoor(rq); setHandover(hv);
@@ -292,6 +298,7 @@ export function ReportsPage() {
           <TabsTrigger value="profit"><BarChart3 className="size-4" />Profit</TabsTrigger>
           <TabsTrigger value="labour"><Users className="size-4" />Labour</TabsTrigger>
           <TabsTrigger value="payroll"><Receipt className="size-4" />Payroll</TabsTrigger>
+          <TabsTrigger value="productivity"><Gauge className="size-4" />Productivity</TabsTrigger>
           <TabsTrigger value="goods"><Boxes className="size-4" />Cost of goods</TabsTrigger>
           <TabsTrigger value="payables"><Wallet className="size-4" />Owed</TabsTrigger>
           <TabsTrigger value="pour"><Wine className="size-4" />Pour cost</TabsTrigger>
@@ -493,6 +500,51 @@ export function ReportsPage() {
                         <Badge variant="outline">{r.openPunches} open</Badge>
                       )}
                       {!r.hoursWereCorrected && r.openPunches === 0 && "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="productivity" className="mt-4 space-y-3">
+          <ReportHead
+            blurb={'What an hour of labour earned, per outlet. Takings are recorded per outlet, not per server, so there is no true "sales per person" — this is the honest version: revenue and covers per labour hour, and how many rupiah of sales each rupiah of wages brought in. Per-hour is blank where no hours were worked.'}
+            empty={productivity.length === 0}
+            onExport={() => exportCsv("labour-productivity",
+              ["outlet","net revenue","covers","labour hours","labour cost",
+               "people","revenue per hour","covers per hour","sales per wage-rupiah"],
+              productivity.map((r) => [r.unitName ?? "", r.netRevenue, r.covers,
+                r.labourHours, r.labourCost, r.people, r.revenuePerHour ?? "",
+                r.coversPerHour ?? "", r.salesToLabour ?? ""]))}
+          />
+          {productivity.length > 0 && (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Outlet</TableHead>
+                <TableHead className="text-right">Net revenue</TableHead>
+                <TableHead className="text-right">Covers</TableHead>
+                <TableHead className="text-right">Hours</TableHead>
+                <TableHead className="text-right">People</TableHead>
+                <TableHead className="text-right">Rev / hour</TableHead>
+                <TableHead className="text-right">Covers / hour</TableHead>
+                <TableHead className="text-right">Sales : wages</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {productivity.map((r) => (
+                  <TableRow key={r.unitCode ?? r.unitName ?? Math.random()}>
+                    <TableCell className="font-medium">{r.unitName ?? "\u2014"}</TableCell>
+                    <TableCell className="text-right tabular-nums">{money(r.netRevenue)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.covers}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.labourHours}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.people}</TableCell>
+                    <TableCell className="text-right tabular-nums">{money(r.revenuePerHour)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.coversPerHour === null ? "\u2014" : r.coversPerHour.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.salesToLabour === null ? "\u2014" : `${r.salesToLabour.toFixed(2)}\u00d7`}
                     </TableCell>
                   </TableRow>
                 ))}
