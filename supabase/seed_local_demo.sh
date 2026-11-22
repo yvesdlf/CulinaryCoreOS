@@ -27,6 +27,8 @@
 #   seed_people       departments, staff, approvers
 #   seed_sample_sales invented sales periods, over those recipes
 #   seed_takings      daily takings and the forecasts built from them
+#   seed_financials   pay rates and clock-ins, so labour has a cost; needs
+#                     the employees and the takings dates above
 #   seed_production   prep sheets and the batches made against them; needs the
 #                     catalogue's preparations and dishes, and the people
 #                     above, since a completion record names the cook
@@ -68,8 +70,7 @@ esac
 echo "Resetting (migrations + seed.sql)…"
 (cd "$ROOT" && supabase db reset --local)
 
-SEEDS=(seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people
-       seed_sample_sales seed_takings seed_production seed_maintenance seed_housekeeping seed_hr_cases seed_requests seed_handover)
+SEEDS=(seed_catalogue seed_suppliers seed_stock seed_purchasing seed_people seed_sample_sales seed_takings seed_financials seed_production seed_maintenance seed_housekeeping seed_hr_cases seed_requests seed_handover)
 
 #
 # Every seed named above exists, checked before the first one runs.
