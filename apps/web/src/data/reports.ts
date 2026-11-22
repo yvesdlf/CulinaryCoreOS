@@ -1081,3 +1081,50 @@ export async function fetchFinancialSummary(
     daysWithData: num(r.days_with_data),
   };
 }
+
+// ── Payroll, per person over a period (0137) ───────────────────────────────
+// `payroll_report` rolls the daily per-person labour figure up over a range,
+// one row per employee per outlet. It is gated through `labour_cost_daily`,
+// so a caller without Pay on an outlet simply gets no rows for it — the
+// report tolerates that like the others rather than blanking the page.
+export interface PayrollRow {
+  employeeId: string;
+  employeeName: string | null;
+  employeeNumber: string | null;
+  jobTitle: string | null;
+  unitCode: string | null;
+  unitName: string | null;
+  basis: string | null;
+  daysWorked: number;
+  hours: number;
+  labourCost: number;
+  avgHourly: number | null;
+  openPunches: number;
+  hoursWereCorrected: boolean;
+}
+
+export async function fetchPayroll(
+  from: string,
+  to: string,
+): Promise<PayrollRow[]> {
+  const { data, error } = await requireSupabase()
+    .rpc("payroll_report", { p_from: from, p_to: to });
+  if (error) fail("fetchPayroll", error);
+  const num = (v: any) => (v == null ? 0 : Number(v));
+  const opt = (v: any) => (v == null ? null : Number(v));
+  return (data ?? []).map((r: any) => ({
+    employeeId: r.employee_id,
+    employeeName: r.employee_name ?? null,
+    employeeNumber: r.employee_number ?? null,
+    jobTitle: r.job_title ?? null,
+    unitCode: r.unit_code ?? null,
+    unitName: r.unit_name ?? null,
+    basis: r.basis ?? null,
+    daysWorked: num(r.days_worked),
+    hours: num(r.hours),
+    labourCost: num(r.labour_cost),
+    avgHourly: opt(r.avg_hourly),
+    openPunches: num(r.open_punches),
+    hoursWereCorrected: Boolean(r.hours_were_corrected),
+  }));
+}

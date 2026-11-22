@@ -34,7 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Download, Printer, TriangleAlert, Wallet, Users, Boxes, Wine,
   ShieldCheck, LineChart, FileSearch, ChefHat, Wrench, BedDouble, Scale,
-  DoorOpen, ClipboardList,
+  DoorOpen, ClipboardList, Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,6 +71,7 @@ import {
   fetchHrCases, hrCasesCaveats, type HrCaseRow,
   fetchRequests, requestsCaveats, type RequestsRow,
   fetchHandover, handoverCaveats, type HandoverRow,
+  fetchPayroll, type PayrollRow,
 } from "@/data/reports";
 import { TrendChart, type TrendPoint } from "@/components/shared/trend-chart";
 
@@ -104,6 +105,7 @@ export function ReportsPage() {
 
   const [profit, setProfit] = useState<UnitProfitRow[]>([]);
   const [labour, setLabour] = useState<LabourRow[]>([]);
+  const [payroll, setPayroll] = useState<PayrollRow[]>([]);
   const [goods, setGoods] = useState<GoodsRow[]>([]);
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [pour, setPour] = useState<PourCostRow[]>([]);
@@ -138,7 +140,7 @@ export function ReportsPage() {
        * and an empty labour one — not a blank page because one of six reads
        * was refused.
        */
-      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq, hv] = await Promise.all([
+      const [p, l, g, a, pc, h, tr, lt, pr, mt, hk, hc, rq, hv, pay] = await Promise.all([
         fetchUnitProfit(from, to).catch(() => []),
         fetchLabourAgainstRevenue(from, to).catch(() => []),
         fetchCostOfGoods(from, to).catch(() => []),
@@ -164,8 +166,11 @@ export function ReportsPage() {
         // and no unit — so this one should never come back empty for access.
         fetchRequests(from, to).catch(() => []),
         fetchHandover(from, to).catch(() => []),
+        // Payroll: per-person labour, gated through labour_cost_daily like the
+        // labour report, so a reader without Pay gets an empty one.
+        fetchPayroll(from, to).catch(() => []),
       ]);
-      setProfit(p); setLabour(l); setGoods(g);
+      setProfit(p); setLabour(l); setGoods(g); setPayroll(pay);
       setPayables(a); setPour(pc); setHygiene(h); setTrend(tr); setLots(lt);
       setProduction(pr); setMaintenance(mt); setHousekeeping(hk);
       setHrCases(hc); setFrontDoor(rq); setHandover(hv);
@@ -286,6 +291,7 @@ export function ReportsPage() {
           <TabsTrigger value="trend"><LineChart className="size-4" />Trend</TabsTrigger>
           <TabsTrigger value="profit"><BarChart3 className="size-4" />Profit</TabsTrigger>
           <TabsTrigger value="labour"><Users className="size-4" />Labour</TabsTrigger>
+          <TabsTrigger value="payroll"><Receipt className="size-4" />Payroll</TabsTrigger>
           <TabsTrigger value="goods"><Boxes className="size-4" />Cost of goods</TabsTrigger>
           <TabsTrigger value="payables"><Wallet className="size-4" />Owed</TabsTrigger>
           <TabsTrigger value="pour"><Wine className="size-4" />Pour cost</TabsTrigger>
@@ -432,6 +438,62 @@ export function ReportsPage() {
                     <TableCell className="text-right tabular-nums">{r.hours ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(r.labourCost)}</TableCell>
                     <TableCell className="text-right tabular-nums">{pct(r.labourPercentOfNet)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="payroll" className="mt-4 space-y-3">
+          <ReportHead
+            blurb="What each person's time cost over the period, one line per person per outlet. The effective hourly is the cost divided by the hours worked, not a rate read off one day — so a mid-period raise shows up as a blended figure. You see the outlets whose Pay you hold."
+            empty={payroll.length === 0}
+            onExport={() => exportCsv("payroll",
+              ["employee","number","role","outlet","basis","days worked","hours",
+               "labour cost","effective hourly","open punches","hours corrected"],
+              payroll.map((r) => [r.employeeName ?? "", r.employeeNumber ?? "",
+                r.jobTitle ?? "", r.unitName ?? "", r.basis ?? "", r.daysWorked,
+                r.hours, r.labourCost, r.avgHourly ?? "", r.openPunches,
+                r.hoursWereCorrected ? "yes" : "no"]))}
+          />
+          {payroll.length > 0 && (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Employee</TableHead><TableHead>Role</TableHead>
+                <TableHead>Outlet</TableHead>
+                <TableHead className="text-right">Days</TableHead>
+                <TableHead className="text-right">Hours</TableHead>
+                <TableHead className="text-right">Labour</TableHead>
+                <TableHead className="text-right">Eff. hourly</TableHead>
+                <TableHead>Notes</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {payroll.map((r) => (
+                  <TableRow key={`${r.employeeId}-${r.unitCode}`}>
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {r.employeeName ?? "—"}
+                      {r.employeeNumber && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          {r.employeeNumber}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.jobTitle ?? "—"}</TableCell>
+                    <TableCell>{r.unitName ?? "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.daysWorked}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.hours}</TableCell>
+                    <TableCell className="text-right tabular-nums">{money(r.labourCost)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{money(r.avgHourly)}</TableCell>
+                    <TableCell className="space-x-1">
+                      {r.hoursWereCorrected && (
+                        <Badge variant="outline">hours corrected</Badge>
+                      )}
+                      {r.openPunches > 0 && (
+                        <Badge variant="outline">{r.openPunches} open</Badge>
+                      )}
+                      {!r.hoursWereCorrected && r.openPunches === 0 && "—"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
