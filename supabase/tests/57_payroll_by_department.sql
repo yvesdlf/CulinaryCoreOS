@@ -159,7 +159,9 @@ select t.expect_value($$
 
 select t.act_as('a0000000-0000-0000-0000-000000000001', 'owner@test.local');
 select t.expect_value($$
-  select count(*)::text from pay_rates$$,
+  select count(*)::text from pay_rates r
+    join employees e on e.id = r.employee_id
+   where e.employee_number in ('T-DK1', 'T-DF1', 'T-DX1')$$,
   'while the venue-wide holder sees all three', '3');
 select t.act_as('a0000000-0000-0000-0000-000000000002', 'chef@test.local');
 

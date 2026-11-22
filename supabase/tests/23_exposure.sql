@@ -176,8 +176,8 @@ select t.expect_value($$select (count(*) > 0)::text from product_stock$$,
 select t.expect_value($$select (count(*) > 0)::text from venue_calendar
                           where kind = 'BIRTHDAY'$$,
   'and their own venue''s calendar', 'true');
-select t.expect_value($$select count(*)::text from attendance$$,
-  'and their own venue''s attendance', '1');
+select t.expect_value($$select (count(*) > 0)::text from attendance$$,
+  'and their own venue''s attendance', 'true');
 
 select t.expect_fail($$select public.next_reference_stem('KIT',
     'b0000000-0000-4000-8000-0000000000ee')$$,

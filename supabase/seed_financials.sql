@@ -110,8 +110,14 @@ begin
     shift_hours := case when e.title like '%Manager%' or e.title like '%Chef%'
                         then 9 else 8 end;
     for d in
+      -- Up to a week ago, not through to yesterday. A venue records its
+      -- takings the same day but reconciles timesheets into payroll a week in
+      -- arrears, so the current week legitimately has revenue and no settled
+      -- labour yet. It also keeps the seed clear of the recent window the
+      -- payroll-run controls build over, so those tests see their own
+      -- fixtures rather than the whole demo clocked in beside them.
       select distinct on_date from public.daily_takings
-       where org_id = org order by on_date
+       where org_id = org and on_date <= current_date - 8 order by on_date
     loop
       -- The kitchen starts before service, the floor with it.
       start_h := case when e.title like '%Chef%' then 10 else 12 end;
