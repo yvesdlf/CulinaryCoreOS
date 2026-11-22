@@ -1024,3 +1024,60 @@ export function handoverCaveats(rows: HandoverRow[]): string[] {
   }
   return notes;
 }
+
+// ── Financial summary (0136) ────────────────────────────────────────────────
+
+/**
+ * The venue P&L summed over one date range, for the caller's active venue.
+ *
+ * Called once per range by the dashboard, which assembles the this-period /
+ * previous-period / year-ago comparison from ranges the period engine
+ * computes — so the one place that knows "the same period last year" stays
+ * the period engine, not duplicated here or in SQL.
+ *
+ * `daysWithData` is the honesty column: a period that reads low because half
+ * its days were never recorded is a different thing from a quiet period, and
+ * the dashboard says which.
+ */
+export interface FinancialSummaryRow {
+  netRevenue: number;
+  grossRevenue: number;
+  covers: number;
+  avgSpend: number | null;
+  labourHours: number;
+  labourCost: number;
+  labourPercent: number | null;
+  goodsCost: number;
+  wasteCost: number;
+  grossProfit: number;
+  grossProfitPercent: number | null;
+  unattributedGoodsCost: number;
+  daysWithData: number;
+}
+
+export async function fetchFinancialSummary(
+  from: string,
+  to: string,
+): Promise<FinancialSummaryRow> {
+  const { data, error } = await requireSupabase()
+    .rpc("financial_summary", { p_from: from, p_to: to });
+  if (error) fail("fetchFinancialSummary", error);
+  const r = (data ?? [])[0] ?? {};
+  const num = (v: any) => (v == null ? 0 : Number(v));
+  const pct = (v: any) => (v == null ? null : Number(v));
+  return {
+    netRevenue: num(r.net_revenue),
+    grossRevenue: num(r.gross_revenue),
+    covers: num(r.covers),
+    avgSpend: pct(r.avg_spend),
+    labourHours: num(r.labour_hours),
+    labourCost: num(r.labour_cost),
+    labourPercent: pct(r.labour_percent),
+    goodsCost: num(r.goods_cost),
+    wasteCost: num(r.waste_cost),
+    grossProfit: num(r.gross_profit),
+    grossProfitPercent: pct(r.gross_profit_percent),
+    unattributedGoodsCost: num(r.unattributed_goods_cost),
+    daysWithData: num(r.days_with_data),
+  };
+}
